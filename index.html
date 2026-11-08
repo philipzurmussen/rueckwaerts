@@ -343,6 +343,7 @@
       <button class="play main alt" id="revB" disabled>▶ Ergebnis</button>
       <button class="play" id="fwdB" disabled>▶ Dein Versuch</button>
       <button class="play" id="refB" style="flex-basis:100%">▶ Vorlage rückwärts</button>
+      <button class="reset" id="backA" style="flex-basis:100%;padding:4px">← Neues Wort aufnehmen</button>
     </div>
     <p class="reveal" id="reveal"></p>
     <div class="score" id="score">
@@ -1113,6 +1114,7 @@
     play('B', slots.A.rev);
   });
   $('refB').addEventListener('click', () => { if (slots.A.rev) play('B', slots.A.rev); });
+  $('backA').addEventListener('click', () => { $('reset').click(); window.scrollTo(0, 0); });
   renderHistory();
 
   // =====================================================================
