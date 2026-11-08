@@ -6,6 +6,11 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#1b1035">
+<meta name="apple-mobile-web-app-title" content="Rückwärts">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" href="icon-192.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
 <title>Rückwärts</title>
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,800&display=swap" rel="stylesheet">
 <style>
@@ -111,6 +116,28 @@
   @keyframes floatup{0%{opacity:0;transform:translate(-50%,40px) scale(.4)}15%{opacity:1;transform:translate(-50%,0) scale(1.15)}100%{opacity:0;transform:translate(-50%,-220px) scale(1)}}
   .toast{position:fixed;left:50%;top:calc(env(safe-area-inset-top) + 16px);transform:translateX(-50%);background:var(--ink);color:var(--bg);font-weight:800;padding:12px 18px;border-radius:18px;z-index:60;max-width:90%;text-align:center;box-shadow:0 8px 24px rgba(0,0,0,.35);animation:toastin .3s cubic-bezier(.3,1.6,.5,1)}
   @keyframes toastin{from{opacity:0;transform:translate(-50%,-20px)}}
+  .prof{display:flex;gap:12px;align-items:center}
+  .profr{flex:1;min-width:0;display:flex;flex-direction:column;gap:4px}
+  .tiny{margin:0;font-size:12px;color:var(--mute)}
+  .ava{width:44px;height:44px;border-radius:50%;display:grid;place-items:center;font-size:26px;border:0;flex:none;margin:0 auto 4px;background:#ff8fab}
+  .ava.big{width:68px;height:68px;font-size:40px;cursor:pointer;margin:0;box-shadow:0 0 0 3px rgba(255,255,255,.15)}
+  .avapick{display:flex;flex-direction:column;gap:10px;background:rgba(0,0,0,.2);border-radius:16px;padding:12px}
+  .emojis{display:grid;grid-template-columns:repeat(8,1fr);gap:4px}
+  .emojis button{border:0;background:none;font-size:26px;padding:4px 0;border-radius:10px;cursor:pointer}
+  .emojis button.on{background:rgba(255,255,255,.18)}
+  .colors{display:flex;justify-content:space-between}
+  .colors button{width:30px;height:30px;border-radius:50%;border:3px solid transparent;cursor:pointer}
+  .colors button.on{border-color:var(--ink)}
+  .topics{display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;scrollbar-width:none}
+  .topics::-webkit-scrollbar{display:none}
+  .topics button{flex:none;border:1px solid rgba(255,255,255,.2);border-radius:999px;background:none;color:var(--ink);font-family:inherit;font-size:14px;font-weight:800;padding:8px 12px;cursor:pointer}
+  .topics button.on{background:var(--ink);color:var(--bg)}
+  .words{display:grid;grid-template-columns:1fr;gap:8px}
+  .words button{border:0;border-radius:14px;padding:12px;font-family:inherit;font-size:20px;font-weight:800;background:rgba(255,255,255,.08);color:var(--ink);cursor:pointer}
+  .words button.on{background:var(--acc);color:var(--bg)}
+  .wordwas{display:block;margin-top:4px;font-size:15px;color:var(--acc)}
+  .res .ava{width:34px;height:34px;font-size:20px;margin:0}
+  .res .play:disabled{opacity:.5}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js"></script>
 <script>window.Peer || document.write('<script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"><\/script>')</script>
@@ -168,11 +195,23 @@
     <!-- Lobby -->
     <section class="card" id="lobby">
       <div class="head"><div class="num">👥</div><div><h2>Duell zu zweit</h2><p>Zwei Handys, 6 Runden, abwechselnd vorgeben</p></div></div>
-      <input class="field" id="myName" maxlength="16" placeholder="Dein Name" autocomplete="off">
+      <div class="prof">
+        <button class="ava big" id="myAva" aria-label="Avatar wählen">🦊</button>
+        <div class="profr">
+          <input class="field" id="myName" maxlength="16" placeholder="Dein Nickname" autocomplete="off">
+          <p class="tiny">Tipp aufs Bild für einen anderen Avatar</p>
+        </div>
+      </div>
+      <div class="avapick" id="avaPick" hidden>
+        <div class="emojis" id="avaEmojis"></div>
+        <div class="colors" id="avaColors"></div>
+      </div>
+      <p class="msg" id="inviteHint" hidden></p>
       <button class="play main" id="btnHost">Spiel erstellen</button>
       <div id="hostBox" hidden>
         <p class="or">Spielcode für dein Gegenüber:</p>
         <p class="bigcode" id="hostCode">····</p>
+        <button class="play main alt" id="btnInvite" style="width:100%">Einladung schicken 📨</button>
       </div>
       <p class="or">– oder –</p>
       <input class="field code" id="joinCode" maxlength="4" placeholder="CODE" autocomplete="off" autocapitalize="characters">
@@ -184,14 +223,20 @@
     <div class="view" id="game" hidden>
       <section class="card">
         <div class="board">
-          <div class="pl"><div class="nm" id="nMe">Du</div><div class="pt" id="ptMe">0</div></div>
+          <div class="pl"><div class="ava" id="aMe"></div><div class="nm" id="nMe">Du</div><div class="pt" id="ptMe">0</div></div>
           <div class="vs" id="roundInfo">Runde 1 von 6</div>
-          <div class="pl"><div class="nm" id="nThem">Gegner</div><div class="pt" id="ptThem">0</div></div>
+          <div class="pl"><div class="ava" id="aThem"></div><div class="nm" id="nThem">Gegner</div><div class="pt" id="ptThem">0</div></div>
         </div>
       </section>
 
       <section class="card">
         <p class="msg" id="dMsg"></p>
+
+        <div id="pTopic" hidden style="display:flex;flex-direction:column;gap:10px">
+          <div class="topics" id="topicRow"></div>
+          <div class="words" id="wordRow"></div>
+          <button class="reset" id="btnShuffle" style="padding:2px">🔄 Andere Wörter</button>
+        </div>
 
         <div id="pWord" hidden>
           <div class="row">
@@ -672,11 +717,94 @@
   $('tabSolo').onclick = () => showMode('solo');
   $('tabDuel').onclick = () => showMode('duel');
 
-  try { $('myName').value = localStorage.getItem('rw-name') || ''; } catch(e){}
-  const myName = () => {
-    const n = $('myName').value.trim() || 'Ich';
-    try { localStorage.setItem('rw-name', n); } catch(e){}
-    return n;
+  // ---------- Profil ----------
+  const AVATARS = ['🦊','🐸','🐼','🐙','🦄','🐯','🐨','🐵','🦉','🐧','🐢','🦖','🐳','🦔','🐝','👾'];
+  const COLORS = ['#ff8fab','#ffd23f','#3ee6c1','#7aa8ff','#c08bff','#ff9f45','#9be564'];
+  const pickRnd = a => a[Math.floor(Math.random()*a.length)];
+  let profile = { name:'', avatar: pickRnd(AVATARS), color: pickRnd(COLORS) };
+  try {
+    const p = JSON.parse(localStorage.getItem('rw-profile') || 'null');
+    if (p){
+      if (AVATARS.includes(p.avatar)) profile.avatar = p.avatar;
+      if (COLORS.includes(p.color)) profile.color = p.color;
+      profile.name = String(p.name || '').slice(0,16);
+    }
+  } catch(e){}
+  $('myName').value = profile.name;
+  function saveProfile(){
+    profile.name = $('myName').value.trim().slice(0,16);
+    try { localStorage.setItem('rw-profile', JSON.stringify(profile)); } catch(e){}
+  }
+  const paintAva = (el, a, c) => { el.textContent = a; el.style.background = c; };
+  const avaHTML = (a, c) => '<div class="ava" style="background:' + c + '">' + a + '</div>';
+  function renderPicker(){
+    paintAva($('myAva'), profile.avatar, profile.color);
+    $('avaEmojis').innerHTML = ''; $('avaColors').innerHTML = '';
+    AVATARS.forEach(a => {
+      const b = document.createElement('button'); b.textContent = a; if (a === profile.avatar) b.className = 'on';
+      b.onclick = () => { profile.avatar = a; saveProfile(); renderPicker(); };
+      $('avaEmojis').appendChild(b);
+    });
+    COLORS.forEach(c => {
+      const b = document.createElement('button'); b.style.background = c; if (c === profile.color) b.className = 'on';
+      b.setAttribute('aria-label', 'Farbe');
+      b.onclick = () => { profile.color = c; saveProfile(); renderPicker(); };
+      $('avaColors').appendChild(b);
+    });
+  }
+  $('myAva').onclick = () => { $('avaPick').hidden = !$('avaPick').hidden; };
+  $('myName').addEventListener('input', saveProfile);
+  renderPicker();
+  const myName = () => { saveProfile(); return profile.name || 'Ich'; };
+
+  // ---------- Themen & Wörter ----------
+  const TOPICS = {
+    'Tiere': ['Giraffe','Krokodil','Elefant','Schmetterling','Känguru','Nilpferd','Pinguin','Erdmännchen','Eichhörnchen','Schildkröte','Flamingo','Papagei','Wildschwein','Seepferdchen','Gorilla','Faultier','Marienkäfer','Waschbär','Tintenfisch','Chamäleon','Dromedar','Igel'],
+    'Essen': ['Spaghetti','Pfannkuchen','Gummibärchen','Brokkoli','Ananas','Kartoffelsalat','Pommes','Lasagne','Schokolade','Erdbeere','Pizza','Joghurt','Avocado','Fischstäbchen','Zimtschnecke','Banane','Mandarine','Spinat','Döner','Wassermelone','Brezel','Pfefferminz'],
+    'Köln': ['Kölner Dom','Rhein','Karneval','Alaaf','Kamelle','Veedel','Ehrenfeld','Nippes','Deutz','Hohenzollernbrücke','Heinzelmännchen','Funkenmariechen','Büdchen','Tünnes','Schäl','Domplatte','Rheinseilbahn','Mülheim','Rodenkirchen','Halve Hahn','Flora','Severin'],
+    'Länder & Städte': ['Australien','Mexiko','Kanada','Ghana','Norwegen','Portugal','Japan','Argentinien','Madagaskar','Island','Paris','Barcelona','Amsterdam','Istanbul','Hamburg','München','New York','Kopenhagen','Marokko','Neuseeland','Accra','Rio de Janeiro'],
+    'Berufe': ['Zahnarzt','Lokführerin','Bäcker','Polizistin','Astronaut','Tierärztin','Schornsteinfeger','Pilotin','Gärtner','Friseurin','Kapitän','Erzieherin','Schreiner','Cutterin','Tontechniker','Zauberer','Detektivin','Bauarbeiter','Postbote','Köchin','Feuerwehrfrau','Bademeister'],
+    'Lange Wörter': ['Donaudampfschiff','Streichholzschächtelchen','Quietscheentchen','Purzelbaum','Regenschirm','Kuddelmuddel','Schnickschnack','Hokuspokus','Wackelpudding','Trampolin','Zauberstab','Schneemann','Achterbahn','Luftballon','Kaugummi','Plappermaul','Schlafanzug','Kirschkernspucken','Ringelnatter','Fahrradklingel','Butterblume','Zahnbürste']
+  };
+  const MIX = 'Bunt gemischt';
+  const ALL_WORDS = new Set(Object.values(TOPICS).flat());
+  let topic = MIX;
+  try { const t = localStorage.getItem('rw-topic'); if (t === MIX || TOPICS[t]) topic = t; } catch(e){}
+  function dealWords(){
+    const pool = (topic === MIX ? [...ALL_WORDS] : TOPICS[topic]).filter(w => !(duel.choices || []).includes(w));
+    const out = [];
+    while (out.length < 3 && pool.length) out.push(pool.splice(Math.floor(Math.random()*pool.length), 1)[0]);
+    duel.choices = out; duel.chosen = null;
+  }
+  function renderTopic(){
+    const tr = $('topicRow'), wr = $('wordRow');
+    tr.innerHTML = ''; wr.innerHTML = '';
+    [MIX, ...Object.keys(TOPICS)].forEach(t => {
+      const b = document.createElement('button'); b.textContent = t; if (t === topic) b.className = 'on';
+      b.onclick = () => { topic = t; try { localStorage.setItem('rw-topic', t); } catch(e){} duel.choices = []; dealWords(); render(); };
+      tr.appendChild(b);
+    });
+    (duel.choices || []).forEach(w => {
+      const b = document.createElement('button'); b.textContent = w; if (w === duel.chosen) b.className = 'on';
+      b.onclick = () => { duel.chosen = w; render(); };
+      wr.appendChild(b);
+    });
+  }
+  $('btnShuffle').onclick = () => { dealWords(); render(); };
+
+  // Ergebnisse unter dieser Ähnlichkeit kann der Gegner nicht anhören
+  const LOCK_BELOW = 0.10;
+
+  // ---------- Einladung ----------
+  $('btnInvite').onclick = async () => {
+    const code = $('hostCode').textContent;
+    const url = location.origin + location.pathname + '#' + code;
+    const text = myName() + ' fordert dich zu einem Duell in „Rückwärts“ heraus! 🎙️🔁';
+    try {
+      if (navigator.share){ await navigator.share({ title:'Rückwärts-Duell', text, url }); return; }
+    } catch(e){ if (e && e.name === 'AbortError') return; }
+    try { await navigator.clipboard.writeText(text + ' ' + url); toast('Link kopiert – jetzt einfügen und verschicken'); }
+    catch(e){ toast(url); }
   };
 
   // Audio für die Übertragung: 22 kHz, 16 Bit
@@ -774,7 +902,7 @@
     c.on('open', () => {
       duel.conn = c;
       lobbyStatus('Verbunden!');
-      c.send({ t:'hello', name: myName() });
+      c.send({ t:'hello', name: myName(), avatar: profile.avatar, color: profile.color });
     });
     c.on('data', onMsg);
     c.on('close', () => { if (duel.conn === c) lost(); });
@@ -802,12 +930,14 @@
   }
   function newRound(){
     duel.phase = 'word'; duel.draft = duel.word = duel.wordRev = duel.myTry = duel.theirTry = null;
-    duel.gotReacts = []; duel.sentReacts = [];
+    duel.gotReacts = []; duel.sentReacts = []; duel.wordText = null;
+    duel.choices = []; duel.chosen = null;
+    if (isSetter()) dealWords();
     draw('W', null); draw('T', null);
     render();
   }
-  function setWord(buf){
-    duel.word = buf; duel.wordRev = reverse(buf); duel.phase = 'try';
+  function setWord(buf, text){
+    duel.word = buf; duel.wordRev = reverse(buf); duel.phase = 'try'; duel.wordText = text || null;
     render(); draw('W', duel.wordRev);
     play('W', duel.wordRev);
   }
@@ -832,8 +962,8 @@
   $('wFwd').onclick = () => { if (duel.word) play('W', duel.word); };
   $('wSend').onclick = () => {
     if (!duel.draft) return;
-    send({ t:'word', round:duel.round, pcm: toPCM(duel.draft) });
-    setWord(duel.draft);
+    send({ t:'word', round:duel.round, pcm: toPCM(duel.draft), w: duel.chosen });
+    setWord(duel.draft, duel.chosen);
   };
   $('btnNext').onclick = () => { send({ t:'next', round:duel.round }); duel.round++; newRound(); };
   $('btnRematch').onclick = () => { send({ t:'rematch' }); startGame(); };
@@ -847,8 +977,15 @@
 
   function onMsg(m){
     if (!m || typeof m !== 'object') return;
-    if (m.t === 'hello'){ duel.them = String(m.name || 'Gegner').slice(0,16); startGame(); }
-    else if (m.t === 'word' && m.round === duel.round && !isSetter()){ setWord(fromPCM(m.pcm)); }
+    if (m.t === 'hello'){
+      duel.them = String(m.name || 'Gegner').slice(0,16);
+      duel.themAva = AVATARS.includes(m.avatar) ? m.avatar : '🙂';
+      duel.themCol = COLORS.includes(m.color) ? m.color : COLORS[3];
+      startGame();
+    }
+    else if (m.t === 'word' && m.round === duel.round && !isSetter()){
+      setWord(fromPCM(m.pcm), ALL_WORDS.has(m.w) ? m.w : null);
+    }
     else if (m.t === 'try' && m.round === duel.round && !duel.theirTry){
       const b = fromPCM(m.pcm);
       duel.theirTry = { buf:b, rev:reverse(b), sim:+m.sim || 0, stars: Math.max(0, Math.min(3, m.stars|0)) };
@@ -866,6 +1003,8 @@
     $('lobby').hidden = duel.started; $('game').hidden = !duel.started;
     if (!duel.started) return;
     $('nMe').textContent = duel.me; $('nThem').textContent = duel.them;
+    paintAva($('aMe'), profile.avatar, profile.color);
+    paintAva($('aThem'), duel.themAva || '🙂', duel.themCol || COLORS[3]);
     $('ptMe').textContent = duel.scores[0]; $('ptThem').textContent = duel.scores[1];
     $('roundInfo').innerHTML = 'Runde ' + Math.min(duel.round+1, TOTAL_ROUNDS) + '<br>von ' + TOTAL_ROUNDS;
 
@@ -874,10 +1013,10 @@
     let msg = '';
     if (ph === 'word'){
       if (iSet){
-        msg = 'Du gibst vor: Nimm ein Wort auf.';
-        show.word = show.wRec = true; show.wSend = !!duel.draft;
+        msg = duel.chosen ? 'Sag „' + esc(duel.chosen) + '“ – tipp auf den roten Knopf.' : 'Du gibst vor: Wähl ein Wort – oder denk dir eins aus.';
+        show.word = show.wRec = true; show.wSend = !!duel.draft; show.topic = !duel.draft;
         if (duel.draft) msg = 'Gut so? Dann ab damit – sonst einfach neu aufnehmen.';
-      } else msg = them + ' nimmt gerade ein Wort auf …';
+      } else msg = them + ' sucht gerade ein Wort aus …';
     } else if (ph === 'try'){
       show.word = true; show.tryP = true;
       msg = duel.myTry ? 'Abgegeben! Warte auf ' + them + ' …' : 'Hör dir die Vorgabe rückwärts an und sprich sie nach. Du hast einen Versuch!';
@@ -885,6 +1024,7 @@
       show.word = show.wFwd = show.reveal = true;
       const a = duel.myTry.stars, b = duel.theirTry.stars;
       msg = a > b ? 'Runde an dich! 🎉' : a < b ? 'Runde an ' + them + '!' : 'Unentschieden!';
+      if (duel.wordText) msg += '<span class="wordwas">Das Wort war: „' + esc(duel.wordText) + '“</span>';
       if (ph === 'reveal'){
         if (isSetter(duel.round + 1)) show.next = true;
         else msg += '<br><span style="font-size:14px;color:var(--mute)">' + them + ' startet die nächste Runde …</span>';
@@ -895,6 +1035,8 @@
       }
     }
     $('dMsg').innerHTML = msg;
+    $('pTopic').hidden = !show.topic;
+    if (show.topic) renderTopic();
     $('pWord').hidden = !show.word;
     $('wRec').hidden = !show.wRec;
     $('wSend').hidden = !show.wSend;
@@ -910,11 +1052,12 @@
     const pr = $('pReveal');
     pr.hidden = !show.reveal; pr.innerHTML = '';
     if (show.reveal){
-      [[duel.me, duel.myTry, true], [duel.them, duel.theirTry, false]].forEach(([n, t, mine]) => {
+      [[duel.me, duel.myTry, true, profile.avatar, profile.color], [duel.them, duel.theirTry, false, duel.themAva || '🙂', duel.themCol || COLORS[3]]].forEach(([n, t, mine, av, col]) => {
         const el = document.createElement('div'); el.className = 'res';
-        el.innerHTML = '<div class="line"><div class="who"><b>' + esc(n) + '</b><span class="st">' + starTxt(t.stars) + '</span> <span class="pct">' + Math.round(t.sim*100) + ' %</span></div>' +
-          '<button class="play main alt">▶ Ergebnis</button></div>';
-        el.querySelector('.play').onclick = () => play(null, t.rev);
+        const locked = !mine && t.sim < LOCK_BELOW;
+        el.innerHTML = '<div class="line">' + avaHTML(av, col) + '<div class="who"><b>' + esc(n) + '</b><span class="st">' + starTxt(t.stars) + '</span> <span class="pct">' + Math.round(t.sim*100) + ' %</span></div>' +
+          '<button class="play main alt"' + (locked ? ' disabled' : '') + '>' + (locked ? '🔒 Zu weit weg' : '▶ Ergebnis') + '</button></div>';
+        if (!locked) el.querySelector('.play').onclick = () => play(null, t.rev);
         if (mine){
           // Reaktionen, die ich auf meine Aufnahme bekommen habe
           if (duel.gotReacts.length){
@@ -986,6 +1129,23 @@
       s.file.value = '';
     });
   });
+
+  // Als App installierbar + Solo offline (nur auf echter Website, nicht in der Vorschau)
+  if ('serviceWorker' in navigator && /^https:|^http:\/\/(localhost|127\.)/.test(location.href) && !/claude/.test(location.host)){
+    navigator.serviceWorker.register('sw.js').catch(() => {});
+  }
+
+  // Über Einladungslink geöffnet? → Duell mit vorausgefülltem Code
+  const invite = (location.hash || '').slice(1).toUpperCase();
+  if (/^[A-Z0-9]{4}$/.test(invite)){
+    showMode('duel');
+    $('joinCode').value = invite;
+    $('inviteHint').hidden = false;
+    $('inviteHint').innerHTML = 'Du wurdest herausgefordert! 🎙️<br><span style="font-size:14px;font-weight:500;color:var(--mute)">Avatar und Nickname wählen, dann unten auf „Beitreten“.</span>';
+    $('btnJoin').classList.add('main');
+    $('btnHost').hidden = true;
+    try { history.replaceState(null, '', location.pathname); } catch(e){}
+  }
 
   // Ohne Mikro-API direkt Hinweis zeigen
   if (!micMode) $('note').classList.add('show');
