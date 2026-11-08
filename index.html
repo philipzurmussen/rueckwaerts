@@ -308,6 +308,50 @@
   .duelshow .reacts button:active{transform:translateY(3px);box-shadow:0 1px 0 #0e0722}
   .duelshow .reacts button.sent{background:var(--acc)}
   @media (prefers-reduced-motion: reduce){.dshield,.dside.win .ava::before{animation:none}}
+
+  /* ---------- Neuer Look: Mini-Profil oben, Konturen + 3D wie die Ergebnistafel ---------- */
+  .vh{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+  .pbar{width:100%;max-width:440px;display:flex;align-items:center;gap:12px;padding:10px 12px;background:var(--card);border:3px solid #0e0722;border-radius:22px;box-shadow:0 5px 0 #0e0722}
+  .pava{position:relative;flex:none;width:56px;height:56px;border-radius:16px;border:3px solid #0e0722;display:grid;place-items:center;font-size:30px;padding:0;cursor:pointer;background:#ff8fab}
+  .pava .plv{position:absolute;right:-10px;bottom:-10px;width:28px;height:28px;border-radius:50%;background:var(--acc);border:3px solid #0e0722;display:grid;place-items:center;font:800 14px "Bricolage Grotesque",system-ui,sans-serif;color:#0e0722}
+  .pmid{flex:1;min-width:0;display:flex;flex-direction:column;gap:5px}
+  .pname{display:flex;align-items:baseline;gap:6px;min-width:0}
+  .pname b{font-size:17px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .pname span{font-size:12px;font-weight:800;color:var(--mute);white-space:nowrap}
+  .pxp{position:relative;height:18px;border-radius:9px;background:#0e0722;overflow:hidden}
+  .pxp i{display:block;height:100%;width:0;border-radius:9px;background:var(--acc);box-shadow:inset 0 -4px 0 rgba(0,0,0,.15);transition:width .8s cubic-bezier(.3,1.2,.5,1)}
+  .pxp span{position:absolute;inset:0;display:grid;place-items:center;font-size:12px;font-weight:800;color:#fff;-webkit-text-stroke:3px #0e0722;paint-order:stroke fill}
+  .pnext{font-size:11px;font-weight:800;color:var(--mute);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .pchips{flex:none;display:flex;flex-direction:column;gap:6px}
+  .pchip{position:relative;min-height:30px;padding:0 10px;border-radius:12px;border:2px solid #0e0722;background:#0e0722;color:var(--acc);display:flex;align-items:center;gap:5px;font-family:inherit;font-size:14px;font-weight:800;cursor:pointer;white-space:nowrap}
+  .pchip.duel{color:var(--acc2)}
+  .pchip.dot::after,.tabs button.dot::after{content:"";position:absolute;top:-5px;right:-5px;width:12px;height:12px;border-radius:50%;background:var(--rec);border:2px solid #0e0722}
+  .tabrow{width:100%;max-width:440px;display:flex;align-items:center;gap:10px}
+  .tabrow .tabs{flex:1;background:#0e0722}
+  .tabrow .tabs button{flex:1;min-height:44px;padding:0 8px;font-size:16px;position:relative}
+  .tabrow .tabs button.on{background:var(--acc);color:#0e0722;box-shadow:inset 0 -4px 0 rgba(0,0,0,.18)}
+  .tabs button.dot::after{top:6px;right:10px;width:9px;height:9px;border:0}
+  .helpbtn{position:static;flex:none;width:44px;height:44px;border:3px solid #0e0722;background:var(--card);box-shadow:0 4px 0 #0e0722;font-size:20px}
+  .helpbtn:active{transform:translateY(3px);box-shadow:0 1px 0 #0e0722}
+  #soloLvl{display:none !important}
+  .card{border:3px solid #0e0722;box-shadow:0 6px 0 #0e0722}
+  .card.season{position:relative;overflow:hidden;background:#6a35d4;border:4px solid var(--acc);box-shadow:0 6px 0 #0e0722,inset 0 -8px 0 rgba(0,0,0,.15)}
+  .card.season::before{content:"";position:absolute;left:50%;top:50%;width:700px;height:700px;margin:-350px 0 0 -350px;border-radius:50%;background:repeating-conic-gradient(rgba(255,210,63,.10) 0deg 9deg,transparent 9deg 18deg);animation:rays 40s linear infinite;pointer-events:none}
+  .card.season > *{position:relative}
+  .card.season .sinfo p,.card.season .tiny{color:#e9deff}
+  .card.season{padding:14px}
+  .card.season .srow{gap:10px}
+  .card.season .sinfo h2{white-space:normal;color:#fff}
+  .card.season .splay{padding:10px 14px}
+  .num{width:34px;height:34px;border:3px solid #0e0722}
+  .play{border:3px solid #0e0722;box-shadow:0 4px 0 #0e0722;background:#3a2470}
+  .play:active:not(:disabled){transform:translateY(3px);box-shadow:0 1px 0 #0e0722}
+  .recbtn{border:4px solid #0e0722;box-shadow:0 6px 0 #0e0722,inset 0 -6px 0 rgba(0,0,0,.18)}
+  .recbtn:active{transform:translateY(4px);box-shadow:0 2px 0 #0e0722,inset 0 -6px 0 rgba(0,0,0,.18)}
+  .recbtn .dot{border:3px solid #0e0722}
+  .splay{border:3px solid #0e0722;box-shadow:0 4px 0 #0e0722}
+  .splay:active{transform:translateY(3px);box-shadow:0 1px 0 #0e0722}
+  @media (prefers-reduced-motion: reduce){.card.season::before{animation:none}.pxp i{transition:none}}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -332,9 +376,23 @@
     el.addEventListener('click', hide);
   })();
   </script>
-  <button class="helpbtn" id="helpBtn" aria-label="So geht's">?</button>
-  <h1><img src="logo.png" alt="Ollah!" class="logo"></h1>
-  <div class="tabs"><button id="tabSolo" class="on">Solo</button><button id="tabAsync">Duelle</button><button id="tabRanks">Rangliste</button><button id="tabDuel" hidden>Live</button></div>
+  <h1 class="vh">Ollah!</h1>
+  <header class="pbar" id="pbar">
+    <button class="pava" id="pAva" aria-label="Profil bearbeiten"><span id="pAvaE">🦊</span><span class="plv" id="pLv">1</span></button>
+    <div class="pmid">
+      <div class="pname"><b id="pName">Du</b><span id="pTitle">Anfänger</span></div>
+      <div class="pxp"><i id="pXpBar"></i><span id="pXpTxt">0 / 30</span></div>
+      <div class="pnext" id="pNext"></div>
+    </div>
+    <div class="pchips">
+      <button class="pchip" id="pRank" hidden><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 4h8v6a4 4 0 0 1-8 0z"/><path d="M8 6H5a3 3 0 0 0 3 4M16 6h3a3 3 0 0 1-3 4M12 14v4M8 20h8"/></svg><span id="pRankTxt"></span></button>
+      <button class="pchip duel" id="pTurns"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.5 17.5L3 6V3h3l11.5 11.5M13 19l6-6M16 16l4 4M19 21l2-2"/></svg><span id="pTurnsTxt">Duelle</span></button>
+    </div>
+  </header>
+  <div class="tabrow">
+    <div class="tabs"><button id="tabSolo" class="on">Solo</button><button id="tabAsync">Duelle</button><button id="tabRanks">Rangliste</button><button id="tabDuel" hidden>Live</button></div>
+    <button class="helpbtn" id="helpBtn" aria-label="So geht's">?</button>
+  </div>
 
   <div class="note" id="note">
     Das direkte Mikrofon ist hier gesperrt. Tipp auf den roten Knopf, nimm mit der Aufnahme-App deines Handys auf und wähl die Datei aus – der Rest funktioniert genauso.
@@ -1288,6 +1346,31 @@
   $('tabAsync').onclick = () => showMode('async');
   $('tabRanks').onclick = () => showMode('ranks');
 
+  // ---------- Mini-Profil oben ----------
+  function renderPbar(){
+    try {
+      $('pAvaE').textContent = profile.avatar; $('pAva').style.background = profile.color;
+      $('pName').textContent = profile.name || 'Du';
+      const xp = typeof myXP === 'number' ? myXP : 0, cur = levelOf(xp), nx = nextLevel(xp);
+      $('pLv').textContent = cur.n; $('pTitle').textContent = cur.name;
+      $('pXpBar').style.width = (nx ? Math.max(4, Math.round(100 * (xp - cur.xp) / (nx.xp - cur.xp))) : 100) + '%';
+      $('pXpTxt').textContent = nx ? xp + ' / ' + nx.xp : xp + ' Punkte';
+      $('pNext').textContent = nx ? 'Noch ' + (nx.xp - xp) + ' Punkte bis ' + nx.name : 'Höchstes Level erreicht 👑';
+      const rank = A.lb && A.lb.me && A.lb.me.rank;
+      $('pRank').hidden = !rank; if (rank){ $('pRankTxt').textContent = 'Platz ' + rank; $('pRank').setAttribute('aria-label', 'Rangliste, Platz ' + rank); }
+      const turns = (A.list || []).filter(g => g.my_turn && g.status !== 'done').length;
+      $('pTurnsTxt').textContent = turns ? turns + ' dran' : 'Duelle';
+      $('pTurns').setAttribute('aria-label', turns ? 'Duelle, ' + turns + ' mal bist du dran' : 'Duelle');
+      $('pTurns').classList.toggle('dot', turns > 0); $('tabAsync').classList.toggle('dot', turns > 0);
+    } catch(e){}
+  }
+  $('pRank').onclick = () => { showMode('ranks'); window.scrollTo(0, 0); };
+  $('pTurns').onclick = () => { showMode('async'); window.scrollTo(0, 0); };
+  $('pAva').onclick = () => {
+    showMode('async');
+    requestAnimationFrame(() => { $('avaPick').hidden = false; $('profBox').scrollIntoView({ behavior:'smooth', block:'center' }); });
+  };
+
   // ---------- Profil ----------
   const AVATARS = ['🦊','🐸','🐼','🐙','🦄','🐯','🐨','🐵','🦉','🐧','🐢','🦖','🐳','🦔','🐝','👾'];
   const COLORS = ['#ff8fab','#ffd23f','#3ee6c1','#7aa8ff','#c08bff','#ff9f45','#9be564'];
@@ -1306,11 +1389,13 @@
     profile.name = $('myName').value.trim().slice(0,16);
     try { localStorage.setItem('rw-profile', JSON.stringify(profile)); } catch(e){}
     if (window.asyncProfileChanged) window.asyncProfileChanged();
+    renderPbar();
   }
   const paintAva = (el, a, c) => { el.textContent = a; el.style.background = c; };
   const avaHTML = (a, c) => '<div class="ava" style="background:' + c + '">' + a + '</div>';
   function renderPicker(){
     paintAva($('myAva'), profile.avatar, profile.color);
+    renderPbar();
     $('avaEmojis').innerHTML = ''; $('avaColors').innerHTML = '';
     AVATARS.forEach(a => {
       const b = document.createElement('button'); b.textContent = a; if (a === profile.avatar) b.className = 'on';
@@ -1356,6 +1441,7 @@
   let myXP = 0;
   const levelOf = xp => LEVELS.filter(l => xp >= l.xp).pop();
   const nextLevel = xp => LEVELS.find(l => l.xp > xp) || null;
+  renderPbar();
   const isUnlocked = t => t === MIX || (TOPIC_LEVEL[t] || 1) <= levelOf(myXP).n;
   const unlockedWords = () => Object.keys(TOPICS).filter(isUnlocked).flatMap(t => TOPICS[t]);
   const ALL_WORDS = new Set(Object.values(TOPICS).flat());
@@ -1794,6 +1880,7 @@
     try { sp = await rpc('my_profile'); } catch(e){}
     if (sp && sp.nickname){
       profile.name = sp.nickname;
+      setTimeout(renderPbar);
       if (AVATARS.includes(sp.avatar)) profile.avatar = sp.avatar;
       if (COLORS.includes(sp.color)) profile.color = sp.color;
       $('myName').value = profile.name;
@@ -1945,6 +2032,7 @@
     A.firstList = false; A.myTurnIds = turns; A.knownIds = new Set(A.list.map(g => g.id));
     try { navigator.setAppBadge && (turns.size ? navigator.setAppBadge(turns.size) : navigator.clearAppBadge()); } catch(e){}
     renderList();
+    renderPbar();
     refreshStats();
     refreshSeason();
   }
@@ -1968,6 +2056,7 @@
     if (!$('ranks').hidden) renderRanksTab();
   }
   function renderLevel(){
+    renderPbar();
     const cur = levelOf(myXP), nx = nextLevel(myXP);
     $('aLvName').textContent = 'Level ' + cur.n + ' · ' + cur.name;
     $('soloLvl').hidden = false;

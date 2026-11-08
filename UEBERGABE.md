@@ -21,6 +21,8 @@ Smartphone-Wortspiel: Wort aufnehmen → rückwärts anhören → rückwärts na
 - **Rangliste:** Level (0/30/80/150/300 Punkte schalten Themen frei), Wochen-Season, Gesamtrangliste.
 - **Seasons:** eine Woche, 6 vorgegebene Begriffe, alle sprechen mit eigener Stimme. Planung im Admin-**Studio** (`#STUDIO`).
 - **Konto:** anonym starten, später E-Mail-Code (OTP) verknüpfen; Login auf anderem Gerät per Code.
+- **Kopfzeile:** Logo oben entfällt (steht im Ladescreen). Stattdessen Mini-Profil `#pbar` (Avatar + Level-Abzeichen, Name, Level-Titel, XP-Leiste bis zum nächsten Level; Chips „Platz N“ → Rangliste und „N dran“ → Duelle, roter Punkt auch am Duelle-Tab), `renderPbar()`. Tipp auf den Avatar öffnet die Avatar-Auswahl im Duelle-Tab. Der „?“-Knopf sitzt rechts neben den Tabs.
+- **Stil:** Karten und Knöpfe mit dunkler Kontur `#0e0722` und 3D-Schatten wie die Ergebnistafel; Season-Karte lila mit gelbem Rand und Lichtstrahlen.
 - **Look:** Ladescreen beim Start (`#splash`: Streifen, Maskottchen-Sprechblase, Logo, ~1,3 s, Tippen überspringt); Solo-Ergebnis als „Wappen“ mit hochzählender Prozentzahl, ploppenden Sternen, Banner und Konfetti ab 2 Sternen (`showScore`, `confetti()`; Konfetti auch bei Season und Satz-Modus). Duell-Runde nach dem eigenen Versuch: Wappen „Du VS Gegner“ mit hochzählenden Zahlen, Sterne-Pop, Krone für den Rundensieger, Konfetti bei Sieg, große Reaktions-Knöpfe (`renderReveal`, einmal pro Runde animiert über `A.shownReveal`). Entwurf auf dem Design-Canvas „Ollah! – Ergebnis-Screen“.
 - Sonstiges: Feedback-Knopf, geführte erste Runde (Tour), „?“-Hilfe, Links-/Rechtshänder-Umschalter.
 
