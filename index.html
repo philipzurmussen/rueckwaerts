@@ -1,0 +1,521 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#1b1035">
+<title>Rückwärts</title>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#1b1035; --card:#2a1a4f; --ink:#fff6e9; --mute:#b9a9d9;
+    --rec:#ff4d6d; --acc:#ffd23f; --acc2:#3ee6c1;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;background:var(--bg);color:var(--ink);font-family:"Bricolage Grotesque",system-ui,sans-serif}
+  body{
+    min-height:100vh;
+    padding:calc(env(safe-area-inset-top) + 18px) 16px calc(env(safe-area-inset-bottom) + 24px);
+    display:flex;flex-direction:column;align-items:center;gap:14px;
+    user-select:none;-webkit-user-select:none;
+  }
+  h1{margin:4px 0 0;font-size:44px;font-weight:800;letter-spacing:-1px;line-height:1}
+  h1 span{display:inline-block;transform:scaleX(-1);color:var(--acc)}
+  .sub{margin:0;color:var(--mute);font-size:15px;text-align:center}
+  .card{width:100%;max-width:440px;background:var(--card);border-radius:24px;padding:18px;display:flex;flex-direction:column;gap:14px;transition:opacity .2s}
+  .card.off{opacity:.4;pointer-events:none}
+  .head{display:flex;align-items:center;gap:12px}
+  .num{flex:none;width:30px;height:30px;border-radius:50%;background:var(--acc);color:var(--bg);font-weight:800;display:grid;place-items:center}
+  .head h2{margin:0;font-size:20px;font-weight:800}
+  .head p{margin:2px 0 0;color:var(--mute);font-size:14px}
+  .row{display:flex;align-items:center;gap:14px}
+  .recbtn{
+    flex:none;width:84px;height:84px;border-radius:50%;border:0;cursor:pointer;
+    background:var(--rec);color:#fff;font:800 13px inherit;font-family:inherit;
+    box-shadow:0 6px 0 #b8243f;display:grid;place-items:center;position:relative;
+  }
+  .recbtn:active{transform:translateY(3px);box-shadow:0 3px 0 #b8243f}
+  .recbtn .dot{width:26px;height:26px;border-radius:50%;background:#fff;transition:all .15s}
+  .recbtn.on .dot{border-radius:6px;width:24px;height:24px}
+  .recbtn.on::after{content:"";position:absolute;inset:-8px;border-radius:50%;border:3px solid var(--rec);animation:pulse 1s infinite}
+  @keyframes pulse{from{opacity:1;transform:scale(.95)}to{opacity:0;transform:scale(1.25)}}
+  .recbtn:disabled{opacity:.4}
+  canvas{flex:1;min-width:0;height:84px;border-radius:14px;background:rgba(0,0,0,.25)}
+  .btns{display:flex;gap:10px;flex-wrap:wrap}
+  .play{
+    flex:1;min-width:120px;border:0;border-radius:16px;padding:14px 12px;cursor:pointer;
+    font-family:inherit;font-size:16px;font-weight:800;background:rgba(255,255,255,.1);color:var(--ink);
+  }
+  .play.main{background:var(--acc);color:var(--bg)}
+  .play.main.alt{background:var(--acc2)}
+  .play:disabled{opacity:.35}
+  .play:active:not(:disabled){transform:scale(.97)}
+  .hint{margin:0;font-size:14px;color:var(--mute);min-height:1.2em}
+  .note{display:none;width:100%;max-width:440px;background:rgba(255,210,63,.12);border:1px solid rgba(255,210,63,.4);border-radius:16px;padding:12px 14px;font-size:14px;line-height:1.4}
+  .note.show{display:block}
+  .reset{border:0;background:none;color:var(--mute);font-family:inherit;font-size:15px;text-decoration:underline;cursor:pointer;padding:8px}
+  .reveal{font-size:22px;font-weight:800;text-align:center;margin:0;color:var(--acc2);min-height:0;transition:all .3s}
+  input[type=file]{display:none}
+  .score{display:none;flex-direction:column;align-items:center;gap:4px}
+  .score.show{display:flex}
+  .stars{display:flex;gap:10px;font-size:44px;line-height:1}
+  .stars span{color:rgba(255,255,255,.15);transition:color .2s}
+  .stars span.lit{color:var(--acc);animation:pop .45s cubic-bezier(.3,1.8,.5,1)}
+  @keyframes pop{0%{transform:scale(.3) rotate(-30deg)}100%{transform:scale(1) rotate(0)}}
+  .pct{font-size:13px;color:var(--mute)}
+  .hist h2{margin:0;font-size:18px;font-weight:800}
+  .empty{margin:0;color:var(--mute);font-size:14px}
+  .item{display:flex;flex-direction:column;gap:8px;padding:12px;border-radius:16px;background:rgba(0,0,0,.2)}
+  .item .top{display:flex;justify-content:space-between;align-items:center}
+  .item .st{color:var(--acc);font-size:18px;letter-spacing:2px}
+  .item .st i{color:rgba(255,255,255,.15);font-style:normal}
+  .item .meta{color:var(--mute);font-size:13px}
+  .item .del{border:0;background:none;color:var(--mute);font-size:18px;cursor:pointer;padding:0 4px}
+  .item .btns .play{min-width:0;padding:10px 6px;font-size:14px;border-radius:12px}
+</style>
+</head>
+<body>
+  <h1>Rück<span>wärts</span></h1>
+  <p class="sub">Wort aufnehmen · rückwärts anhören · nachsprechen · umdrehen · staunen</p>
+
+  <div class="note" id="note">
+    Das direkte Mikrofon ist hier gesperrt. Tipp auf den roten Knopf, nimm mit der Aufnahme-App deines Handys auf und wähl die Datei aus – der Rest funktioniert genauso.
+  </div>
+
+  <section class="card" id="cardA">
+    <div class="head"><div class="num">1</div><div><h2>Wort aufnehmen</h2><p>Tippen zum Starten, nochmal tippen zum Stoppen</p></div></div>
+    <div class="row">
+      <button class="recbtn" id="recA" aria-label="Aufnahme 1"><span class="dot"></span></button>
+      <canvas id="cvA"></canvas>
+    </div>
+    <div class="btns">
+      <button class="play main" id="revA" disabled>▶ Rückwärts</button>
+      <button class="play" id="fwdA" disabled>▶ Original</button>
+    </div>
+    <input type="file" accept="audio/*" capture id="fileA">
+  </section>
+
+  <section class="card off" id="cardB">
+    <div class="head"><div class="num">2</div><div><h2>Rückwärts nachsprechen</h2><p>So genau wie möglich nachmachen</p></div></div>
+    <div class="row">
+      <button class="recbtn" id="recB" aria-label="Aufnahme 2"><span class="dot"></span></button>
+      <canvas id="cvB"></canvas>
+    </div>
+    <div class="btns">
+      <button class="play main alt" id="revB" disabled>▶ Ergebnis</button>
+      <button class="play" id="fwdB" disabled>▶ Dein Versuch</button>
+    </div>
+    <p class="reveal" id="reveal"></p>
+    <div class="score" id="score">
+      <div class="stars" id="stars"><span>★</span><span>★</span><span>★</span></div>
+      <div class="pct" id="pct"></div>
+    </div>
+    <input type="file" accept="audio/*" capture id="fileB">
+  </section>
+
+  <section class="card hist">
+    <h2>Letzte Runden</h2>
+    <div id="histList"><p class="empty">Noch keine Runde gespielt.</p></div>
+  </section>
+
+  <button class="reset" id="reset">Neues Wort</button>
+
+<script>
+(() => {
+  const $ = id => document.getElementById(id);
+  let ctx = null;
+  const ac = () => {
+    if (!ctx) ctx = new (window.AudioContext || window.webkitAudioContext)();
+    if (ctx.state === 'suspended') ctx.resume();
+    return ctx;
+  };
+
+  const slots = {
+    A: { buf:null, rev:null, cv:$('cvA'), rec:$('recA'), r:$('revA'), f:$('fwdA'), file:$('fileA') },
+    B: { buf:null, rev:null, cv:$('cvB'), rec:$('recB'), r:$('revB'), f:$('fwdB'), file:$('fileB') }
+  };
+
+  let micMode = !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia && window.MediaRecorder);
+  let stream = null, rec = null, recSlot = null, chunks = [], maxTimer = null;
+  let playing = null; // {src, slot, buffer, t0}
+
+  // ---------- Zeichnen ----------
+  function sizeCanvas(cv){
+    const dpr = window.devicePixelRatio || 1;
+    const w = cv.clientWidth, h = cv.clientHeight;
+    if (cv.width !== w*dpr || cv.height !== h*dpr){ cv.width = w*dpr; cv.height = h*dpr; }
+    return { g: cv.getContext('2d'), w: cv.width, h: cv.height, dpr };
+  }
+  function draw(key, buffer, progress = -1, live = null){
+    const s = slots[key], { g, w, h, dpr } = sizeCanvas(s.cv);
+    g.clearRect(0,0,w,h);
+    const bars = Math.floor(w / (5*dpr)), bw = 3*dpr, mid = h/2;
+    if (live){
+      // Live-Pegel während der Aufnahme
+      g.fillStyle = '#ff4d6d';
+      live.forEach((v,i) => {
+        const x = w - (live.length - i) * 5*dpr;
+        const bh = Math.max(2*dpr, v * h * 0.9);
+        g.fillRect(x, mid - bh/2, bw, bh);
+      });
+      return;
+    }
+    if (!buffer){
+      g.fillStyle = 'rgba(255,255,255,.15)';
+      for (let i=0;i<bars;i++) g.fillRect(i*5*dpr, mid-1*dpr, bw, 2*dpr);
+      return;
+    }
+    const d = buffer.getChannelData(0), step = Math.max(1, Math.floor(d.length / bars));
+    for (let i=0;i<bars;i++){
+      let m = 0;
+      for (let j=i*step, e=Math.min(d.length,(i+1)*step); j<e; j+=4){ const a=Math.abs(d[j]); if(a>m) m=a; }
+      const bh = Math.max(2*dpr, m * h * 0.95);
+      g.fillStyle = (progress >= 0 && i/bars <= progress) ? '#ffd23f' : 'rgba(255,246,233,.75)';
+      g.fillRect(i*5*dpr, mid - bh/2, bw, bh);
+    }
+  }
+
+  // ---------- Audio-Verarbeitung ----------
+  function decode(ab){
+    return new Promise((res, rej) => {
+      const p = ac().decodeAudioData(ab, res, rej);
+      if (p && p.then) p.then(res, rej);
+    });
+  }
+  // Mono mischen, Stille vorn/hinten abschneiden, normalisieren
+  function clean(buf){
+    const n = buf.length, ch = buf.numberOfChannels, mono = new Float32Array(n);
+    for (let c=0;c<ch;c++){ const d = buf.getChannelData(c); for (let i=0;i<n;i++) mono[i] += d[i]/ch; }
+    let peak = 0; for (let i=0;i<n;i++){ const a=Math.abs(mono[i]); if(a>peak) peak=a; }
+    if (peak < 0.003) return null;
+    const th = Math.max(0.015, peak*0.1);
+    let a = 0, b = n-1;
+    while (a < n && Math.abs(mono[a]) < th) a++;
+    while (b > a && Math.abs(mono[b]) < th) b--;
+    const pad = Math.floor(buf.sampleRate * 0.08);
+    a = Math.max(0, a - pad); b = Math.min(n-1, b + pad);
+    const len = b - a + 1, out = ac().createBuffer(1, len, buf.sampleRate), o = out.getChannelData(0);
+    const gain = 0.9 / peak;
+    for (let i=0;i<len;i++) o[i] = mono[a+i] * gain;
+    // kurze Fades gegen Knackser
+    const f = Math.min(Math.floor(buf.sampleRate*0.01), Math.floor(len/2));
+    for (let i=0;i<f;i++){ o[i] *= i/f; o[len-1-i] *= i/f; }
+    return out;
+  }
+  function reverse(buf){
+    const out = ac().createBuffer(1, buf.length, buf.sampleRate);
+    const s = buf.getChannelData(0), d = out.getChannelData(0), n = s.length;
+    for (let i=0;i<n;i++) d[i] = s[n-1-i];
+    return out;
+  }
+
+  // ---------- Abspielen ----------
+  function stopPlay(){
+    if (playing){ try{ playing.src.onended = null; playing.src.stop(); }catch(e){} if (playing.slot) draw(playing.slot, playing.buffer); playing = null; }
+  }
+  function play(key, buffer, onEnd){
+    stopPlay();
+    if (!buffer) return;
+    const c = ac(), src = c.createBufferSource();
+    src.buffer = buffer; src.connect(c.destination);
+    const p = { src, slot:key, buffer, t0:c.currentTime };
+    playing = p;
+    src.onended = () => { if (playing === p){ playing = null; if (key) draw(key, buffer); onEnd && onEnd(); } };
+    src.start();
+    if (!key) return;
+    (function tick(){
+      if (playing !== p) return;
+      draw(key, buffer, (c.currentTime - p.t0) / buffer.duration);
+      requestAnimationFrame(tick);
+    })();
+  }
+
+  // ---------- Bewertung (Klangvergleich per MFCC + DTW) ----------
+  // Schwellen für 1 / 2 / 3 Sterne (Ähnlichkeit 0…1) – bei Bedarf anpassen
+  const STAR_STEPS = [0.35, 0.5, 0.65];
+
+  function fft(re, im){
+    const n = re.length;
+    for (let i=1, j=0; i<n; i++){
+      let bit = n >> 1;
+      for (; j & bit; bit >>= 1) j ^= bit;
+      j ^= bit;
+      if (i < j){ [re[i],re[j]] = [re[j],re[i]]; [im[i],im[j]] = [im[j],im[i]]; }
+    }
+    for (let len=2; len<=n; len<<=1){
+      const ang = -2*Math.PI/len, wr = Math.cos(ang), wi = Math.sin(ang);
+      for (let i=0; i<n; i+=len){
+        let cr = 1, ci = 0;
+        for (let k=0; k<len/2; k++){
+          const a = i+k, b = a+len/2;
+          const tr = re[b]*cr - im[b]*ci, ti = re[b]*ci + im[b]*cr;
+          re[b] = re[a]-tr; im[b] = im[a]-ti; re[a] += tr; im[a] += ti;
+          const nr = cr*wr - ci*wi; ci = cr*wi + ci*wr; cr = nr;
+        }
+      }
+    }
+  }
+  function features(data, sr){
+    const N = sr >= 32000 ? 1024 : 512, hop = N/2, nb = 24, nc = 12;
+    const mel = f => 2595*Math.log10(1+f/700), imel = m => 700*(Math.pow(10,m/2595)-1);
+    const lo = mel(80), hi = mel(Math.min(6000, sr/2-100));
+    const edges = []; for (let i=0;i<nb+2;i++) edges.push(imel(lo + (hi-lo)*i/(nb+1)) * N / sr);
+    const win = new Float32Array(N); for (let i=0;i<N;i++) win[i] = 0.5-0.5*Math.cos(2*Math.PI*i/(N-1));
+    const re = new Float32Array(N), im = new Float32Array(N), frames = [];
+    for (let s=0; s+N<=data.length; s+=hop){
+      for (let i=0;i<N;i++){ re[i] = data[s+i]*win[i]; im[i] = 0; }
+      fft(re, im);
+      const e = new Float32Array(nb);
+      for (let b=0;b<nb;b++){
+        const l = edges[b], c = edges[b+1], r = edges[b+2];
+        let sum = 0;
+        for (let k=Math.ceil(l); k<=Math.floor(r) && k<N/2; k++){
+          const w = k < c ? (k-l)/(c-l) : (r-k)/(r-c);
+          if (w > 0) sum += w*(re[k]*re[k]+im[k]*im[k]);
+        }
+        e[b] = Math.log(sum + 1e-8);
+      }
+      const cc = new Float32Array(nc);
+      for (let q=1;q<=nc;q++){ let v=0; for (let b=0;b<nb;b++) v += e[b]*Math.cos(Math.PI*q*(b+0.5)/nb); cc[q-1] = v; }
+      frames.push(cc);
+    }
+    // Mittelwert pro Koeffizient abziehen (unabhängig von Mikro/Raum)
+    if (frames.length){
+      const mean = new Float32Array(nc);
+      frames.forEach(f => f.forEach((v,i) => mean[i] += v/frames.length));
+      frames.forEach(f => { for (let i=0;i<nc;i++) f[i] -= mean[i]; });
+    }
+    return frames;
+  }
+  function cosSim(a, b){
+    let d=0, na=0, nb=0;
+    for (let i=0;i<a.length;i++){ d += a[i]*b[i]; na += a[i]*a[i]; nb += b[i]*b[i]; }
+    return na && nb ? d/Math.sqrt(na*nb) : 0;
+  }
+  function similarity(dataA, dataB, sr){
+    const A = features(dataA, sr), B = features(dataB, sr), n = A.length, m = B.length;
+    if (n < 3 || m < 3) return 0;
+    // DTW: kleinste mittlere Distanz entlang des besten Pfads
+    let pc = new Float64Array(m+1).fill(Infinity), pl = new Float64Array(m+1);
+    pc[0] = 0;
+    for (let i=1;i<=n;i++){
+      const cc = new Float64Array(m+1).fill(Infinity), cl = new Float64Array(m+1);
+      for (let j=1;j<=m;j++){
+        const d = 1 - cosSim(A[i-1], B[j-1]);
+        let best = pc[j-1], len = pl[j-1];
+        if (pc[j] < best){ best = pc[j]; len = pl[j]; }
+        if (cc[j-1] < best){ best = cc[j-1]; len = cl[j-1]; }
+        cc[j] = best + d; cl[j] = len + 1;
+      }
+      pc = cc; pl = cl;
+    }
+    let sim = 1 - pc[m]/pl[m];
+    // Strafe, wenn die Länge stark abweicht
+    const ratio = Math.min(n,m)/Math.max(n,m);
+    if (ratio < 0.5) sim *= ratio/0.5;
+    return Math.max(0, Math.min(1, sim));
+  }
+  const starsFor = sim => STAR_STEPS.filter(t => sim >= t).length;
+
+  function showScore(stars, sim){
+    $('score').classList.add('show');
+    $('pct').textContent = 'Ähnlichkeit ' + Math.round(sim*100) + ' %';
+    const sp = $('stars').children;
+    for (let i=0;i<3;i++) sp[i].classList.remove('lit');
+    for (let i=0;i<stars;i++) setTimeout(() => sp[i].classList.add('lit'), 250*i + 50);
+    $('reveal').textContent = ['Hmm… nochmal probieren! 🙈','Da ist was dran! 🙂','Richtig gut! 😄','Perfekt rückwärts! 🤯'][stars];
+  }
+
+  // ---------- Speicher: letzte 5 Runden ----------
+  const MAX_ROUNDS = 5;
+  let dbp = null, memRounds = [];
+  function db(){
+    if (dbp) return dbp;
+    dbp = new Promise((res, rej) => {
+      try {
+        const r = indexedDB.open('rueckwaerts', 1);
+        r.onupgradeneeded = () => r.result.createObjectStore('rounds', { keyPath:'id', autoIncrement:true });
+        r.onsuccess = () => res(r.result);
+        r.onerror = () => rej(r.error);
+      } catch(e){ rej(e); }
+    }).catch(() => null);
+    return dbp;
+  }
+  async function loadRounds(){
+    const d = await db();
+    if (!d) return memRounds.slice();
+    return new Promise(res => {
+      try {
+        const q = d.transaction('rounds').objectStore('rounds').getAll();
+        q.onsuccess = () => res(q.result.sort((a,b) => b.id - a.id));
+        q.onerror = () => res([]);
+      } catch(e){ res([]); }
+    });
+  }
+  async function saveRound(round){
+    const d = await db();
+    if (!d){
+      round.id = Date.now(); memRounds.unshift(round); memRounds = memRounds.slice(0, MAX_ROUNDS);
+    } else {
+      await new Promise(res => {
+        try {
+          const tx = d.transaction('rounds','readwrite'); tx.objectStore('rounds').add(round);
+          tx.oncomplete = res; tx.onerror = res;
+        } catch(e){ res(); }
+      });
+      const all = await loadRounds();
+      for (const old of all.slice(MAX_ROUNDS)) await deleteRound(old.id, true);
+    }
+    renderHistory();
+  }
+  async function deleteRound(id, silent){
+    const d = await db();
+    if (!d) memRounds = memRounds.filter(r => r.id !== id);
+    else await new Promise(res => {
+      try { const tx = d.transaction('rounds','readwrite'); tx.objectStore('rounds').delete(id); tx.oncomplete = res; tx.onerror = res; }
+      catch(e){ res(); }
+    });
+    if (!silent) renderHistory();
+  }
+  function toBuf(data, sr){ const b = ac().createBuffer(1, data.length, sr); b.getChannelData(0).set(data); return b; }
+
+  async function renderHistory(){
+    const list = $('histList'), rounds = await loadRounds();
+    list.innerHTML = '';
+    if (!rounds.length){ list.innerHTML = '<p class="empty">Noch keine Runde gespielt.</p>'; return; }
+    rounds.forEach(r => {
+      const el = document.createElement('div'); el.className = 'item';
+      const t = new Date(r.time);
+      const when = t.toLocaleDateString('de-DE',{day:'2-digit',month:'2-digit'}) + ', ' + t.toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'});
+      el.innerHTML =
+        '<div class="top"><div><div class="st">' + '★'.repeat(r.stars) + '<i>' + '★'.repeat(3-r.stars) + '</i></div>' +
+        '<div class="meta">' + when + ' · ' + Math.round(r.sim*100) + ' %</div></div>' +
+        '<button class="del" aria-label="Löschen">✕</button></div>' +
+        '<div class="btns"><button class="play" data-k="a">▶ Wort</button><button class="play" data-k="ar">▶ Rückwärts</button><button class="play main alt" data-k="br">▶ Ergebnis</button></div>';
+      el.querySelector('.del').onclick = () => { stopPlay(); deleteRound(r.id); };
+      el.querySelectorAll('.play').forEach(b => b.onclick = () => {
+        const k = b.dataset.k;
+        const src = k === 'br' ? r.b : r.a;
+        const buf = toBuf(src, r.sr);
+        play(null, k === 'a' ? buf : reverse(buf));
+      });
+      list.appendChild(el);
+    });
+  }
+
+  // ---------- Aufnehmen ----------
+  async function handleAudio(key, blob){
+    try {
+      const raw = await decode(await blob.arrayBuffer());
+      const buf = clean(raw);
+      if (!buf){ hint(key, 'Da war nichts zu hören – nochmal, etwas lauter.'); return; }
+      const s = slots[key];
+      s.buf = buf; s.rev = reverse(buf);
+      s.r.disabled = s.f.disabled = false;
+      if (key === 'A'){
+        slots.B.buf = slots.B.rev = null; slots.B.r.disabled = slots.B.f.disabled = true;
+        draw('B', null); $('reveal').textContent = ''; $('score').classList.remove('show');
+        $('cardB').classList.remove('off');
+        play('A', s.rev);
+      } else {
+        $('reveal').textContent = ''; $('score').classList.remove('show');
+        const A = slots.A.buf;
+        const sim = similarity(A.getChannelData(0), s.rev.getChannelData(0), A.sampleRate);
+        const stars = starsFor(sim);
+        s.score = { sim, stars };
+        play('B', s.rev, () => showScore(stars, sim));
+        saveRound({ time: Date.now(), sr: A.sampleRate, a: new Float32Array(A.getChannelData(0)), b: new Float32Array(buf.getChannelData(0)), sim, stars });
+      }
+    } catch(e){
+      hint(key, 'Die Aufnahme konnte nicht gelesen werden.');
+    }
+  }
+  function hint(key, msg){ $('reveal').textContent = msg; }
+  const cheers = ['Und? Klingt’s wie das Original? 😄','Erkennst du dein Wort? 🎉','Gänsehaut oder Gelächter? 🤯','Nochmal? Es wird besser! 🔁'];
+  const pick = () => cheers[Math.floor(Math.random()*cheers.length)];
+
+  let meterRaf = null;
+  function startMeter(key){
+    const c = ac(), srcNode = c.createMediaStreamSource(stream), an = c.createAnalyser();
+    an.fftSize = 512; srcNode.connect(an);
+    const data = new Uint8Array(an.fftSize), hist = [];
+    let last = 0;
+    (function loop(t){
+      an.getByteTimeDomainData(data);
+      let m = 0; for (let i=0;i<data.length;i++){ const v=Math.abs(data[i]-128)/128; if(v>m) m=v; }
+      if (!last || t - last > 40){ hist.push(Math.min(1, m*1.6)); if (hist.length > 200) hist.shift(); last = t; }
+      draw(key, null, -1, hist);
+      meterRaf = requestAnimationFrame(loop);
+    })();
+    return () => { cancelAnimationFrame(meterRaf); try{ srcNode.disconnect(); }catch(e){} };
+  }
+
+  let stopMeter = null;
+  function setRecUI(key, on){
+    const other = key === 'A' ? 'B' : 'A';
+    slots[key].rec.classList.toggle('on', on);
+    slots[other].rec.disabled = on;
+    $('reset').disabled = on;
+  }
+
+  async function onRec(key){
+    stopPlay();
+    ac();
+    // laufende Aufnahme stoppen
+    if (rec && rec.state === 'recording'){ rec.stop(); return; }
+    if (!micMode){ slots[key].file.click(); return; }
+    try {
+      if (!stream || !stream.active) stream = await navigator.mediaDevices.getUserMedia({ audio:true });
+    } catch(e){
+      micMode = false;
+      $('note').classList.add('show');
+      return;
+    }
+    chunks = []; recSlot = key;
+    const types = ['audio/webm;codecs=opus','audio/mp4','audio/webm','audio/ogg'];
+    const mime = MediaRecorder.isTypeSupported ? types.find(t => MediaRecorder.isTypeSupported(t)) : null;
+    rec = new MediaRecorder(stream, mime ? { mimeType:mime } : undefined);
+    rec.ondataavailable = e => { if (e.data && e.data.size) chunks.push(e.data); };
+    rec.onstop = () => {
+      clearTimeout(maxTimer); stopMeter && stopMeter(); stopMeter = null;
+      setRecUI(key, false);
+      handleAudio(key, new Blob(chunks, { type: rec.mimeType || 'audio/webm' }));
+    };
+    rec.start();
+    setRecUI(key, true);
+    stopMeter = startMeter(key);
+    maxTimer = setTimeout(() => { if (rec && rec.state === 'recording') rec.stop(); }, 8000);
+  }
+
+  ['A','B'].forEach(k => {
+    const s = slots[k];
+    s.rec.addEventListener('click', () => onRec(k));
+    s.r.addEventListener('click', () => play(k, s.rev, (k === 'B' && s.score) ? () => showScore(s.score.stars, s.score.sim) : null));
+    s.f.addEventListener('click', () => play(k, s.buf));
+    s.file.addEventListener('change', () => {
+      const f = s.file.files && s.file.files[0];
+      if (f) handleAudio(k, f);
+      s.file.value = '';
+    });
+  });
+
+  $('reset').addEventListener('click', () => {
+    stopPlay();
+    ['A','B'].forEach(k => { const s = slots[k]; s.buf = s.rev = null; s.r.disabled = s.f.disabled = true; draw(k, null); });
+    $('cardB').classList.add('off');
+    $('reveal').textContent = ''; $('score').classList.remove('show');
+  });
+  renderHistory();
+
+  // Ohne Mikro-API direkt Hinweis zeigen
+  if (!micMode) $('note').classList.add('show');
+
+  const redraw = () => ['A','B'].forEach(k => draw(k, slots[k].buf));
+  window.addEventListener('resize', redraw);
+  requestAnimationFrame(redraw);
+})();
+</script>
+</body>
+</html>
