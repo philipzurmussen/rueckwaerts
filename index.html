@@ -79,8 +79,9 @@
   .score{display:none;flex-direction:column;align-items:center;gap:4px}
   .score.show{display:flex}
   .stars{display:flex;gap:10px;font-size:44px;line-height:1}
-  .stars span{color:rgba(255,255,255,.15);transition:color .2s}
-  .stars span.lit{color:var(--acc);animation:pop .45s cubic-bezier(.3,1.8,.5,1)}
+  .stars span{display:inline-block;color:#3a2470;-webkit-text-stroke:2px #0e0722;paint-order:stroke fill;transition:color .2s}
+  .stars span.lit{color:var(--acc);text-shadow:0 3px 0 #0e0722;animation:starpop .5s cubic-bezier(.3,1.6,.5,1) both}
+  @keyframes starpop{0%{transform:scale(0) rotate(-40deg)}60%{transform:scale(1.4) rotate(10deg)}100%{transform:scale(1) rotate(0)}}
   @keyframes pop{0%{transform:scale(.3) rotate(-30deg)}100%{transform:scale(1) rotate(0)}}
   .pct{font-size:13px;color:var(--mute)}
   .hist h2{margin:0;font-size:18px;font-weight:800}
@@ -247,12 +248,67 @@
   .rnd .res{background:rgba(255,255,255,.04)}
   .rnd .hid{color:var(--mute);font-size:13px}
 
+
+  /* ---------- Ladescreen ---------- */
+  #splash{position:fixed;inset:0;z-index:100;overflow:hidden;background:#f5e96e;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:22px;transition:opacity .45s,transform .45s}
+  #splash.out{opacity:0;transform:scale(1.06);pointer-events:none}
+  #splash .stripes{position:absolute;left:-60vmax;top:-60vmax;width:220vmax;height:220vmax;background:repeating-linear-gradient(90deg,#f5e96e 0 60px,#7fe3a8 60px 120px,#4cc2ee 120px 180px);animation:stripes 3s linear infinite}
+  @keyframes stripes{from{transform:rotate(-22deg) translateX(0)}to{transform:rotate(-22deg) translateX(-180px)}}
+  #splash > :not(.stripes){position:relative}
+  #splash .smascot{width:150px;height:138px;animation:bob 2.2s ease-in-out infinite}
+  @keyframes bob{0%,100%{transform:translateY(0) rotate(-5deg)}50%{transform:translateY(-14px) rotate(5deg)}}
+  #splash .slogo{width:min(300px,74vw);height:auto;animation:wiggle 2.2s ease-in-out infinite;filter:drop-shadow(3px 0 0 #1e0e45) drop-shadow(-3px 0 0 #1e0e45) drop-shadow(0 3px 0 #1e0e45) drop-shadow(0 -3px 0 #1e0e45) drop-shadow(0 6px 0 #1e0e45)}
+  @keyframes wiggle{0%,100%{transform:rotate(-4deg)}50%{transform:rotate(-1deg) scale(1.04)}}
+  #splash .stag{padding:8px 18px;border-radius:16px;background:#fff;border:3px solid #1e0e45;box-shadow:0 4px 0 #1e0e45;color:#1e0e45;font-size:18px;font-weight:800}
+  #splash .sload{position:absolute;left:48px;right:48px;bottom:calc(env(safe-area-inset-bottom) + 64px);height:22px;border-radius:11px;background:#fff;border:3px solid #1e0e45;overflow:hidden}
+  #splash .sload div{height:100%;background:var(--rec);border-radius:8px;animation:sload 1.3s cubic-bezier(.5,0,.3,1) both}
+  @keyframes sload{from{width:6%}to{width:100%}}
+
+  /* ---------- Ergebnis: Banner, Wappen, Zahl, Konfetti ---------- */
+  .reveal.ribbon{align-self:center;position:relative;z-index:2;margin-bottom:-26px;background:var(--rec);color:#fff;border:3px solid #0e0722;border-radius:14px;padding:8px 18px;box-shadow:0 4px 0 #0e0722;transform:rotate(-2deg);font-size:20px;animation:ribbonin .45s cubic-bezier(.3,1.6,.5,1) both}
+  .reveal.ribbon:empty{display:none}
+  @keyframes ribbonin{from{opacity:0;transform:rotate(-2deg) translateY(-14px) scale(.7)}}
+  .score{position:relative;overflow:hidden;align-self:center;width:min(100%,280px);padding:34px 16px 26px;background:#6a35d4;border:4px solid var(--acc);border-radius:24px 24px 100px 100px;box-shadow:0 6px 0 #0e0722,inset 0 -8px 0 rgba(0,0,0,.15);gap:2px}
+  .score.show{animation:shieldin .55s cubic-bezier(.3,1.5,.5,1) both}
+  @keyframes shieldin{0%{transform:scale(.6);opacity:0}70%{transform:scale(1.05);opacity:1}100%{transform:scale(1)}}
+  .score .rays{position:absolute;left:50%;top:45%;width:600px;height:600px;margin:-300px 0 0 -300px;border-radius:50%;background:repeating-conic-gradient(rgba(255,210,63,.14) 0deg 9deg,transparent 9deg 18deg);animation:rays 30s linear infinite;pointer-events:none}
+  @keyframes rays{to{transform:rotate(360deg)}}
+  .score > :not(.rays){position:relative}
+  .score .pct{font-size:12px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:#e9deff}
+  .bigpct{font-size:84px;font-weight:800;line-height:1;color:#fff;-webkit-text-stroke:6px #0e0722;paint-order:stroke fill;text-shadow:0 6px 0 #0e0722;font-variant-numeric:tabular-nums}
+  .bigpct small{font-size:40px}
+  .score .stars{font-size:44px;align-items:center;margin-top:10px}
+  .score .stars span:nth-child(2){font-size:1.25em}
+  .confetti{position:fixed;inset:0;pointer-events:none;z-index:70;overflow:hidden}
+  .confetti i{position:absolute;top:-30px;display:block;animation:cfall var(--d) cubic-bezier(.25,.4,.6,1) var(--w) both}
+  @keyframes cfall{to{transform:translate3d(var(--x),110vh,0) rotate(var(--r))}}
+  @media (prefers-reduced-motion: reduce){
+    #splash .stripes,#splash .smascot,#splash .slogo,.score .rays,.score.show,.reveal.ribbon,.stars span.lit{animation:none}
+  }
 </style>
 <script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>window.Peer || document.write('<script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"><\/script>')</script>
 </head>
 <body>
+  <div id="splash" role="status" aria-label="Ollah! lädt">
+    <div class="stripes"></div>
+    <svg class="smascot" viewBox="0 0 100 92" aria-hidden="true"><path d="M20 6h60a16 16 0 0 1 16 16v32a16 16 0 0 1-16 16H46l-20 16 5-16H20A16 16 0 0 1 4 54V22A16 16 0 0 1 20 6z" fill="#ff6b6b" stroke="#1e0e45" stroke-width="4" stroke-linejoin="round"/><path d="M27 34q8-8 16 0M57 34q8-8 16 0" fill="none" stroke="#1e0e45" stroke-width="4" stroke-linecap="round"/><ellipse cx="50" cy="53" rx="7" ry="8" fill="#1e0e45"/><circle cx="22" cy="46" r="5" fill="#ffb3b3"/><circle cx="78" cy="46" r="5" fill="#ffb3b3"/></svg>
+    <img class="slogo" src="logo.png" alt="Ollah!">
+    <div class="stag">Sag’s rückwärts.</div>
+    <div class="sload"><div></div></div>
+  </div>
+  <script>
+  // Ladescreen: mindestens ~1,3 s zeigen, dann ausblenden (Tippen überspringt)
+  (function(){
+    var t0 = Date.now(), el = document.getElementById('splash'), done = false;
+    function hide(){ if (done) return; done = true; el.classList.add('out'); setTimeout(function(){ el.remove(); }, 500); }
+    function soon(){ setTimeout(hide, Math.max(0, 1300 - (Date.now() - t0))); }
+    if (document.readyState === 'complete') soon(); else addEventListener('load', soon);
+    setTimeout(hide, 4000);
+    el.addEventListener('click', hide);
+  })();
+  </script>
   <button class="helpbtn" id="helpBtn" aria-label="So geht's">?</button>
   <h1><img src="logo.png" alt="Ollah!" class="logo"></h1>
   <div class="tabs"><button id="tabSolo" class="on">Solo</button><button id="tabAsync">Duelle</button><button id="tabRanks">Rangliste</button><button id="tabDuel" hidden>Live</button></div>
@@ -366,8 +422,10 @@
     </div>
     <p class="reveal" id="reveal"></p>
     <div class="score" id="score">
+      <div class="rays" aria-hidden="true"></div>
+      <div class="pct" id="pct">Ähnlichkeit</div>
+      <div class="bigpct"><span id="bigNum">0</span><small> %</small></div>
       <div class="stars" id="stars"><span>★</span><span>★</span><span>★</span></div>
-      <div class="pct" id="pct"></div>
     </div>
     <input type="file" accept="audio/*" capture id="fileB">
   </section>
@@ -905,13 +963,51 @@
   }
   const starsFor = sim => STAR_STEPS.filter(t => sim >= t).length;
 
-  function showScore(stars, sim){
-    $('score').classList.add('show');
-    $('pct').textContent = 'Ähnlichkeit ' + Math.round(sim*100) + ' %';
-    const sp = $('stars').children;
+  // ---------- Ergebnis-Show: Zahl zählt hoch, Sterne ploppen, Konfetti ----------
+  const RM = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const buzz = ms => { try { navigator.vibrate && navigator.vibrate(ms); } catch(e){} };
+  function confetti(n){
+    if (RM) return;
+    const box = document.createElement('div'); box.className = 'confetti'; box.setAttribute('aria-hidden', 'true');
+    const cols = ['#ffd23f','#ff4d6d','#3ee6c1','#4cc9f0','#ffffff','#c77dff'];
+    for (let i = 0; i < (n || 60); i++){
+      const c = document.createElement('i'), w = 6 + Math.random()*7, round = Math.random() > .7;
+      c.style.cssText = 'left:' + (Math.random()*100) + '%;width:' + w + 'px;height:' + (round ? w : w*2.2) + 'px;background:' + cols[i % cols.length] +
+        ';border-radius:' + (round ? '50%' : '2px') + ';--x:' + Math.round(Math.random()*160 - 80) + 'px;--r:' + Math.round(Math.random()*900 - 450) + 'deg;--d:' +
+        (2.2 + Math.random()*1.4).toFixed(2) + 's;--w:' + (Math.random()*.6).toFixed(2) + 's';
+      box.appendChild(c);
+    }
+    document.body.appendChild(box);
+    setTimeout(() => box.remove(), 4500);
+  }
+  let scoreRun = 0;
+  function showScore(stars, sim, quiet){
+    const sc = $('score'), num = $('bigNum'), sp = $('stars').children, goal = Math.round(sim*100), run = ++scoreRun;
+    const rv = $('reveal');
+    if (quiet && sc.classList.contains('show')) return;   // nur nochmal angehört: keine neue Show
+    rv.classList.add('ribbon');
+    rv.textContent = ['Nochmal probieren! 🙈','Da ist was dran! 🙂','Richtig gut! 😄','Perfekt rückwärts! 🤯'][stars];
+    sc.classList.remove('show'); void sc.offsetWidth; sc.classList.add('show');
     for (let i=0;i<3;i++) sp[i].classList.remove('lit');
-    for (let i=0;i<stars;i++) setTimeout(() => sp[i].classList.add('lit'), 250*i + 50);
-    $('reveal').textContent = ['Hmm… nochmal probieren! 🙈','Da ist was dran! 🙂','Richtig gut! 😄','Perfekt rückwärts! 🤯'][stars];
+    if (quiet || RM){
+      num.textContent = goal;
+      for (let i=0;i<stars;i++) sp[i].classList.add('lit');
+      return;
+    }
+    const finish = () => {
+      num.textContent = goal;
+      for (let i=0;i<stars;i++) setTimeout(() => { if (run !== scoreRun) return; sp[i].classList.add('lit'); buzz(30); }, 300*i + 80);
+      if (stars >= 2) setTimeout(() => { if (run === scoreRun) confetti(stars === 3 ? 90 : 50); }, 300*stars + 60);
+    };
+    const t0 = performance.now(), dur = 900;
+    num.textContent = '0';
+    const step = now => {
+      if (run !== scoreRun) return;
+      const p = Math.min(1, (now - t0) / dur);
+      num.textContent = Math.round(goal * (1 - Math.pow(1 - p, 3)));
+      if (p < 1) requestAnimationFrame(step); else finish();
+    };
+    requestAnimationFrame(step);
   }
 
   // ---------- Speicher: letzte 5 Runden ----------
@@ -1022,7 +1118,7 @@
       hint(key, 'Die Aufnahme konnte nicht gelesen werden.');
     }
   }
-  function hint(key, msg){ if (!['A','B','W','T'].includes(key)){ toast(msg); return; } $(key === 'W' || key === 'T' ? 'lobbyStatus' : 'reveal').textContent = msg; if (key === 'W' || key === 'T') $('dMsg').textContent = msg; }
+  function hint(key, msg){ if (!['A','B','W','T'].includes(key)){ toast(msg); return; } if (key === 'A' || key === 'B') $('reveal').classList.remove('ribbon'); $(key === 'W' || key === 'T' ? 'lobbyStatus' : 'reveal').textContent = msg; if (key === 'W' || key === 'T') $('dMsg').textContent = msg; }
   const cheers = ['Und? Klingt’s wie das Original? 😄','Erkennst du dein Wort? 🎉','Gänsehaut oder Gelächter? 🤯','Nochmal? Es wird besser! 🔁'];
   const pick = () => cheers[Math.floor(Math.random()*cheers.length)];
 
@@ -1108,7 +1204,7 @@
   ['A','B'].forEach(k => {
     const s = slots[k];
     s.rec.addEventListener('click', () => onRec(k));
-    s.r.addEventListener('click', () => play(k, s.rev, (k === 'B' && s.score) ? () => showScore(s.score.stars, s.score.sim) : null));
+    s.r.addEventListener('click', () => play(k, s.rev, (k === 'B' && s.score) ? () => showScore(s.score.stars, s.score.sim, true) : null));
     s.f.addEventListener('click', () => play(k, s.buf));
     s.file.addEventListener('change', () => {
       const f = s.file.files && s.file.files[0];
@@ -2451,6 +2547,7 @@
       play(null, rev);
       await refreshSeason();
       renderSeason();
+      if (stars >= 2) confetti(stars === 3 ? 90 : 50);
       refreshStats();
     } catch(e){ toast(errText(e)); renderSeason(); }
     finally { SZ.busy = false; }
@@ -2685,6 +2782,7 @@
     $('zFinMsg').innerHTML = '🎉 Dein Satz ist fertig!<span class="wordwas">„' + esc(Z.sentence) + '“</span>';
     $('zStars').innerHTML = [0,1,2].map(i => '<span class="' + (i < stars ? 'lit' : '') + '">★</span>').join('');
     $('zPct').textContent = 'Ähnlichkeit ' + Math.round(avg * 100) + ' %';
+    if (stars >= 2) confetti(stars === 3 ? 90 : 50);
     $('zWords').innerHTML = '<p class="tiny">Wort für Wort:</p>' + Z.res.map(r =>
       '<div class="zw"><span>' + esc(r.word) + '</span><span class="st">' + '★'.repeat(r.stars) + '<i>' + '★'.repeat(3 - r.stars) + '</i></span></div>').join('');
     requestAnimationFrame(() => { draw('F', Z.full); play('F', Z.full); });

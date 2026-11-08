@@ -21,6 +21,7 @@ Smartphone-Wortspiel: Wort aufnehmen → rückwärts anhören → rückwärts na
 - **Rangliste:** Level (0/30/80/150/300 Punkte schalten Themen frei), Wochen-Season, Gesamtrangliste.
 - **Seasons:** eine Woche, 6 vorgegebene Begriffe, alle sprechen mit eigener Stimme. Planung im Admin-**Studio** (`#STUDIO`).
 - **Konto:** anonym starten, später E-Mail-Code (OTP) verknüpfen; Login auf anderem Gerät per Code.
+- **Look:** Ladescreen beim Start (`#splash`: Streifen, Maskottchen-Sprechblase, Logo, ~1,3 s, Tippen überspringt); Solo-Ergebnis als „Wappen“ mit hochzählender Prozentzahl, ploppenden Sternen, Banner und Konfetti ab 2 Sternen (`showScore`, `confetti()`; Konfetti auch bei Season und Satz-Modus). Entwurf auf dem Design-Canvas „Ollah! – Ergebnis-Screen“.
 - Sonstiges: Feedback-Knopf, geführte erste Runde (Tour), „?“-Hilfe, Links-/Rechtshänder-Umschalter.
 
 ## Technik
