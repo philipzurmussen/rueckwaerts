@@ -138,14 +138,37 @@
   .wordwas{display:block;margin-top:4px;font-size:15px;color:var(--acc)}
   .res .ava{width:34px;height:34px;font-size:20px;margin:0}
   .res .play:disabled{opacity:.5}
+  .stack{display:flex;flex-direction:column;gap:10px}
+  .tabs button{padding:9px 16px}
+  .dots{display:flex;justify-content:center;gap:8px;margin-top:10px}
+  .dots span{width:10px;height:10px;border-radius:50%;background:rgba(255,255,255,.15)}
+  .dots span.done{background:var(--acc)}
+  .dots span.now{background:var(--acc2);box-shadow:0 0 0 3px rgba(62,230,193,.3)}
+  .gitem{display:flex;align-items:center;gap:12px;padding:12px;border-radius:16px;background:rgba(0,0,0,.2);border:0;color:var(--ink);font-family:inherit;text-align:left;cursor:pointer;width:100%}
+  .gitem.turn{background:rgba(62,230,193,.16);box-shadow:inset 0 0 0 2px var(--acc2)}
+  .gitem .ava{margin:0}
+  .gitem .gi{flex:1;min-width:0}
+  .gitem b{display:block;font-size:17px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .gitem small{display:block;color:var(--mute);font-size:13px;margin-top:2px}
+  .gitem.turn small{color:var(--acc2);font-weight:800}
+  .gitem .sc{font-size:20px;font-weight:800;white-space:nowrap}
+  .ghead{margin:6px 0 0;font-size:13px;font-weight:800;color:var(--mute);text-transform:uppercase;letter-spacing:1px}
+  .rnd{display:flex;flex-direction:column;gap:8px;padding:12px;border-radius:16px;background:rgba(0,0,0,.18)}
+  .rnd .rt{display:flex;justify-content:space-between;align-items:center;gap:8px}
+  .rnd .rt b{font-size:15px}
+  .rnd .rt .play{flex:none;min-width:0;padding:8px 12px;font-size:13px}
+  .rnd .res{background:rgba(255,255,255,.04)}
+  .rnd .hid{color:var(--mute);font-size:13px}
+
 </style>
 <script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>window.Peer || document.write('<script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"><\/script>')</script>
 </head>
 <body>
   <h1>Ollah<span>!</span></h1>
   <p class="sub"><b>Hallo</b>, nur rückwärts.<br>Wort aufnehmen · rückwärts anhören · nachsprechen · umdrehen · staunen</p>
-  <div class="tabs"><button id="tabSolo" class="on">Solo</button><button id="tabDuel">Duell</button></div>
+  <div class="tabs"><button id="tabSolo" class="on">Solo</button><button id="tabAsync">Duelle</button><button id="tabDuel">Live</button></div>
 
   <div class="note" id="note">
     Das direkte Mikrofon ist hier gesperrt. Tipp auf den roten Knopf, nimm mit der Aufnahme-App deines Handys auf und wähl die Datei aus – der Rest funktioniert genauso.
@@ -191,10 +214,83 @@
   <button class="reset" id="reset">Neues Wort</button>
   </div>
 
+  <div class="view" id="async" hidden>
+    <section class="card" id="aHome">
+      <div class="head"><div class="num">⚔️</div><div><h2>Duelle</h2><p>Spiel, wann du Zeit hast · 6 Runden · 48 Std. pro Zug</p></div></div>
+      <div id="aProfSlot"></div>
+      <p class="msg" id="aInviteHint" hidden></p>
+      <button class="play main" id="aAccept" hidden>Herausforderung annehmen ⚔️</button>
+      <div class="btns">
+        <button class="play main" id="aNewFriend">Freund herausfordern</button>
+        <button class="play main alt" id="aNewRandom">Zufälliger Gegner</button>
+      </div>
+      <p class="status" id="aStatus"></p>
+    </section>
+    <section class="card" id="aListCard">
+      <div id="aList" class="stack"><p class="empty">Noch keine Duelle.</p></div>
+    </section>
+
+    <div class="view" id="aGame" hidden>
+      <button class="reset" id="aBack" style="align-self:flex-start">← Alle Duelle</button>
+      <section class="card">
+        <div class="board">
+          <div class="pl"><div class="ava" id="aMeAva"></div><div class="nm" id="aMeName"></div><div class="pt" id="aMeScore">0</div></div>
+          <div class="vs" id="aRoundInfo"></div>
+          <div class="pl"><div class="ava" id="aOpAva"></div><div class="nm" id="aOpName"></div><div class="pt" id="aOpScore">0</div></div>
+        </div>
+        <div class="dots" id="aDots"></div>
+      </section>
+
+      <section class="card">
+        <p class="msg" id="aMsg"></p>
+        <div id="aStepAnswer" class="stack" hidden>
+          <div class="row">
+            <button class="recbtn" id="xRec" aria-label="Versuch aufnehmen"><span class="dot"></span></button>
+            <canvas id="cvX"></canvas>
+          </div>
+          <div class="btns"><button class="play main" id="xWord">▶ Wort rückwärts</button></div>
+          <input type="file" accept="audio/*" capture id="fileX">
+        </div>
+        <div id="aReveal" class="stack" hidden></div>
+        <div id="aStepSet" class="stack" hidden>
+          <div class="topics" id="aTopicRow"></div>
+          <div class="words" id="aWordRow"></div>
+          <button class="reset" id="aShuffle" style="padding:2px">🔄 Andere Wörter</button>
+          <div class="row">
+            <button class="recbtn" id="yRec" aria-label="Wort aufnehmen"><span class="dot"></span></button>
+            <canvas id="cvY"></canvas>
+          </div>
+          <div class="btns">
+            <button class="play main" id="yRev" disabled>▶ Rückwärts</button>
+            <button class="play main alt" id="yOk" hidden>Passt so ➜</button>
+          </div>
+          <input type="file" accept="audio/*" capture id="fileY">
+        </div>
+        <div id="aStepOwn" class="stack" hidden>
+          <div class="row">
+            <button class="recbtn" id="zRec" aria-label="Eigenen Versuch aufnehmen"><span class="dot"></span></button>
+            <canvas id="cvZ"></canvas>
+          </div>
+          <div class="btns"><button class="play main" id="zWord">▶ Dein Wort rückwärts</button></div>
+          <input type="file" accept="audio/*" capture id="fileZ">
+        </div>
+        <button class="play main" id="aNext" hidden>Weiter: dein Wort ➜</button>
+        <button class="play main alt" id="aShare" hidden>Einladung schicken 📨</button>
+      </section>
+
+      <section class="card">
+        <h2 style="margin:0;font-size:18px;font-weight:800">Runden</h2>
+        <div id="aRounds" class="stack"><p class="empty">Noch keine Runde gespielt.</p></div>
+      </section>
+      <button class="reset" id="aLeave">Duell aufgeben</button>
+    </div>
+  </div>
+
   <div class="view" id="duel" hidden>
     <!-- Lobby -->
     <section class="card" id="lobby">
-      <div class="head"><div class="num">👥</div><div><h2>Duell zu zweit</h2><p>Zwei Handys, 6 Runden, abwechselnd vorgeben</p></div></div>
+      <div class="head"><div class="num">👥</div><div><h2>Live-Duell</h2><p>Zwei Handys gleichzeitig, 6 Runden, abwechselnd vorgeben</p></div></div>
+      <div id="lProfSlot"><div id="profBox" class="stack">
       <div class="prof">
         <button class="ava big" id="myAva" aria-label="Avatar wählen">🦊</button>
         <div class="profr">
@@ -206,6 +302,7 @@
         <div class="emojis" id="avaEmojis"></div>
         <div class="colors" id="avaColors"></div>
       </div>
+      </div></div>
       <p class="msg" id="inviteHint" hidden></p>
       <button class="play main" id="btnHost">Spiel erstellen</button>
       <div id="hostBox" hidden>
@@ -284,7 +381,10 @@
     A: { buf:null, rev:null, cv:$('cvA'), rec:$('recA'), r:$('revA'), f:$('fwdA'), file:$('fileA') },
     B: { buf:null, rev:null, cv:$('cvB'), rec:$('recB'), r:$('revB'), f:$('fwdB'), file:$('fileB') },
     W: { cv:$('cvW'), rec:$('wRec'), file:$('fileW') },
-    T: { cv:$('cvT'), rec:$('tRec'), file:$('fileT') }
+    T: { cv:$('cvT'), rec:$('tRec'), file:$('fileT') },
+    X: { cv:$('cvX'), rec:$('xRec'), file:$('fileX') },
+    Y: { cv:$('cvY'), rec:$('yRec'), file:$('fileY') },
+    Z: { cv:$('cvZ'), rec:$('zRec'), file:$('fileZ') }
   };
 
   let micMode = !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia && window.MediaRecorder);
@@ -570,6 +670,7 @@
       const buf = clean(raw);
       if (!buf){ hint(key, 'Da war nichts zu hören – nochmal, etwas lauter.'); return; }
       if (key === 'W' || key === 'T'){ duelRecorded(key, buf); return; }
+      if (key === 'X' || key === 'Y' || key === 'Z'){ asyncRecorded(key, buf); return; }
       const s = slots[key];
       s.buf = buf; s.rev = reverse(buf);
       s.r.disabled = s.f.disabled = false;
@@ -591,7 +692,7 @@
       hint(key, 'Die Aufnahme konnte nicht gelesen werden.');
     }
   }
-  function hint(key, msg){ $(key === 'W' || key === 'T' ? 'lobbyStatus' : 'reveal').textContent = msg; if (key === 'W' || key === 'T') $('dMsg').textContent = msg; }
+  function hint(key, msg){ if (key === 'X' || key === 'Y' || key === 'Z'){ toast(msg); return; } $(key === 'W' || key === 'T' ? 'lobbyStatus' : 'reveal').textContent = msg; if (key === 'W' || key === 'T') $('dMsg').textContent = msg; }
   const cheers = ['Und? Klingt’s wie das Original? 😄','Erkennst du dein Wort? 🎉','Gänsehaut oder Gelächter? 🤯','Nochmal? Es wird besser! 🔁'];
   const pick = () => cheers[Math.floor(Math.random()*cheers.length)];
 
@@ -709,13 +810,19 @@
 
   // Tabs
   function showMode(m){
-    $('solo').hidden = m !== 'solo'; $('duel').hidden = m !== 'duel';
+    $('solo').hidden = m !== 'solo'; $('duel').hidden = m !== 'duel'; $('async').hidden = m !== 'async';
     $('tabSolo').classList.toggle('on', m === 'solo'); $('tabDuel').classList.toggle('on', m === 'duel');
+    $('tabAsync').classList.toggle('on', m === 'async');
+    // Profil-Kasten dorthin hängen, wo er gebraucht wird
+    if (m === 'async') $('aProfSlot').appendChild($('profBox'));
+    if (m === 'duel') $('lProfSlot').appendChild($('profBox'));
+    if (m === 'async' && window.asyncEnter) window.asyncEnter();
     stopPlay();
     if (m === 'solo') requestAnimationFrame(() => ['A','B'].forEach(k => draw(k, slots[k].buf)));
   }
   $('tabSolo').onclick = () => showMode('solo');
   $('tabDuel').onclick = () => showMode('duel');
+  $('tabAsync').onclick = () => showMode('async');
 
   // ---------- Profil ----------
   const AVATARS = ['🦊','🐸','🐼','🐙','🦄','🐯','🐨','🐵','🦉','🐧','🐢','🦖','🐳','🦔','🐝','👾'];
@@ -734,6 +841,7 @@
   function saveProfile(){
     profile.name = $('myName').value.trim().slice(0,16);
     try { localStorage.setItem('rw-profile', JSON.stringify(profile)); } catch(e){}
+    if (window.asyncProfileChanged) window.asyncProfileChanged();
   }
   const paintAva = (el, a, c) => { el.textContent = a; el.style.background = c; };
   const avaHTML = (a, c) => '<div class="ava" style="background:' + c + '">' + a + '</div>';
@@ -1130,6 +1238,480 @@
     });
   });
 
+  // =====================================================================
+  // DUELLE – rundenbasiert über Supabase (spielen, wann man Zeit hat)
+  // =====================================================================
+  const SB_URL = 'https://gobdqsrrfjhichdbbbcz.supabase.co';
+  const SB_KEY = 'sb_publishable_dcCFjeOBenqT6jM7M8cQ_Q_48lLBQ4u';
+  const A = {
+    sb:null, uid:null, ready:null, list:[], game:null, gid:null,
+    stage:'idle', busy:false, wordNet:null, draft:null, draftRev:null,
+    choices:[], chosen:null, pendingInvite:null, myTurnIds:new Set(), knownIds:new Set(), firstList:true
+  };
+  const audioCache = new Map();
+
+  function aStatus(t){ $('aStatus').textContent = t || ''; }
+  function errText(e){ return (e && (e.message || e.error_description || e.msg)) || String(e); }
+
+  // ---------- Verbindung & Anmeldung ----------
+  function asyncInit(){
+    if (A.ready) return A.ready;
+    A.ready = (async () => {
+      if (!window.supabase || !window.supabase.createClient) throw new Error('Die Server-Bibliothek konnte nicht geladen werden – Internet prüfen und neu laden.');
+      A.sb = window.supabase.createClient(SB_URL, SB_KEY, { auth: { persistSession:true, autoRefreshToken:true } });
+      let { data } = await A.sb.auth.getSession();
+      let session = data && data.session;
+      if (!session){
+        const r = await A.sb.auth.signInAnonymously();
+        if (r.error) throw new Error(/anonymous/i.test(r.error.message) ? 'Die anonyme Anmeldung ist in Supabase noch nicht eingeschaltet.' : r.error.message);
+        session = r.data.session;
+      }
+      A.uid = session.user.id;
+      await rpc('save_profile', { p_nickname: profile.name || 'Spieler', p_avatar: profile.avatar, p_color: profile.color });
+      // Live-Aktualisierung: jede Änderung an meinen Duellen
+      try {
+        A.sb.channel('ollah-games')
+          .on('postgres_changes', { event:'*', schema:'public', table:'games' }, () => scheduleRefresh())
+          .subscribe();
+      } catch(e){}
+      return true;
+    })();
+    A.ready.catch(() => { A.ready = null; });
+    return A.ready;
+  }
+  async function rpc(fn, args){
+    const { data, error } = await A.sb.rpc(fn, args || {});
+    if (error) throw error;
+    return data;
+  }
+  let profTimer = null;
+  window.asyncProfileChanged = () => {
+    if (!A.uid) return;
+    clearTimeout(profTimer);
+    profTimer = setTimeout(() => {
+      rpc('save_profile', { p_nickname: profile.name || 'Spieler', p_avatar: profile.avatar, p_color: profile.color }).catch(() => {});
+    }, 800);
+  };
+
+  window.asyncEnter = async () => {
+    aStatus('Verbinde …');
+    try {
+      await asyncInit();
+      aStatus('');
+      if (A.pendingInvite) showInvite();
+      await refreshList();
+    } catch(e){ aStatus(errText(e)); }
+  };
+
+  // ---------- Audio speichern & laden ----------
+  function wavBlob(buf){
+    const d = buf.getChannelData(0), n = d.length, ab = new ArrayBuffer(44 + n*2), v = new DataView(ab);
+    const str = (o, s) => { for (let i=0;i<s.length;i++) v.setUint8(o+i, s.charCodeAt(i)); };
+    str(0,'RIFF'); v.setUint32(4, 36 + n*2, true); str(8,'WAVE'); str(12,'fmt ');
+    v.setUint32(16,16,true); v.setUint16(20,1,true); v.setUint16(22,1,true);
+    v.setUint32(24,buf.sampleRate,true); v.setUint32(28,buf.sampleRate*2,true); v.setUint16(32,2,true); v.setUint16(34,16,true);
+    str(36,'data'); v.setUint32(40, n*2, true);
+    for (let i=0;i<n;i++){ const x = Math.max(-1, Math.min(1, d[i])); v.setInt16(44 + i*2, x * 32767, true); }
+    return new Blob([ab], { type:'audio/wav' });
+  }
+  const uuid = () => (crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).slice(2));
+  async function upload(gid, round, kind, buf){
+    const path = gid + '/' + round + '-' + kind + '-' + uuid() + '.wav';
+    const { error } = await A.sb.storage.from('audio').upload(path, wavBlob(buf), { contentType:'audio/wav', upsert:false });
+    if (error) throw error;
+    return path;
+  }
+  // lädt eine Aufnahme und liefert sie im Vergleichsformat (22 kHz mono)
+  async function getAudio(path){
+    if (audioCache.has(path)) return audioCache.get(path);
+    const p = (async () => {
+      const { data, error } = await A.sb.storage.from('audio').download(path);
+      if (error) throw error;
+      return toNet(await decode(await data.arrayBuffer()));
+    })();
+    audioCache.set(path, p);
+    p.catch(() => audioCache.delete(path));
+    return p;
+  }
+  async function playPath(path, reversed){
+    try { const b = await getAudio(path); play(null, reversed ? reverse(b) : b); }
+    catch(e){ toast('Aufnahme konnte nicht geladen werden'); }
+  }
+
+  // ---------- Übersicht ----------
+  let refreshTimer = null;
+  function scheduleRefresh(){
+    clearTimeout(refreshTimer);
+    refreshTimer = setTimeout(async () => {
+      await refreshList();
+      if (A.gid && !$('aGame').hidden && (A.stage === 'idle' || A.stage === 'reveal')) await loadGame(A.gid, true);
+    }, 400);
+  }
+  async function refreshList(){
+    if (!A.sb || !A.uid) return;
+    try { A.list = await rpc('my_games') || []; }
+    catch(e){ aStatus(errText(e)); return; }
+    const turns = new Set(A.list.filter(g => g.my_turn).map(g => g.id));
+    if (!A.firstList){
+      A.list.forEach(g => {
+        if (g.my_turn && !A.myTurnIds.has(g.id) && A.knownIds.has(g.id) && g.id !== A.gid && g.opponent)
+          toast((g.opponent.nickname || 'Dein Gegner') + ' hat gezogen – du bist dran!');
+      });
+    }
+    A.firstList = false; A.myTurnIds = turns; A.knownIds = new Set(A.list.map(g => g.id));
+    try { navigator.setAppBadge && (turns.size ? navigator.setAppBadge(turns.size) : navigator.clearAppBadge()); } catch(e){}
+    renderList();
+  }
+  function gameLine(g){
+    const opp = g.opponent, name = opp ? esc(opp.nickname) : '';
+    if (g.status === 'done'){
+      if (g.opp_forfeited) return 'Gewonnen – ' + name + ' hat aufgegeben';
+      if (g.i_forfeited) return 'Verloren – du hast aufgegeben';
+      return g.my_score > g.opp_score ? 'Gewonnen 🏆' : g.my_score < g.opp_score ? 'Verloren' : 'Unentschieden';
+    }
+    if (!opp) return g.my_turn ? 'Leg los – du gibst das erste Wort vor' : (g.is_random ? 'Suche Gegner …' : 'Wartet auf Mitspieler · Einladung teilen');
+    return g.my_turn ? 'Du bist dran!' : name + ' ist dran';
+  }
+  function renderList(){
+    const el = $('aList'); el.innerHTML = '';
+    if (!A.list.length){ el.innerHTML = '<p class="empty">Noch keine Duelle. Fordere jemanden heraus!</p>'; return; }
+    const groups = [['Du bist dran', g => g.status !== 'done' && g.my_turn], ['Warten', g => g.status !== 'done' && !g.my_turn], ['Beendet', g => g.status === 'done']];
+    groups.forEach(([title, f]) => {
+      const gs = A.list.filter(f); if (!gs.length) return;
+      const h = document.createElement('p'); h.className = 'ghead'; h.textContent = title; el.appendChild(h);
+      gs.forEach(g => {
+        const b = document.createElement('button');
+        b.className = 'gitem' + (g.status !== 'done' && g.my_turn ? ' turn' : '');
+        const opp = g.opponent;
+        b.innerHTML = (opp ? avaHTML(esc(opp.avatar), opp.color) : '<div class="ava" style="background:rgba(255,255,255,.12)">' + (g.is_random ? '🎲' : '⏳') + '</div>') +
+          '<div class="gi"><b>' + (opp ? esc(opp.nickname) : (g.is_random ? 'Zufälliger Gegner' : 'Einladung ' + esc(g.code))) + '</b><small>' + gameLine(g) + '</small></div>' +
+          '<div class="sc">' + g.my_score + ' : ' + g.opp_score + '</div>';
+        b.onclick = () => openGame(g.id);
+        el.appendChild(b);
+      });
+    });
+  }
+
+  async function newGame(random){
+    if (A.busy) return; A.busy = true;
+    aStatus(random ? 'Suche Gegner …' : 'Erstelle Duell …');
+    try {
+      await asyncInit();
+      const r = await rpc('start_game', { p_random: !!random });
+      aStatus('');
+      if (random && r.joined) toast('Gegner gefunden! 🎉');
+      await refreshList();
+      await openGame(r.id);
+    } catch(e){ aStatus(errText(e)); }
+    finally { A.busy = false; }
+  }
+  $('aNewFriend').onclick = () => newGame(false);
+  $('aNewRandom').onclick = () => newGame(true);
+
+  // ---------- Einladungen ----------
+  function inviteUrl(code){ return location.origin + location.pathname + '#D' + code; }
+  async function shareInvite(code){
+    const url = inviteUrl(code), text = myName() + ' fordert dich zu einem Duell bei „Ollah!“ heraus! 🎙️🔁';
+    try { if (navigator.share){ await navigator.share({ title:'Ollah!-Duell', text, url }); return; } }
+    catch(e){ if (e && e.name === 'AbortError') return; }
+    try { await navigator.clipboard.writeText(text + ' ' + url); toast('Link kopiert – jetzt einfügen und verschicken'); }
+    catch(e){ toast(url); }
+  }
+  function showInvite(){
+    $('aInviteHint').hidden = false; $('aAccept').hidden = false;
+    $('aNewFriend').parentElement.hidden = true;
+    $('aInviteHint').innerHTML = 'Du wurdest zu einem Duell herausgefordert! ⚔️<br><span style="font-size:14px;font-weight:500;color:var(--mute)">Avatar und Nickname wählen, dann annehmen.</span>';
+  }
+  $('aAccept').onclick = async () => {
+    if (A.busy || !A.pendingInvite) return; A.busy = true;
+    try {
+      await asyncInit();
+      await rpc('save_profile', { p_nickname: profile.name || 'Spieler', p_avatar: profile.avatar, p_color: profile.color });
+      const r = await rpc('join_game', { p_code: A.pendingInvite });
+      A.pendingInvite = null; $('aInviteHint').hidden = true; $('aAccept').hidden = true;
+      $('aNewFriend').parentElement.hidden = false;
+      await refreshList(); await openGame(r.id);
+    } catch(e){ aStatus(errText(e)); }
+    finally { A.busy = false; }
+  };
+
+  // ---------- Ein Duell ----------
+  async function openGame(id){
+    stopPlay();
+    A.gid = id; A.stage = 'load'; A.draft = A.draftRev = A.wordNet = null; A.chosen = null; A.choices = [];
+    $('aHome').hidden = true; $('aListCard').hidden = true; $('aGame').hidden = false;
+    $('aMsg').textContent = 'Lade …';
+    ['aStepAnswer','aStepSet','aStepOwn','aReveal','aNext','aShare'].forEach(k => $(k).hidden = true);
+    window.scrollTo(0, 0);
+    await loadGame(id);
+  }
+  function backToList(){
+    stopPlay(); A.gid = null; A.game = null;
+    $('aGame').hidden = true; $('aHome').hidden = false; $('aListCard').hidden = false;
+    refreshList();
+  }
+  $('aBack').onclick = backToList;
+
+  async function loadGame(id, silent){
+    try {
+      const g = await rpc('game_detail', { p_game: id });
+      if (A.gid !== id) return;
+      A.game = g;
+      if (!silent || A.stage === 'load' || A.stage === 'idle') A.stage = pickStage(g);
+      renderGame();
+    } catch(e){
+      if (!silent){ toast(errText(e)); backToList(); }
+    }
+  }
+  const curRound = g => g.rounds.find(r => r.round_no === g.cur_round);
+  function pickStage(g){
+    if (g.status === 'done' || !g.my_turn) return 'idle';
+    const cr = curRound(g);
+    if (g.cur_round > 0 && cr && !cr.my) return 'answer';
+    if (g.cur_round < g.total_rounds) return 'set';
+    return 'idle';
+  }
+  function scores(g){
+    let me = 0, op = 0;
+    g.rounds.forEach(r => { if (r.my) me += r.my.stars; if (r.their && !r.their.hidden) op += r.their.stars; });
+    return [me, op];
+  }
+
+  function renderGame(){
+    const g = A.game; if (!g) return;
+    const me = g.me || profile, op = g.opponent, opName = op ? esc(op.nickname) : 'Gegner';
+    paintAva($('aMeAva'), me.avatar, me.color); $('aMeName').textContent = me.nickname || 'Du';
+    if (op){ paintAva($('aOpAva'), op.avatar, op.color); $('aOpName').textContent = op.nickname; }
+    else { paintAva($('aOpAva'), g.is_random ? '🎲' : '⏳', 'rgba(255,255,255,.12)'); $('aOpName').textContent = g.is_random ? 'Suche …' : 'Eingeladen'; }
+    const [sMe, sOp] = scores(g);
+    $('aMeScore').textContent = sMe; $('aOpScore').textContent = sOp;
+    $('aRoundInfo').innerHTML = 'Runde ' + Math.max(1, Math.min(g.cur_round + (A.stage === 'set' || A.stage === 'own' ? 1 : 0), g.total_rounds)) + '<br>von ' + g.total_rounds;
+    const dots = $('aDots'); dots.innerHTML = '';
+    for (let i=1;i<=g.total_rounds;i++){
+      const r = g.rounds.find(x => x.round_no === i), sp = document.createElement('span');
+      if (r && r.my && r.their && !r.their.hidden) sp.className = 'done';
+      else if (r) sp.className = 'now';
+      dots.appendChild(sp);
+    }
+
+    const st = A.stage, cr = curRound(g);
+    $('aStepAnswer').hidden = st !== 'answer';
+    $('aStepSet').hidden = st !== 'set';
+    $('aStepOwn').hidden = st !== 'own';
+    $('aNext').hidden = !(st === 'reveal' && g.my_turn && g.cur_round < g.total_rounds && g.status !== 'done');
+    $('aShare').hidden = !(!op && g.status !== 'done' && !g.is_random);
+    $('aLeave').hidden = g.status === 'done';
+    $('aLeave').textContent = op ? 'Duell aufgeben' : 'Einladung löschen';
+    $('aReveal').hidden = st !== 'reveal';
+
+    let msg = '';
+    if (st === 'answer') msg = 'Runde ' + g.cur_round + ': Hör dir ' + opName + 's Wort rückwärts an und sprich es nach. Du hast einen Versuch!';
+    else if (st === 'reveal'){
+      const r = g.rounds.find(x => x.round_no === A.revealRound) || cr;
+      const a = r && r.my ? r.my.stars : 0, b = r && r.their && !r.their.hidden ? r.their.stars : 0;
+      msg = (a > b ? 'Runde an dich! 🎉' : a < b ? 'Runde an ' + opName + '!' : 'Unentschieden!') +
+        (r && r.word_text ? '<span class="wordwas">Das Wort war: „' + esc(r.word_text) + '“</span>' : '');
+      if (g.status === 'done') msg += '<br>' + finalLine(g, sMe, sOp, opName);
+      renderReveal(r);
+    }
+    else if (st === 'set') msg = (A.chosen ? 'Sag „' + esc(A.chosen) + '“ – tipp auf den roten Knopf.' : 'Runde ' + (g.cur_round + 1) + ': Gib ein Wort vor – such dir eins aus oder denk dir eins aus.');
+    else if (st === 'own') msg = 'Jetzt du selbst: Sprich dein Wort rückwärts nach. Ein Versuch, dann geht der Zug raus!';
+    else if (st === 'sending') msg = 'Wird gesendet …';
+    else if (g.status === 'done') msg = finalLine(g, sMe, sOp, opName);
+    else if (!op) msg = g.is_random ? 'Dein Wort ist vorgelegt. Sobald jemand einen Zufallsgegner sucht, geht’s los – du bekommst Bescheid.'
+                                    : 'Dein Wort ist vorgelegt! Schick jetzt die Einladung an deinen Gegner.';
+    else msg = opName + ' ist dran. Du bekommst Bescheid, wenn du wieder dran bist.';
+    if (st === 'set' && A.draft) msg = 'Gut so? Dann weiter – sonst einfach neu aufnehmen.';
+    $('aMsg').innerHTML = msg;
+
+    if (st === 'set') renderAsyncTopic();
+    $('yOk').hidden = !(st === 'set' && A.draft);
+    $('yRev').disabled = !A.draft;
+    renderRounds();
+    requestAnimationFrame(() => {
+      if (st === 'answer') draw('X', null);
+      if (st === 'set') draw('Y', A.draftRev);
+      if (st === 'own') draw('Z', A.draftRev);
+    });
+  }
+  function finalLine(g, a, b, opName){
+    if (g.opp_forfeited) return '🏆 Gewonnen! ' + opName + ' hat aufgegeben.';
+    if (g.i_forfeited) return 'Duell aufgegeben.';
+    return (a > b ? '🏆 Du gewinnst ' : a < b ? opName + ' gewinnt ' : 'Unentschieden ') + a + ' : ' + b + '!';
+  }
+
+  // Ergebnis-Zeile für mich bzw. den Gegner
+  function resultRow(g, r, mine){
+    const p = mine ? (g.me || profile) : g.opponent, t = mine ? r.my : r.their;
+    const el = document.createElement('div'); el.className = 'res';
+    const who = '<div class="line">' + avaHTML(esc(p ? p.avatar : '🙂'), p ? p.color : COLORS[3]) + '<div class="who"><b>' + esc(p ? p.nickname : 'Gegner') + '</b>';
+    if (!t){ el.innerHTML = who + '<span class="hid">hat noch nicht gespielt</span></div></div>'; return el; }
+    if (t.hidden){ el.innerHTML = who + '<span class="hid">🙈 Erst selbst spielen, dann siehst du das Ergebnis</span></div></div>'; return el; }
+    const locked = !mine && !t.path;
+    el.innerHTML = who + '<span class="st">' + starTxt(t.stars) + '</span> <span class="pct">' + Math.round(t.sim*100) + ' %</span></div>' +
+      '<button class="play main alt"' + (locked ? ' disabled' : '') + '>' + (locked ? '🔒 Zu weit weg' : '▶ Ergebnis') + '</button></div>';
+    if (!locked) el.querySelector('.play').onclick = () => playPath(t.path, true);
+    if (mine){
+      if (r.got && r.got.length){
+        const ch = document.createElement('div'); ch.className = 'chips';
+        ch.innerHTML = r.got.map(e => '<span>' + e + '</span>').join(''); el.appendChild(ch);
+      }
+    } else if (r.my){
+      const rx = document.createElement('div'); rx.className = 'reacts';
+      REACTS.forEach(e => {
+        const b = document.createElement('button'); b.textContent = e;
+        if ((r.sent || []).includes(e)) b.className = 'sent';
+        b.onclick = async () => {
+          floatEmoji(e); b.className = 'sent';
+          try { await rpc('react', { p_game: g.id, p_round: r.round_no, p_target: g.opponent.id, p_emoji: e }); } catch(err){}
+        };
+        rx.appendChild(b);
+      });
+      el.appendChild(rx);
+    }
+    return el;
+  }
+  function renderReveal(r){
+    const box = $('aReveal'); box.innerHTML = '';
+    if (!r) return;
+    box.appendChild(resultRow(A.game, r, true));
+    box.appendChild(resultRow(A.game, r, false));
+  }
+  function renderRounds(){
+    const g = A.game, box = $('aRounds'); box.innerHTML = '';
+    const rs = g.rounds.slice().reverse();
+    if (!rs.length){ box.innerHTML = '<p class="empty">Noch keine Runde gespielt.</p>'; return; }
+    rs.forEach(r => {
+      const el = document.createElement('div'); el.className = 'rnd';
+      const title = 'Runde ' + r.round_no + ' · ' + (r.word_text ? '„' + esc(r.word_text) + '“' : (r.mine ? 'dein Wort' : 'Wort von ' + esc(g.opponent ? g.opponent.nickname : 'Gegner')));
+      el.innerHTML = '<div class="rt"><b>' + title + '</b><span><button class="play">▶ rückwärts</button>' + (r.my ? ' <button class="play">▶ vorwärts</button>' : '') + '</span></div>';
+      const bs = el.querySelectorAll('.rt .play');
+      bs[0].onclick = () => playPath(r.word_path, true);
+      if (bs[1]) bs[1].onclick = () => playPath(r.word_path, false);
+      el.appendChild(resultRow(g, r, true));
+      el.appendChild(resultRow(g, r, false));
+      box.appendChild(el);
+    });
+  }
+
+  // ---------- Schritt 1: Wort des Gegners beantworten ----------
+  async function loadWord(){
+    const cr = curRound(A.game);
+    if (!A.wordNet || A.wordNet.path !== cr.word_path){
+      const b = await getAudio(cr.word_path);
+      A.wordNet = { path: cr.word_path, buf: b, rev: reverse(b) };
+    }
+    return A.wordNet;
+  }
+  $('xWord').onclick = async () => {
+    try { const w = await loadWord(); draw('X', w.rev); play('X', w.rev); }
+    catch(e){ toast('Wort konnte nicht geladen werden'); }
+  };
+
+  async function asyncRecorded(key, buf){
+    const g = A.game; if (!g || A.busy) return;
+    const net = await toNet(buf);
+    if (key === 'X' && A.stage === 'answer'){
+      A.busy = true; A.stage = 'sending'; renderGame();
+      try {
+        const w = await loadWord();
+        const rev = reverse(net);
+        const sim = similarity(w.buf.getChannelData(0), rev.getChannelData(0), NET_SR), stars = starsFor(sim);
+        const path = await upload(g.id, g.cur_round, 't', net);
+        await rpc('answer_round', { p_game: g.id, p_path: path, p_sim: sim, p_stars: stars });
+        audioCache.set(path, Promise.resolve(net));
+        A.revealRound = g.cur_round;
+        A.stage = 'reveal';
+        await loadGame(g.id, true);
+        A.stage = 'reveal'; renderGame();
+        play(null, rev);
+        refreshList();
+      } catch(e){ toast(errText(e)); A.stage = 'answer'; renderGame(); }
+      finally { A.busy = false; }
+    }
+    else if (key === 'Y' && A.stage === 'set'){
+      A.draft = net; A.draftRev = reverse(net);
+      renderGame(); draw('Y', A.draftRev); play('Y', A.draftRev);
+    }
+    else if (key === 'Z' && A.stage === 'own' && A.draft){
+      A.busy = true; A.stage = 'sending'; renderGame();
+      try {
+        const rev = reverse(net);
+        const sim = similarity(A.draft.getChannelData(0), rev.getChannelData(0), NET_SR), stars = starsFor(sim);
+        const nr = g.cur_round + 1;
+        const [wp, op] = await Promise.all([upload(g.id, nr, 'w', A.draft), upload(g.id, nr, 't', net)]);
+        await rpc('set_word', { p_game: g.id, p_word_text: A.chosen, p_word_path: wp, p_own_path: op, p_own_sim: sim, p_own_stars: stars });
+        audioCache.set(wp, Promise.resolve(A.draft)); audioCache.set(op, Promise.resolve(net));
+        play(null, rev, () => {});
+        toast('Zug gesendet! Du hast ' + '★'.repeat(stars) + '☆'.repeat(3 - stars) + ' bei deinem eigenen Wort.');
+        A.draft = A.draftRev = null; A.chosen = null; A.choices = [];
+        A.stage = 'idle';
+        await loadGame(g.id, true);
+        refreshList();
+      } catch(e){ toast(errText(e)); A.stage = 'own'; renderGame(); }
+      finally { A.busy = false; }
+    }
+  }
+  $('aNext').onclick = () => { A.stage = 'set'; A.choices = []; renderGame(); window.scrollTo(0, 0); };
+
+  // ---------- Schritt 2: Wort vorgeben ----------
+  function asyncDeal(){
+    const pool = (topic === MIX ? [...ALL_WORDS] : TOPICS[topic]).filter(w => !A.choices.includes(w));
+    const out = [];
+    while (out.length < 3 && pool.length) out.push(pool.splice(Math.floor(Math.random()*pool.length), 1)[0]);
+    A.choices = out; A.chosen = null;
+  }
+  function renderAsyncTopic(){
+    if (!A.choices.length) asyncDeal();
+    const tr = $('aTopicRow'), wr = $('aWordRow'); tr.innerHTML = ''; wr.innerHTML = '';
+    const hide = !!A.draft;
+    tr.hidden = wr.hidden = $('aShuffle').hidden = hide;
+    [MIX, ...Object.keys(TOPICS)].forEach(t => {
+      const b = document.createElement('button'); b.textContent = t; if (t === topic) b.className = 'on';
+      b.onclick = () => { topic = t; try { localStorage.setItem('rw-topic', t); } catch(e){} A.choices = []; asyncDeal(); renderGame(); };
+      tr.appendChild(b);
+    });
+    A.choices.forEach(w => {
+      const b = document.createElement('button'); b.textContent = w; if (w === A.chosen) b.className = 'on';
+      b.onclick = () => { A.chosen = w; renderGame(); };
+      wr.appendChild(b);
+    });
+  }
+  $('aShuffle').onclick = () => { asyncDeal(); renderGame(); };
+  $('yRev').onclick = () => { if (A.draftRev) play('Y', A.draftRev); };
+  $('yOk').onclick = () => { if (!A.draft) return; A.stage = 'own'; renderGame(); play('Z', A.draftRev); };
+  $('zWord').onclick = () => { if (A.draftRev){ draw('Z', A.draftRev); play('Z', A.draftRev); } };
+
+  $('aShare').onclick = () => { if (A.game) shareInvite(A.game.code); };
+  let leaveArmed = 0;
+  $('aLeave').onclick = async () => {
+    if (!A.game) return;
+    if (Date.now() - leaveArmed > 3000){
+      leaveArmed = Date.now();
+      $('aLeave').textContent = 'Wirklich? Nochmal tippen';
+      setTimeout(() => { if (A.game) $('aLeave').textContent = A.game.opponent ? 'Duell aufgeben' : 'Einladung löschen'; }, 3000);
+      return;
+    }
+    try { await rpc('leave_game', { p_game: A.game.id }); toast('Erledigt'); backToList(); }
+    catch(e){ toast(errText(e)); }
+  };
+
+  ['X','Y','Z'].forEach(k => {
+    const s = slots[k];
+    s.rec.addEventListener('click', () => onRec(k));
+    s.file.addEventListener('change', () => {
+      const f = s.file.files && s.file.files[0];
+      if (f) handleAudio(k, f);
+      s.file.value = '';
+    });
+  });
+
+  // Regelmäßig nachsehen, falls die Live-Aktualisierung mal hängt
+  setInterval(() => {
+    if (!document.hidden && !$('async').hidden && A.uid) scheduleRefresh();
+  }, window.OLLAH_POLL_MS || 30000);
+  document.addEventListener('visibilitychange', () => { if (!document.hidden && A.uid) scheduleRefresh(); });
+
   // Als App installierbar + Solo offline (nur auf echter Website, nicht in der Vorschau)
   if ('serviceWorker' in navigator && /^https:|^http:\/\/(localhost|127\.)/.test(location.href) && !/claude/.test(location.host)){
     navigator.serviceWorker.register('sw.js').catch(() => {});
@@ -1137,7 +1719,14 @@
 
   // Über Einladungslink geöffnet? → Duell mit vorausgefülltem Code
   const invite = (location.hash || '').slice(1).toUpperCase();
-  if (/^[A-Z0-9]{4}$/.test(invite)){
+  if (/^D[A-Z0-9]{6}$/.test(invite)){
+    // Einladung zu einem rundenbasierten Duell
+    A.pendingInvite = invite.slice(1);
+    try { history.replaceState(null, '', location.pathname); } catch(e){}
+    showMode('async');
+    showInvite();
+  }
+  else if (/^[A-Z0-9]{4}$/.test(invite)){
     showMode('duel');
     $('joinCode').value = invite;
     $('inviteHint').hidden = false;
