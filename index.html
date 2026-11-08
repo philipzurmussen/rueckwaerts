@@ -6,12 +6,12 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#1b1035">
-<meta name="apple-mobile-web-app-title" content="Rückwärts">
+<meta name="apple-mobile-web-app-title" content="Ollah!">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" type="image/png" href="icon-192.png">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
-<title>Rückwärts</title>
+<title>Ollah!</title>
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,800&display=swap" rel="stylesheet">
 <style>
   :root{
@@ -143,8 +143,8 @@
 <script>window.Peer || document.write('<script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"><\/script>')</script>
 </head>
 <body>
-  <h1>Rück<span>wärts</span></h1>
-  <p class="sub">Wort aufnehmen · rückwärts anhören · nachsprechen · umdrehen · staunen</p>
+  <h1>Ollah<span>!</span></h1>
+  <p class="sub"><b>Hallo</b>, nur rückwärts.<br>Wort aufnehmen · rückwärts anhören · nachsprechen · umdrehen · staunen</p>
   <div class="tabs"><button id="tabSolo" class="on">Solo</button><button id="tabDuel">Duell</button></div>
 
   <div class="note" id="note">
@@ -799,9 +799,9 @@
   $('btnInvite').onclick = async () => {
     const code = $('hostCode').textContent;
     const url = location.origin + location.pathname + '#' + code;
-    const text = myName() + ' fordert dich zu einem Duell in „Rückwärts“ heraus! 🎙️🔁';
+    const text = myName() + ' fordert dich zu einem Duell bei „Ollah!“ heraus! 🎙️🔁';
     try {
-      if (navigator.share){ await navigator.share({ title:'Rückwärts-Duell', text, url }); return; }
+      if (navigator.share){ await navigator.share({ title:'Ollah!-Duell', text, url }); return; }
     } catch(e){ if (e && e.name === 'AbortError') return; }
     try { await navigator.clipboard.writeText(text + ' ' + url); toast('Link kopiert – jetzt einfügen und verschicken'); }
     catch(e){ toast(url); }

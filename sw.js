@@ -1,5 +1,5 @@
-// Rückwärts – Service Worker: Seite immer frisch aus dem Netz, offline aus dem Cache
-const CACHE = 'rueckwaerts-v1';
+// Ollah! – Service Worker: Seite immer frisch aus dem Netz, offline aus dem Cache
+const CACHE = 'ollah-v2';
 const CORE = ['./', './index.html', './manifest.webmanifest', './icon-192.png', './icon-512.png', './apple-touch-icon.png'];
 
 self.addEventListener('install', e => {

@@ -1,7 +1,7 @@
 {
-  "name": "Rückwärts",
-  "short_name": "Rückwärts",
-  "description": "Wort aufnehmen, rückwärts nachsprechen, umdrehen – allein oder im Duell.",
+  "name": "Ollah!",
+  "short_name": "Ollah!",
+  "description": "Hallo, nur rückwärts: Wort aufnehmen, rückwärts nachsprechen, umdrehen – allein oder im Duell.",
   "lang": "de",
   "start_url": "./",
   "scope": "./",
