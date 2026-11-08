@@ -184,6 +184,12 @@
   .rank .nm2 b{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .rank .nm2 small{color:var(--mute);font-size:12px}
   .rank .xp{font-weight:800;color:var(--acc)}
+  .zsent{margin:0;text-align:center;font-size:18px;line-height:1.5;color:var(--mute)}
+  .zsent b{color:var(--ink);background:rgba(255,210,63,.25);padding:1px 6px;border-radius:8px}
+  .zsent s{text-decoration:none;color:var(--acc2)}
+  .zw{display:flex;justify-content:space-between;align-items:center;padding:8px 12px;border-radius:12px;background:rgba(0,0,0,.2);font-size:15px}
+  .zw .st{color:var(--acc);letter-spacing:2px}
+  .zw .st i{color:rgba(255,255,255,.15);font-style:normal}
   .card.season{background:linear-gradient(135deg,#3a1f6b,#2a1a4f);box-shadow:inset 0 0 0 2px rgba(255,210,63,.35)}
   .sres{display:flex;flex-direction:column;align-items:center;gap:6px;padding:12px;border-radius:16px;background:rgba(0,0,0,.2)}
   .sres .stars{font-size:38px}
@@ -253,7 +259,51 @@
       </section>
     </div>
 
+  <div class="view" id="zGame" hidden>
+    <button class="reset" id="zBack" style="align-self:flex-start">← Zurück</button>
+    <section class="card">
+      <div class="head"><div class="num">🧩</div><div><h2>Satz-Modus</h2><p>Wort für Wort rückwärts – am Ende hörst du den ganzen Satz</p></div></div>
+      <div id="zPick" class="stack">
+        <div class="words" id="zList"></div>
+        <button class="reset" id="zShuffle" style="padding:2px">🔄 Andere Sätze</button>
+        <input class="field" id="zCustom" maxlength="70" placeholder="✏️ Oder eigener Satz (2–8 Wörter) …" autocomplete="off">
+        <button class="play main" id="zGo" disabled>Los geht's ➜</button>
+      </div>
+      <div id="zPlay" class="stack" hidden>
+        <p class="zsent" id="zSentence"></p>
+        <div class="dots" id="zDots"></div>
+        <p class="msg" id="zMsg"></p>
+        <div class="row">
+          <button class="recbtn" id="qRec" aria-label="Aufnehmen"><span class="dot"></span></button>
+          <canvas id="cvQ"></canvas>
+        </div>
+        <div class="btns">
+          <button class="play main" id="zRev" disabled>▶ Rückwärts</button>
+          <button class="play main alt" id="zOk" hidden>Passt so ➜ nachsprechen</button>
+        </div>
+        <input type="file" accept="audio/*" capture id="fileQ">
+      </div>
+      <div id="zFinal" class="stack" hidden>
+        <p class="msg" id="zFinMsg"></p>
+        <div class="row"><button class="recbtn" id="zDummy" hidden></button><canvas id="cvF"></canvas></div>
+        <div class="sres"><div class="stars" id="zStars"></div><div class="pct" id="zPct"></div></div>
+        <div class="btns">
+          <button class="play main alt" id="zMine">▶ Dein Satz</button>
+          <button class="play" id="zOrig">▶ Original</button>
+        </div>
+        <div id="zWords" class="stack"></div>
+        <div class="btns">
+          <button class="play" id="zShare">📤 Teilen</button>
+          <button class="play main" id="zAgain">Neuer Satz</button>
+        </div>
+      </div>
+    </section>
+  </div>
   <div class="view" id="soloFree">
+  <section class="card" id="zCard">
+    <div class="head"><div class="num">🧩</div><div><h2>Satz-Modus</h2><p>Wort für Wort rückwärts – am Ende hörst du den ganzen Satz</p></div></div>
+    <button class="play main alt" id="zStart">Satz bauen</button>
+  </section>
   <section class="card" id="cardA">
     <div class="head"><div class="num">1</div><div><h2>Wort aufnehmen</h2><p>Tippen zum Starten, nochmal tippen zum Stoppen</p></div></div>
     <div class="row">
@@ -552,7 +602,9 @@
     X: { cv:$('cvX'), rec:$('xRec'), file:$('fileX') },
     Y: { cv:$('cvY'), rec:$('yRec'), file:$('fileY') },
     Z: { cv:$('cvZ'), rec:$('zRec'), file:$('fileZ') },
-    S: { cv:$('cvS'), rec:$('sRec'), file:$('fileS') }
+    S: { cv:$('cvS'), rec:$('sRec'), file:$('fileS') },
+    Q: { cv:$('cvQ'), rec:$('qRec'), file:$('fileQ') },
+    F: { cv:$('cvF'), rec:$('zDummy'), file:$('fileQ') }
   };
 
   let micMode = !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia && window.MediaRecorder);
@@ -872,6 +924,7 @@
       if (key === 'W' || key === 'T'){ duelRecorded(key, buf); return; }
       if (key === 'X' || key === 'Y' || key === 'Z'){ asyncRecorded(key, buf); return; }
       if (key === 'S'){ seasonRecorded(buf); return; }
+      if (key === 'Q'){ sentenceRecorded(buf); return; }
       const s = slots[key];
       s.buf = buf; s.rev = reverse(buf);
       s.r.disabled = s.f.disabled = false;
@@ -2206,7 +2259,7 @@
   const nextIdx = s => { const w = s.words.find(w => !w.my); return w ? w.idx : null; };
   function showSoloHome(){
     stopPlay();
-    $('sGame').hidden = true; $('soloFree').hidden = false;
+    $('sGame').hidden = true; $('zGame').hidden = true; $('soloFree').hidden = false;
     renderSeasonCard();
   }
   function openSeason(){
@@ -2408,6 +2461,130 @@
     } catch(e){ st(errText(e)); }
     finally { $('stPublish').disabled = false; }
   };
+
+  // =====================================================================
+  // SATZ-MODUS – Wort für Wort, am Ende der ganze Satz
+  // =====================================================================
+  const SENTENCES_EXTRA = ['Morgenstund hat Gold im Mund','Ohne Fleiß kein Preis','Übung macht den Meister','Lügen haben kurze Beine',
+    'Der frühe Vogel fängt den Wurm','Aller Anfang ist schwer','Ende gut, alles gut','Der Ball ist rund','Heute ist ein schöner Tag',
+    'Hallo, wie geht es dir','Ich hab einen Bärenhunger','Wer andern eine Grube gräbt','Alles hat ein Ende, nur die Wurst hat zwei',
+    'Kleider machen Leute','Reden ist Silber, Schweigen ist Gold','In der Kürze liegt die Würze','Viele Köche verderben den Brei',
+    'Das Leben ist kein Ponyhof','Ich glaube, es hackt','Mein Name ist Hase'];
+  const Z = { sentence:'', words:[], i:0, stage:'pick', orig:null, origRev:null, res:[], picks:[], full:null, fullOrig:null };
+  const splitWords = t => t.trim().split(/\s+/).filter(Boolean);
+  function sentencePool(){
+    return [...SENTENCES_EXTRA, ...TOPICS['Redewendungen']].filter(t => { const n = splitWords(t).length; return n >= 2 && n <= 8; });
+  }
+  function dealSentences(){
+    const pool = sentencePool().filter(t => !Z.picks.includes(t)), out = [];
+    while (out.length < 4 && pool.length) out.push(pool.splice(Math.floor(Math.random() * pool.length), 1)[0]);
+    Z.picks = out; Z.sentence = '';
+  }
+  function zShow(stage){
+    Z.stage = stage;
+    $('zPick').hidden = stage !== 'pick'; $('zPlay').hidden = !(stage === 'say' || stage === 'try'); $('zFinal').hidden = stage !== 'final';
+  }
+  function openSentence(){
+    stopPlay(); $('soloFree').hidden = true; $('sCard').hidden = true; $('sGame').hidden = true; $('zGame').hidden = false;
+    dealSentences(); $('zCustom').value = ''; zShow('pick'); renderPick(); window.scrollTo(0, 0);
+  }
+  function closeSentence(){
+    stopPlay(); $('zGame').hidden = true; $('soloFree').hidden = false;
+    if (typeof renderSeasonCard === 'function') renderSeasonCard();
+  }
+  $('zStart').onclick = openSentence;
+  $('zBack').onclick = () => { if (Z.stage === 'say' || Z.stage === 'try'){ zShow('pick'); renderPick(); } else closeSentence(); };
+  function renderPick(){
+    const box = $('zList'); box.innerHTML = '';
+    Z.picks.forEach(t => {
+      const b = document.createElement('button'); b.textContent = t; if (t === Z.sentence) b.className = 'on';
+      b.onclick = () => { Z.sentence = t; $('zCustom').value = ''; renderPick(); };
+      box.appendChild(b);
+    });
+    $('zGo').disabled = !Z.sentence;
+  }
+  $('zShuffle').onclick = () => { dealSentences(); renderPick(); };
+  $('zCustom').addEventListener('input', () => {
+    const v = $('zCustom').value.trim(), n = splitWords(v).length;
+    Z.sentence = (n >= 2 && n <= 8) ? v : '';
+    [...$('zList').children].forEach(b => b.classList.remove('on'));
+    $('zGo').disabled = !Z.sentence;
+  });
+  $('zGo').onclick = () => {
+    if (!Z.sentence) return;
+    Z.words = splitWords(Z.sentence); Z.i = 0; Z.res = []; Z.orig = Z.origRev = null;
+    zShow('say'); renderWord();
+  };
+  function renderWord(){
+    const w = Z.words[Z.i], n = Z.words.length;
+    $('zSentence').innerHTML = Z.words.map((x, k) => k < Z.i ? '<s>' + esc(x) + '</s>' : k === Z.i ? '<b>' + esc(x) + '</b>' : esc(x)).join(' ');
+    const dots = $('zDots'); dots.innerHTML = '';
+    Z.words.forEach((x, k) => { const sp = document.createElement('span'); if (k < Z.i) sp.className = 'done'; else if (k === Z.i) sp.className = 'now'; dots.appendChild(sp); });
+    if (Z.stage === 'say'){
+      $('zMsg').innerHTML = '<span class="tiny">Wort ' + (Z.i + 1) + ' von ' + n + ' · Schritt 1 von 2</span><br>Sag „' + esc(w) + '“' +
+        (Z.orig ? '<br><span style="font-size:15px;font-weight:500">Gut so? Sonst einfach neu aufnehmen.</span>' : '');
+      $('zRev').textContent = '▶ Rückwärts'; $('zRev').disabled = !Z.orig; $('zOk').hidden = !Z.orig;
+    } else {
+      $('zMsg').innerHTML = '<span class="tiny">Wort ' + (Z.i + 1) + ' von ' + n + ' · Schritt 2 von 2</span><br>Jetzt rückwärts nachsprechen – das Ergebnis gibt\u2019s erst am Ende!';
+      $('zRev').textContent = '▶ Deine Aufnahme rückwärts'; $('zRev').disabled = false; $('zOk').hidden = true;
+    }
+    requestAnimationFrame(() => draw('Q', Z.origRev));
+  }
+  $('zRev').onclick = () => { if (Z.origRev) play('Q', Z.origRev); };
+  $('zOk').onclick = () => { if (!Z.orig) return; Z.stage = 'try'; renderWord(); play('Q', Z.origRev); };
+  async function sentenceRecorded(buf){
+    if (Z.stage !== 'say' && Z.stage !== 'try') return;
+    const net = await toNet(buf);
+    if (Z.stage === 'say'){
+      Z.orig = net; Z.origRev = reverse(net);
+      renderWord(); play('Q', Z.origRev);
+      return;
+    }
+    const back = reverse(net);   // dein Versuch, umgedreht = so klingt dein Wort
+    const sim = similarity(Z.orig.getChannelData(0), back.getChannelData(0), NET_SR);
+    Z.res.push({ word: Z.words[Z.i], orig: Z.orig, back, sim, stars: starsFor(sim) });
+    Z.i++; Z.orig = Z.origRev = null;
+    if (Z.i < Z.words.length){
+      Z.stage = 'say'; renderWord();
+      toast('✓ Gespeichert – weiter mit „' + Z.words[Z.i] + '“');
+    } else finishSentence();
+  }
+  function joinBuffers(list){
+    const gap = Math.floor(NET_SR * 0.12);
+    const len = list.reduce((a, b) => a + b.length, 0) + gap * (list.length - 1);
+    const out = ac().createBuffer(1, Math.max(1, len), NET_SR), d = out.getChannelData(0);
+    let pos = 0;
+    list.forEach((b, k) => { d.set(b.getChannelData(0), pos); pos += b.length + (k < list.length - 1 ? gap : 0); });
+    return out;
+  }
+  function finishSentence(){
+    Z.full = joinBuffers(Z.res.map(r => r.back));
+    Z.fullOrig = joinBuffers(Z.res.map(r => r.orig));
+    const avg = Z.res.reduce((a, r) => a + r.sim, 0) / Z.res.length, stars = starsFor(avg);
+    zShow('final');
+    $('zFinMsg').innerHTML = '🎉 Dein Satz ist fertig!<span class="wordwas">„' + esc(Z.sentence) + '“</span>';
+    $('zStars').innerHTML = [0,1,2].map(i => '<span class="' + (i < stars ? 'lit' : '') + '">★</span>').join('');
+    $('zPct').textContent = 'Ähnlichkeit ' + Math.round(avg * 100) + ' %';
+    $('zWords').innerHTML = '<p class="tiny">Wort für Wort:</p>' + Z.res.map(r =>
+      '<div class="zw"><span>' + esc(r.word) + '</span><span class="st">' + '★'.repeat(r.stars) + '<i>' + '★'.repeat(3 - r.stars) + '</i></span></div>').join('');
+    requestAnimationFrame(() => { draw('F', Z.full); play('F', Z.full); });
+  }
+  $('zMine').onclick = () => Z.full && play('F', Z.full);
+  $('zOrig').onclick = () => Z.fullOrig && play('F', Z.fullOrig);
+  $('zAgain').onclick = () => { dealSentences(); $('zCustom').value = ''; zShow('pick'); renderPick(); window.scrollTo(0, 0); };
+  $('zShare').onclick = async () => {
+    if (!Z.full) return;
+    const blob = wavBlob(Z.full), text = 'Mein Satz rückwärts bei Ollah!: „' + Z.sentence + '“ 😂';
+    try {
+      const file = new File([blob], 'ollah-satz.wav', { type:'audio/wav' });
+      if (navigator.canShare && navigator.canShare({ files:[file] })){ await navigator.share({ files:[file], text }); return; }
+    } catch(e){ if (e && e.name === 'AbortError') return; }
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'ollah-satz.wav';
+    document.body.appendChild(a); a.click(); a.remove();
+    toast('Gespeichert als ollah-satz.wav');
+  };
+  $('qRec').addEventListener('click', () => onRec('Q'));
+  $('fileQ').addEventListener('change', () => { const f = $('fileQ').files && $('fileQ').files[0]; if (f) handleAudio('Q', f); $('fileQ').value = ''; });
 
   // ---------- Rechts-/Linkshänder ----------
   function applyHand(){
