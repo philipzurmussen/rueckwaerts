@@ -1610,10 +1610,7 @@
     rs.forEach(r => {
       const el = document.createElement('div'); el.className = 'rnd';
       const title = 'Runde ' + r.round_no + ' · ' + (r.word_text ? '„' + esc(r.word_text) + '“' : (r.mine ? 'dein Wort' : 'Wort von ' + esc(g.opponent ? g.opponent.nickname : 'Gegner')));
-      el.innerHTML = '<div class="rt"><b>' + title + '</b><span><button class="play">▶ rückwärts</button>' + (r.my ? ' <button class="play">▶ vorwärts</button>' : '') + '</span></div>';
-      const bs = el.querySelectorAll('.rt .play');
-      bs[0].onclick = () => playPath(r.word_path, true);
-      if (bs[1]) bs[1].onclick = () => playPath(r.word_path, false);
+      el.innerHTML = '<div class="rt"><b>' + title + '</b></div>';
       el.appendChild(resultRow(g, r, true));
       el.appendChild(resultRow(g, r, false));
       box.appendChild(el);
