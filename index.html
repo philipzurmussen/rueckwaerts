@@ -495,6 +495,7 @@
           <input type="file" accept="audio/*" capture id="fileZ">
         </div>
         <button class="play main" id="aNext" hidden>Weiter: dein Wort ➜</button>
+        <button class="play main" id="aRematch" hidden>Revanche 🔁</button>
         <button class="play main alt" id="aShare" hidden>Einladung schicken 📨</button>
         <p class="tiny" id="aShareHint" hidden style="text-align:center">Der Link gilt für eine Person: Wer ihn zuerst öffnet, spielt gegen dich. Für weitere Gegner tipp in der Übersicht nochmal auf „Freund herausfordern“.</p>
       </section>
@@ -2035,6 +2036,8 @@
     $('aShare').textContent = shared ? 'Link nochmal teilen' : 'Einladung schicken 📨';
     $('aShare').classList.toggle('alt', !shared);
     $('aLeave').hidden = g.status === 'done';
+    $('aRematch').hidden = !(g.status === 'done' && op);
+    $('aRematch').textContent = g.rematch_id ? 'Zur Revanche ➜' : 'Revanche 🔁';
     $('aLeave').textContent = op ? 'Duell aufgeben' : 'Einladung löschen';
     $('aReveal').hidden = st !== 'reveal';
 
@@ -2231,6 +2234,17 @@
   $('yOk').onclick = () => { if (!A.draft) return; A.stage = 'own'; renderGame(); play('Z', A.draftRev); };
   $('zWord').onclick = () => { if (A.draftRev){ draw('Z', A.draftRev); play('Z', A.draftRev); } };
 
+  $('aRematch').onclick = async () => {
+    const g = A.game; if (!g || A.busy) return;
+    if (g.rematch_id){ openGame(g.rematch_id); return; }
+    A.busy = true;
+    try {
+      const r = await rpc('rematch', { p_game: g.id });
+      toast(r.existing ? (g.opponent ? g.opponent.nickname : 'Dein Gegner') + ' hat schon Revanche gefordert – los geht\u2019s!' : 'Revanche! Du gibst das erste Wort vor 🔁');
+      refreshList(); await openGame(r.id);
+    } catch(e){ toast(errText(e)); }
+    finally { A.busy = false; }
+  };
   $('aShare').onclick = async () => {
     if (!A.game) return;
     await shareInvite(A.game.code);

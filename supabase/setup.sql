@@ -31,6 +31,7 @@ create table if not exists public.games (
   updated_at    timestamptz not null default now(),
   created_at    timestamptz not null default now()
 );
+alter table public.games add column if not exists rematch_of uuid;
 create index if not exists games_a_idx on public.games(player_a);
 create index if not exists games_b_idx on public.games(player_b);
 create index if not exists games_open_idx on public.games(status, is_random);
@@ -445,6 +446,24 @@ end $$;
 -- alte Version aus einem früheren Entwurf entfernen
 drop function if exists public.play_move(uuid,text,real,int,text,text,text,real,int);
 
+-- Revanche: neues Duell gegen denselben Gegner (wer tippt, gibt zuerst vor).
+-- Tippen beide, landen sie im selben neuen Duell.
+create or replace function public.rematch(p_game uuid) returns json
+language plpgsql security definer set search_path = public as $$
+declare me uuid := auth.uid(); g public.games; opp uuid; nid uuid;
+begin
+  select * into g from public.games where id = p_game for update;
+  if not found or me not in (g.player_a, coalesce(g.player_b, g.player_a)) then raise exception 'Nicht dein Duell'; end if;
+  if g.status <> 'done' then raise exception 'Das Duell läuft noch'; end if;
+  opp := case when me = g.player_a then g.player_b else g.player_a end;
+  if opp is null then raise exception 'Kein Gegner für eine Revanche'; end if;
+  select id into nid from public.games where rematch_of = p_game limit 1;
+  if nid is not null then return json_build_object('id', nid, 'existing', true); end if;
+  insert into public.games(code, player_a, player_b, status, turn, rematch_of)
+    values (public.new_code(), me, opp, 'active', me, p_game) returning id into nid;
+  return json_build_object('id', nid, 'existing', false);
+end $$;
+
 -- Auf eine Aufnahme reagieren
 create or replace function public.react(p_game uuid, p_round int, p_target uuid, p_emoji text) returns json
 language plpgsql security definer set search_path = public as $$
@@ -494,6 +513,7 @@ begin
   select coalesce(json_agg(x order by x.sort1, x.last_move_at desc), '[]'::json) into res from (
     select g.id, g.code, g.status, g.is_random, g.cur_round, g.total_rounds, g.last_move_at,
            g.forfeit_by = me as i_forfeited,
+           (select x.id from public.games x where x.rematch_of = g.id limit 1) as rematch_id,
            g.forfeit_by is not null and g.forfeit_by <> me as opp_forfeited,
            g.turn = me as my_turn,
            public.profile_json(case when g.player_a = me then g.player_b else g.player_a end) as opponent,
@@ -524,6 +544,7 @@ begin
     'cur_round', g.cur_round, 'total_rounds', g.total_rounds, 'my_turn', g.turn = me,
     'i_forfeited', g.forfeit_by = me, 'opp_forfeited', g.forfeit_by is not null and g.forfeit_by <> me,
     'last_move_at', g.last_move_at,
+    'rematch_id', (select x.id from public.games x where x.rematch_of = g.id limit 1),
     'me', public.profile_json(me), 'opponent', public.profile_json(opp),
     'rounds', coalesce((
       select json_agg(json_build_object(
@@ -552,6 +573,8 @@ begin
 end $$;
 
 -- Ausführrechte: nur angemeldete Nutzer (auch anonyme)
+revoke all on function public.rematch(uuid) from public, anon;
+grant execute on function public.rematch(uuid) to authenticated;
 revoke all on function public.my_profile() from public, anon;
 grant execute on function public.my_profile() to authenticated;
 revoke all on function public.save_profile(text,text,text), public.start_game(boolean), public.join_game(text),
