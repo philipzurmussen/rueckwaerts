@@ -262,7 +262,7 @@
           </div>
           <div class="btns">
             <button class="play main" id="yRev" disabled>▶ Rückwärts</button>
-            <button class="play main alt" id="yOk" hidden>Passt so ➜</button>
+            <button class="play main alt" id="yOk" hidden>Passt so ➜ weiter</button>
           </div>
           <input type="file" accept="audio/*" capture id="fileY">
         </div>
@@ -1500,7 +1500,7 @@
     $('aStepSet').hidden = st !== 'set';
     $('aStepOwn').hidden = st !== 'own';
     $('aNext').hidden = !(st === 'reveal' && g.my_turn && g.cur_round < g.total_rounds && g.status !== 'done');
-    const canShare = !op && g.status !== 'done' && !g.is_random;
+    const canShare = !op && g.status !== 'done' && !g.is_random && g.cur_round >= 1 && st === 'idle';
     let shared = false; try { shared = localStorage.getItem('rw-shared-' + g.id) === '1'; } catch(e){}
     $('aShare').hidden = !canShare; $('aShareHint').hidden = !canShare;
     $('aShare').textContent = shared ? 'Link nochmal teilen' : 'Einladung schicken 📨';
@@ -1519,14 +1519,15 @@
       if (g.status === 'done') msg += '<br>' + finalLine(g, sMe, sOp, opName);
       renderReveal(r);
     }
-    else if (st === 'set') msg = (A.chosen ? 'Sag „' + esc(A.chosen) + '“ – tipp auf den roten Knopf.' : 'Runde ' + (g.cur_round + 1) + ': Gib ein Wort vor – such dir eins aus oder denk dir eins aus.');
-    else if (st === 'own') msg = 'Jetzt du selbst: Sprich dein Wort rückwärts nach. Ein Versuch, dann geht der Zug raus!';
+    else if (st === 'set') msg = '<span class="tiny">Schritt 1 von 2</span><br>' + (A.chosen ? 'Sag „' + esc(A.chosen) + '“ – tipp auf den roten Knopf.' : 'Runde ' + (g.cur_round + 1) + ': Gib ein Wort vor – such dir eins aus oder denk dir eins aus.');
+    else if (st === 'own') msg = '<span class="tiny">Schritt 2 von 2</span><br>Jetzt du selbst: Hör dir dein Wort rückwärts an und sprich es nach. Danach geht dein Zug raus' + (op ? '.' : ' und du kannst die Einladung schicken.');
     else if (st === 'sending') msg = 'Wird gesendet …';
     else if (g.status === 'done') msg = finalLine(g, sMe, sOp, opName);
     else if (!op) msg = g.is_random ? 'Dein Wort ist vorgelegt. Sobald jemand einen Zufallsgegner sucht, geht’s los – du bekommst Bescheid.'
-                                    : 'Dein Wort ist vorgelegt! Schick jetzt die Einladung an deinen Gegner.';
+                    : g.cur_round >= 1 ? 'Dein Wort ist vorgelegt! ✅ Schick jetzt die Einladung an deinen Gegner.'
+                    : 'Gib das erste Wort vor, dann kannst du die Einladung schicken.';
     else msg = opName + ' ist dran. Du bekommst Bescheid, wenn du wieder dran bist.';
-    if (st === 'set' && A.draft) msg = 'Gut so? Dann weiter – sonst einfach neu aufnehmen.';
+    if (st === 'set' && A.draft) msg = '<span class="tiny">Schritt 1 von 2</span><br>Gut so? Dann weiter – sonst einfach neu aufnehmen.';
     $('aMsg').innerHTML = msg;
 
     if (st === 'set') renderAsyncTopic();
