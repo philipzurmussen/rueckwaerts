@@ -53,3 +53,16 @@ Samstags läuft eine geplante Aufgabe, die Ereignisse und Gedenktage der kommend
 - KI-/TTS-generierte Vorgabewörter gegen Schummeln (API-Key nur auf dem Admin-Gerät, nie in der App).
 - Season als Pop-up bzw. im Hauptmenü (App-Store-Version).
 - App-Store-Build: Capacitor, Push-Benachrichtigungen, Login mit Apple/Google.
+
+## Reward-System (Plan für später, nach ersten Tester-Erfahrungen)
+
+Inspiration: Duolingo, Wordle, Clash Royale, GeoGuessr – Mechaniken übernehmen, eigener Look und Witz.
+
+1. **Tageswort** (Favorit für den Einstieg): ein Wort pro Tag für alle, ein Versuch, Tagesrangliste, **Teilen-Grafik** ohne das Wort zu verraten (z. B. „Ollah! #42 ⭐⭐☆“) – auch Werbung in WhatsApp-Gruppen und spätere Gratis-Grenze.
+2. **Serie** 🔥 für tägliches Spielen, mit **Streak-Freeze** gegen Frust.
+3. **Wochen-Ligen** statt einer großen Rangliste: kleine Gruppen (~20) ähnlich aktiver Spieler, Auf- und Abstieg pro Woche – passt zu den Seasons.
+4. **Belohnungspfad** für Level: vorher sichtbar, was als Nächstes freigeschaltet wird (Themen, Avatare, Waveform-Farben, Jubel-Sounds).
+5. **Abzeichen** Bronze/Silber/Gold (z. B. erstes 3★, 10 Duell-Siege, Zungenbrecher, Season-Podest) – nur sinnvoll, wenn sie im Profil/Duell sichtbar sind.
+6. Später **Duell-Rang (ELO)** getrennt vom Level, für faire Zufallsgegner.
+
+Grundsatz: Belohnungen nie auf Sterne/Vergleich auswirken lassen; Kosmetik ist der naheliegende Weg für spätere Einnahmen.
