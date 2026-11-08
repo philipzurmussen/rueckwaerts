@@ -96,6 +96,21 @@
   .res .st i{color:rgba(255,255,255,.15);font-style:normal}
   .res .play{flex:none;min-width:0;padding:10px 14px;font-size:14px}
   .status{margin:0;font-size:14px;color:var(--mute);text-align:center;min-height:1.2em}
+  .res{flex-direction:column;align-items:stretch}
+  .res .line{display:flex;align-items:center;gap:10px}
+  .reacts{display:flex;gap:6px;flex-wrap:wrap}
+  .reacts button{border:0;border-radius:12px;background:rgba(255,255,255,.08);font-size:22px;padding:6px 8px;cursor:pointer;line-height:1}
+  .reacts button:active{transform:scale(.85)}
+  .reacts button.sent{background:rgba(255,210,63,.3)}
+  .chips{display:flex;gap:4px;flex-wrap:wrap;font-size:22px;min-height:0}
+  .chips span{animation:pop .45s cubic-bezier(.3,1.8,.5,1)}
+  .says{display:flex;gap:6px;flex-wrap:wrap;justify-content:center}
+  .says button{border:1px solid rgba(255,255,255,.2);border-radius:999px;background:none;color:var(--ink);font-family:inherit;font-size:13px;font-weight:500;padding:7px 11px;cursor:pointer}
+  .says button:active{background:rgba(255,255,255,.15)}
+  .floater{position:fixed;left:50%;bottom:25%;font-size:64px;pointer-events:none;z-index:50;animation:floatup 1.6s ease-out forwards}
+  @keyframes floatup{0%{opacity:0;transform:translate(-50%,40px) scale(.4)}15%{opacity:1;transform:translate(-50%,0) scale(1.15)}100%{opacity:0;transform:translate(-50%,-220px) scale(1)}}
+  .toast{position:fixed;left:50%;top:calc(env(safe-area-inset-top) + 16px);transform:translateX(-50%);background:var(--ink);color:var(--bg);font-weight:800;padding:12px 18px;border-radius:18px;z-index:60;max-width:90%;text-align:center;box-shadow:0 8px 24px rgba(0,0,0,.35);animation:toastin .3s cubic-bezier(.3,1.6,.5,1)}
+  @keyframes toastin{from{opacity:0;transform:translate(-50%,-20px)}}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js"></script>
 <script>window.Peer || document.write('<script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"><\/script>')</script>
@@ -200,6 +215,7 @@
         </div>
 
         <div id="pReveal" hidden style="display:flex;flex-direction:column;gap:10px"></div>
+        <div class="says" id="pSays" hidden></div>
 
         <button class="play main" id="btnNext" hidden>Nächste Runde</button>
         <button class="play main" id="btnRematch" hidden>Revanche 🔁</button>
@@ -786,6 +802,7 @@
   }
   function newRound(){
     duel.phase = 'word'; duel.draft = duel.word = duel.wordRev = duel.myTry = duel.theirTry = null;
+    duel.gotReacts = []; duel.sentReacts = [];
     draw('W', null); draw('T', null);
     render();
   }
@@ -837,6 +854,10 @@
       duel.theirTry = { buf:b, rev:reverse(b), sim:+m.sim || 0, stars: Math.max(0, Math.min(3, m.stars|0)) };
       checkReveal();
     }
+    else if (m.t === 'react' && m.round === duel.round && REACTS.includes(m.e)){
+      duel.gotReacts.push(m.e); floatEmoji(m.e); render();
+    }
+    else if (m.t === 'say' && SAYS[m.i]){ toast(duel.them + ': ' + SAYS[m.i]); }
     else if (m.t === 'next' && m.round === duel.round){ duel.round++; newRound(); }
     else if (m.t === 'rematch'){ startGame(); }
   }
@@ -889,19 +910,72 @@
     const pr = $('pReveal');
     pr.hidden = !show.reveal; pr.innerHTML = '';
     if (show.reveal){
-      [[duel.me, duel.myTry], [duel.them, duel.theirTry]].forEach(([n, t]) => {
+      [[duel.me, duel.myTry, true], [duel.them, duel.theirTry, false]].forEach(([n, t, mine]) => {
         const el = document.createElement('div'); el.className = 'res';
-        el.innerHTML = '<div class="who"><b>' + esc(n) + '</b><span class="st">' + starTxt(t.stars) + '</span> <span class="pct">' + Math.round(t.sim*100) + ' %</span></div>' +
-          '<button class="play main alt">▶ Ergebnis</button>';
-        el.querySelector('button').onclick = () => play(null, t.rev);
+        el.innerHTML = '<div class="line"><div class="who"><b>' + esc(n) + '</b><span class="st">' + starTxt(t.stars) + '</span> <span class="pct">' + Math.round(t.sim*100) + ' %</span></div>' +
+          '<button class="play main alt">▶ Ergebnis</button></div>';
+        el.querySelector('.play').onclick = () => play(null, t.rev);
+        if (mine){
+          // Reaktionen, die ich auf meine Aufnahme bekommen habe
+          if (duel.gotReacts.length){
+            const ch = document.createElement('div'); ch.className = 'chips';
+            ch.innerHTML = duel.gotReacts.map(e => '<span>' + e + '</span>').join('');
+            el.appendChild(ch);
+          }
+        } else {
+          // Auf die Aufnahme des Gegners reagieren
+          const rx = document.createElement('div'); rx.className = 'reacts';
+          REACTS.forEach(e => {
+            const b = document.createElement('button'); b.textContent = e;
+            if (duel.sentReacts.includes(e)) b.className = 'sent';
+            b.onclick = () => sendReact(e);
+            rx.appendChild(b);
+          });
+          el.appendChild(rx);
+        }
         pr.appendChild(el);
       });
     }
+    $('pSays').hidden = !show.reveal;
     requestAnimationFrame(() => {
       if (!$('pWord').hidden) draw('W', duel.wordRev || (duel.draft && reverse(duel.draft)));
       if (!$('pTry').hidden) draw('T', duel.myTry ? duel.myTry.buf : null);
     });
   }
+
+  // ---------- Reaktionen & Sprüche (bewusst kein freier Text) ----------
+  const REACTS = ['😂','🤯','👏','🙈','🔥'];
+  const SAYS = ['Haha, was war DAS? 😂','Respekt! 👏','Nochmal! 🔁','Knapp! 😅','GG 🤝'];
+  let lastReact = 0;
+  function sendReact(e){
+    const now = Date.now();
+    if (now - lastReact < 400) return;
+    lastReact = now;
+    send({ t:'react', round:duel.round, e });
+    if (!duel.sentReacts.includes(e)) duel.sentReacts.push(e);
+    floatEmoji(e); render();
+  }
+  function floatEmoji(e){
+    const f = document.createElement('div'); f.className = 'floater'; f.textContent = e;
+    f.style.marginLeft = (Math.random()*120 - 60) + 'px';
+    document.body.appendChild(f);
+    setTimeout(() => f.remove(), 1700);
+  }
+  let toastTimer = null;
+  function toast(t){
+    const old = document.querySelector('.toast'); if (old) old.remove();
+    const el = document.createElement('div'); el.className = 'toast'; el.textContent = t;
+    document.body.appendChild(el);
+    clearTimeout(toastTimer); toastTimer = setTimeout(() => el.remove(), 2600);
+  }
+  SAYS.forEach((s, i) => {
+    const b = document.createElement('button'); b.textContent = s;
+    b.onclick = () => {
+      const now = Date.now(); if (now - lastReact < 400) return; lastReact = now;
+      send({ t:'say', i }); toast('Du: ' + s);
+    };
+    $('pSays').appendChild(b);
+  });
 
   ['W','T'].forEach(k => {
     const s = slots[k];
