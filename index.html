@@ -154,6 +154,21 @@
   .gitem .sc{font-size:20px;font-weight:800;white-space:nowrap}
   .gdel{flex:none;border:0;border-radius:10px;background:rgba(255,255,255,.08);color:var(--mute);font-family:inherit;font-size:15px;font-weight:800;padding:8px 10px;cursor:pointer}
   .gdel.armed{background:var(--rec);color:#fff}
+  .topics button.locked{opacity:.45;border-style:dashed}
+  .lvl{display:flex;flex-direction:column;gap:6px;padding:12px;border-radius:16px;background:rgba(0,0,0,.2)}
+  .lvl .lvtop{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+  .lvl .lvtop b{font-size:17px}
+  .lvl .lvtop span{color:var(--acc);font-weight:800;font-size:15px;white-space:nowrap}
+  .bar{height:10px;border-radius:99px;background:rgba(255,255,255,.1);overflow:hidden}
+  .bar span{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--acc2),var(--acc));border-radius:99px;transition:width .6s}
+  .rank{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:14px}
+  .rank.me{background:rgba(255,210,63,.15);box-shadow:inset 0 0 0 2px var(--acc)}
+  .rank .no{width:28px;text-align:center;font-weight:800;color:var(--mute)}
+  .rank .ava{width:36px;height:36px;font-size:21px;margin:0}
+  .rank .nm2{flex:1;min-width:0}
+  .rank .nm2 b{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .rank .nm2 small{color:var(--mute);font-size:12px}
+  .rank .xp{font-weight:800;color:var(--acc)}
   .ghead{margin:6px 0 0;font-size:13px;font-weight:800;color:var(--mute);text-transform:uppercase;letter-spacing:1px}
   .rnd{display:flex;flex-direction:column;gap:8px;padding:12px;border-radius:16px;background:rgba(0,0,0,.18)}
   .rnd .rt{display:flex;justify-content:space-between;align-items:center;gap:8px}
@@ -220,13 +235,27 @@
     <section class="card" id="aHome">
       <div class="head"><div class="num">⚔️</div><div><h2>Duelle</h2><p>Spiel, wann du Zeit hast · 6 Runden · 48 Std. pro Zug</p></div></div>
       <div id="aProfSlot"></div>
+      <div class="lvl" id="aLevel">
+        <div class="lvtop"><b id="aLvName">Level 1 · Anfänger</b><span id="aLvXp">0 Punkte</span></div>
+        <div class="bar"><span id="aLvBar"></span></div>
+        <p class="tiny" id="aLvNext"></p>
+      </div>
       <p class="msg" id="aInviteHint" hidden></p>
       <button class="play main" id="aAccept" hidden>Herausforderung annehmen ⚔️</button>
       <div class="btns">
         <button class="play main" id="aNewFriend">Freund herausfordern</button>
         <button class="play main alt" id="aNewRandom">Zufälliger Gegner</button>
       </div>
+      <button class="play" id="aRankBtn">🏆 Rangliste</button>
       <p class="status" id="aStatus"></p>
+    </section>
+    <section class="card" id="aRankCard" hidden>
+      <div class="lvtop" style="display:flex;justify-content:space-between;align-items:center">
+        <h2 style="margin:0;font-size:18px;font-weight:800">🏆 Rangliste</h2>
+        <button class="reset" id="aRankClose" style="padding:4px">Schließen</button>
+      </div>
+      <p class="tiny">Punkte: jeder Stern in einem Duell zählt, jeder Sieg bringt +5.</p>
+      <div id="aRankList" class="stack"></div>
     </section>
     <section class="card" id="aListCard">
       <div id="aList" class="stack"><p class="empty">Noch keine Duelle.</p></div>
@@ -258,6 +287,7 @@
           <div class="topics" id="aTopicRow"></div>
           <div class="words" id="aWordRow"></div>
           <button class="reset" id="aShuffle" style="padding:2px">🔄 Andere Wörter</button>
+          <input class="field" id="aCustom" maxlength="40" placeholder="✏️ Oder eigenes Wort / eigener Satz …" autocomplete="off" hidden>
           <div class="row">
             <button class="recbtn" id="yRec" aria-label="Wort aufnehmen"><span class="dot"></span></button>
             <canvas id="cvY"></canvas>
@@ -907,9 +937,28 @@
     'Köln': ['Kölner Dom','Rhein','Karneval','Alaaf','Kamelle','Veedel','Ehrenfeld','Nippes','Deutz','Hohenzollernbrücke','Heinzelmännchen','Funkenmariechen','Büdchen','Tünnes','Schäl','Domplatte','Rheinseilbahn','Mülheim','Rodenkirchen','Halve Hahn','Flora','Severin'],
     'Länder & Städte': ['Australien','Mexiko','Kanada','Ghana','Norwegen','Portugal','Japan','Argentinien','Madagaskar','Island','Paris','Barcelona','Amsterdam','Istanbul','Hamburg','München','New York','Kopenhagen','Marokko','Neuseeland','Accra','Rio de Janeiro'],
     'Berufe': ['Zahnarzt','Lokführerin','Bäcker','Polizistin','Astronaut','Tierärztin','Schornsteinfeger','Pilotin','Gärtner','Friseurin','Kapitän','Erzieherin','Schreiner','Cutterin','Tontechniker','Zauberer','Detektivin','Bauarbeiter','Postbote','Köchin','Feuerwehrfrau','Bademeister'],
+    'Promis': ['Albert Einstein','Mozart','Beethoven','Kleopatra','Napoleon','Goethe','Marilyn Monroe','Elvis Presley','Helene Fischer','Thomas Gottschalk','Heidi Klum','Michael Schumacher','Lionel Messi','Taylor Swift','Beyoncé','Leonardo DiCaprio','Shakira','Lukas Podolski','Udo Lindenberg','Usain Bolt','Serena Williams','Harry Potter'],
+    'Redewendungen': ['Ich verstehe nur Bahnhof','Da liegt der Hund begraben','Den Nagel auf den Kopf treffen','Um den heißen Brei reden','Auf dem Holzweg sein','Die Kuh vom Eis holen','Ins Fettnäpfchen treten','Mit dem falschen Fuß aufstehen','Jemandem einen Bären aufbinden','Das ist nicht mein Bier','Alles in Butter','Da steppt der Bär','Tomaten auf den Augen','Ich glaub, mein Schwein pfeift','Hals- und Beinbruch','Jetzt geht’s los','Guten Appetit','Schönen Feierabend','Kölle Alaaf','Et hätt noch immer jot jejange','Wer zuletzt lacht','Ich hab Hunger','Was geht ab','Zack, die Bohne','Mach mal Pause','Ollah, wie geht’s','Butter bei die Fische','Ab durch die Mitte','Schwein gehabt','Liebe geht durch den Magen'],
     'Lange Wörter': ['Donaudampfschiff','Streichholzschächtelchen','Quietscheentchen','Purzelbaum','Regenschirm','Kuddelmuddel','Schnickschnack','Hokuspokus','Wackelpudding','Trampolin','Zauberstab','Schneemann','Achterbahn','Luftballon','Kaugummi','Plappermaul','Schlafanzug','Kirschkernspucken','Ringelnatter','Fahrradklingel','Butterblume','Zahnbürste']
   };
   const MIX = 'Bunt gemischt';
+  const SPICE = { 'Tiere':1, 'Essen':1, 'Länder & Städte':1, 'Köln':2, 'Berufe':2, 'Promis':2, 'Lange Wörter':3, 'Redewendungen':3 };
+  const topicLabel = t => t + (SPICE[t] ? ' ' + '🌶'.repeat(SPICE[t]) : '');
+
+  // ---------- Level: Punkte schalten Themen frei ----------
+  const LEVELS = [
+    { n:1, name:'Anfänger',        xp:0   },
+    { n:2, name:'Plappermaul',     xp:30  },
+    { n:3, name:'Zungenakrobat',   xp:80  },
+    { n:4, name:'Rückwärts-Profi', xp:150 },
+    { n:5, name:'Ollah-Meister',   xp:300 }
+  ];
+  const TOPIC_LEVEL = { 'Tiere':1, 'Essen':1, 'Länder & Städte':1, 'Köln':2, 'Berufe':2, 'Promis':3, 'Lange Wörter':3, 'Redewendungen':4 };
+  let myXP = 0;
+  const levelOf = xp => LEVELS.filter(l => xp >= l.xp).pop();
+  const nextLevel = xp => LEVELS.find(l => l.xp > xp) || null;
+  const isUnlocked = t => t === MIX || (TOPIC_LEVEL[t] || 1) <= levelOf(myXP).n;
+  const unlockedWords = () => Object.keys(TOPICS).filter(isUnlocked).flatMap(t => TOPICS[t]);
   const ALL_WORDS = new Set(Object.values(TOPICS).flat());
   let topic = MIX;
   try { const t = localStorage.getItem('rw-topic'); if (t === MIX || TOPICS[t]) topic = t; } catch(e){}
@@ -1396,7 +1445,61 @@
     A.firstList = false; A.myTurnIds = turns; A.knownIds = new Set(A.list.map(g => g.id));
     try { navigator.setAppBadge && (turns.size ? navigator.setAppBadge(turns.size) : navigator.clearAppBadge()); } catch(e){}
     renderList();
+    refreshStats();
   }
+
+  // ---------- Punkte, Level, Rangliste ----------
+  async function refreshStats(){
+    let lb;
+    try { lb = await rpc('leaderboard'); } catch(e){ return; }
+    A.lb = lb;
+    myXP = (lb && lb.me && lb.me.xp) || 0;
+    const now = levelOf(myXP).n;
+    let seen = 1; try { seen = +localStorage.getItem('rw-level') || 1; } catch(e){}
+    if (now > seen){
+      const fresh = Object.keys(TOPIC_LEVEL).filter(t => TOPIC_LEVEL[t] > seen && TOPIC_LEVEL[t] <= now);
+      toast('Level ' + now + ' · ' + levelOf(myXP).name + '! 🎉' + (fresh.length ? ' Neu: ' + fresh.join(', ') : ''));
+      floatEmoji('🎉');
+    }
+    try { localStorage.setItem('rw-level', String(now)); } catch(e){}
+    renderLevel();
+    if (!$('aRankCard').hidden) renderRank();
+  }
+  function renderLevel(){
+    const cur = levelOf(myXP), nx = nextLevel(myXP);
+    $('aLvName').textContent = 'Level ' + cur.n + ' · ' + cur.name;
+    $('aLvXp').textContent = myXP + ' Punkte' + (A.lb && A.lb.me && A.lb.me.rank ? ' · Platz ' + A.lb.me.rank : '');
+    $('aLvBar').style.width = (nx ? Math.round(100 * (myXP - cur.xp) / (nx.xp - cur.xp)) : 100) + '%';
+    if (nx){
+      const t = Object.keys(TOPIC_LEVEL).filter(k => TOPIC_LEVEL[k] === nx.n);
+      $('aLvNext').textContent = 'Noch ' + (nx.xp - myXP) + ' Punkte bis Level ' + nx.n + (t.length ? ' – schaltet frei: ' + t.join(', ') : ' – Titel „' + nx.name + '“');
+    } else $('aLvNext').textContent = 'Höchstes Level erreicht – du bist Ollah-Meister! 👑';
+  }
+  function renderRank(){
+    const box = $('aRankList'); box.innerHTML = '';
+    const top = (A.lb && A.lb.top) || [];
+    if (!top.length){ box.innerHTML = '<p class="empty">Noch niemand hat Punkte. Spiel das erste Duell!</p>'; return; }
+    const medal = r => r === 1 ? '🥇' : r === 2 ? '🥈' : r === 3 ? '🥉' : r;
+    top.forEach(p => {
+      const el = document.createElement('div'); el.className = 'rank' + (p.me ? ' me' : '');
+      el.innerHTML = '<div class="no">' + medal(p.rank) + '</div>' + avaHTML(esc(p.avatar), p.color) +
+        '<div class="nm2"><b>' + esc(p.nickname) + (p.me ? ' (du)' : '') + '</b><small>Level ' + levelOf(p.xp).n + ' · ' + levelOf(p.xp).name + '</small></div>' +
+        '<div class="xp">' + p.xp + '</div>';
+      box.appendChild(el);
+    });
+    const me = A.lb.me;
+    if (me && me.rank && !top.some(p => p.me)){
+      const el = document.createElement('p'); el.className = 'tiny'; el.style.textAlign = 'center';
+      el.textContent = 'Du bist auf Platz ' + me.rank + ' von ' + me.players + '.';
+      box.appendChild(el);
+    }
+  }
+  $('aRankBtn').onclick = async () => {
+    const show = $('aRankCard').hidden;
+    $('aRankCard').hidden = !show;
+    if (show){ renderRank(); await refreshStats(); $('aRankCard').scrollIntoView({ behavior:'smooth', block:'start' }); }
+  };
+  $('aRankClose').onclick = () => { $('aRankCard').hidden = true; };
   function gameLine(g){
     const opp = g.opponent, name = opp ? esc(opp.nickname) : '';
     if (g.status === 'done'){
@@ -1492,7 +1595,7 @@
   async function openGame(id){
     stopPlay();
     A.gid = id; A.stage = 'load'; A.draft = A.draftRev = A.wordNet = null; A.chosen = null; A.choices = [];
-    $('aHome').hidden = true; $('aListCard').hidden = true; $('aGame').hidden = false;
+    $('aHome').hidden = true; $('aListCard').hidden = true; $('aRankCard').hidden = true; $('aGame').hidden = false;
     $('aMsg').textContent = 'Lade …';
     ['aStepAnswer','aStepSet','aStepOwn','aReveal','aNext','aShare'].forEach(k => $(k).hidden = true);
     window.scrollTo(0, 0);
@@ -1699,7 +1802,7 @@
         audioCache.set(wp, Promise.resolve(A.draft)); audioCache.set(op, Promise.resolve(net));
         play(null, rev, () => {});
         toast('Zug gesendet! Du hast ' + '★'.repeat(stars) + '☆'.repeat(3 - stars) + ' bei deinem eigenen Wort.');
-        A.draft = A.draftRev = null; A.chosen = null; A.choices = [];
+        A.draft = A.draftRev = null; A.chosen = null; A.choices = []; $('aCustom').value = '';
         A.stage = 'idle';
         await loadGame(g.id, true);
         refreshList();
@@ -1711,7 +1814,8 @@
 
   // ---------- Schritt 2: Wort vorgeben ----------
   function asyncDeal(){
-    const pool = (topic === MIX ? [...ALL_WORDS] : TOPICS[topic]).filter(w => !A.choices.includes(w));
+    if (!isUnlocked(topic)) topic = MIX;
+    const pool = (topic === MIX ? unlockedWords() : TOPICS[topic]).filter(w => !A.choices.includes(w));
     const out = [];
     while (out.length < 3 && pool.length) out.push(pool.splice(Math.floor(Math.random()*pool.length), 1)[0]);
     A.choices = out; A.chosen = null;
@@ -1721,8 +1825,17 @@
     const tr = $('aTopicRow'), wr = $('aWordRow'); tr.innerHTML = ''; wr.innerHTML = '';
     const hide = !!A.draft;
     tr.hidden = wr.hidden = $('aShuffle').hidden = hide;
-    [MIX, ...Object.keys(TOPICS)].forEach(t => {
-      const b = document.createElement('button'); b.textContent = t; if (t === topic) b.className = 'on';
+    // selbst ausgedachte Wörter nur unter Freunden
+    $('aCustom').hidden = hide || A.game.is_random;
+    if (A.chosen && A.choices.includes(A.chosen)) $('aCustom').value = '';
+    [MIX, ...Object.keys(TOPICS).sort((x, y) => (TOPIC_LEVEL[x]||1) - (TOPIC_LEVEL[y]||1) || (SPICE[x]||0) - (SPICE[y]||0))].forEach(t => {
+      const b = document.createElement('button');
+      if (!isUnlocked(t)){
+        b.textContent = '🔒 ' + t; b.className = 'locked';
+        b.onclick = () => toast(t + ' gibt es ab Level ' + TOPIC_LEVEL[t] + ' (' + LEVELS[TOPIC_LEVEL[t]-1].name + ', ' + LEVELS[TOPIC_LEVEL[t]-1].xp + ' Punkte)');
+        tr.appendChild(b); return;
+      }
+      b.textContent = topicLabel(t); if (t === topic) b.className = 'on';
       b.onclick = () => { topic = t; try { localStorage.setItem('rw-topic', t); } catch(e){} A.choices = []; asyncDeal(); renderGame(); };
       tr.appendChild(b);
     });
@@ -1732,7 +1845,14 @@
       wr.appendChild(b);
     });
   }
-  $('aShuffle').onclick = () => { asyncDeal(); renderGame(); };
+  $('aShuffle').onclick = () => { asyncDeal(); $('aCustom').value = ''; renderGame(); };
+  $('aCustom').addEventListener('input', () => {
+    const v = $('aCustom').value.trim();
+    A.chosen = v || null;
+    // nur Text und Knöpfe aktualisieren, Fokus im Feld behalten
+    [...$('aWordRow').children].forEach(b => b.classList.toggle('on', b.textContent === A.chosen));
+    $('aMsg').innerHTML = '<span class="tiny">Schritt 1 von 2</span><br>' + (A.chosen ? 'Sag „' + esc(A.chosen) + '“ – tipp auf den roten Knopf.' : 'Gib ein Wort vor – such dir eins aus oder denk dir eins aus.');
+  });
   $('yRev').onclick = () => { if (A.draftRev) play('Y', A.draftRev); };
   $('yOk').onclick = () => { if (!A.draft) return; A.stage = 'own'; renderGame(); play('Z', A.draftRev); };
   $('zWord').onclick = () => { if (A.draftRev){ draw('Z', A.draftRev); play('Z', A.draftRev); } };

@@ -69,6 +69,197 @@ create table if not exists public.reactions (
 );
 create index if not exists reactions_game_idx on public.reactions(game_id);
 
+-- Erlaubte Listen-Wörter: Bei Zufallsgegnern wird nur Text aus dieser
+-- Liste gespeichert (selbst getippte Wörter gibt es nur unter Freunden).
+create table if not exists public.words (word text primary key);
+alter table public.words enable row level security;
+insert into public.words(word) values
+  ('Giraffe'),
+  ('Krokodil'),
+  ('Elefant'),
+  ('Schmetterling'),
+  ('Känguru'),
+  ('Nilpferd'),
+  ('Pinguin'),
+  ('Erdmännchen'),
+  ('Eichhörnchen'),
+  ('Schildkröte'),
+  ('Flamingo'),
+  ('Papagei'),
+  ('Wildschwein'),
+  ('Seepferdchen'),
+  ('Gorilla'),
+  ('Faultier'),
+  ('Marienkäfer'),
+  ('Waschbär'),
+  ('Tintenfisch'),
+  ('Chamäleon'),
+  ('Dromedar'),
+  ('Igel'),
+  ('Spaghetti'),
+  ('Pfannkuchen'),
+  ('Gummibärchen'),
+  ('Brokkoli'),
+  ('Ananas'),
+  ('Kartoffelsalat'),
+  ('Pommes'),
+  ('Lasagne'),
+  ('Schokolade'),
+  ('Erdbeere'),
+  ('Pizza'),
+  ('Joghurt'),
+  ('Avocado'),
+  ('Fischstäbchen'),
+  ('Zimtschnecke'),
+  ('Banane'),
+  ('Mandarine'),
+  ('Spinat'),
+  ('Döner'),
+  ('Wassermelone'),
+  ('Brezel'),
+  ('Pfefferminz'),
+  ('Kölner Dom'),
+  ('Rhein'),
+  ('Karneval'),
+  ('Alaaf'),
+  ('Kamelle'),
+  ('Veedel'),
+  ('Ehrenfeld'),
+  ('Nippes'),
+  ('Deutz'),
+  ('Hohenzollernbrücke'),
+  ('Heinzelmännchen'),
+  ('Funkenmariechen'),
+  ('Büdchen'),
+  ('Tünnes'),
+  ('Schäl'),
+  ('Domplatte'),
+  ('Rheinseilbahn'),
+  ('Mülheim'),
+  ('Rodenkirchen'),
+  ('Halve Hahn'),
+  ('Flora'),
+  ('Severin'),
+  ('Australien'),
+  ('Mexiko'),
+  ('Kanada'),
+  ('Ghana'),
+  ('Norwegen'),
+  ('Portugal'),
+  ('Japan'),
+  ('Argentinien'),
+  ('Madagaskar'),
+  ('Island'),
+  ('Paris'),
+  ('Barcelona'),
+  ('Amsterdam'),
+  ('Istanbul'),
+  ('Hamburg'),
+  ('München'),
+  ('New York'),
+  ('Kopenhagen'),
+  ('Marokko'),
+  ('Neuseeland'),
+  ('Accra'),
+  ('Rio de Janeiro'),
+  ('Zahnarzt'),
+  ('Lokführerin'),
+  ('Bäcker'),
+  ('Polizistin'),
+  ('Astronaut'),
+  ('Tierärztin'),
+  ('Schornsteinfeger'),
+  ('Pilotin'),
+  ('Gärtner'),
+  ('Friseurin'),
+  ('Kapitän'),
+  ('Erzieherin'),
+  ('Schreiner'),
+  ('Cutterin'),
+  ('Tontechniker'),
+  ('Zauberer'),
+  ('Detektivin'),
+  ('Bauarbeiter'),
+  ('Postbote'),
+  ('Köchin'),
+  ('Feuerwehrfrau'),
+  ('Bademeister'),
+  ('Albert Einstein'),
+  ('Mozart'),
+  ('Beethoven'),
+  ('Kleopatra'),
+  ('Napoleon'),
+  ('Goethe'),
+  ('Marilyn Monroe'),
+  ('Elvis Presley'),
+  ('Helene Fischer'),
+  ('Thomas Gottschalk'),
+  ('Heidi Klum'),
+  ('Michael Schumacher'),
+  ('Lionel Messi'),
+  ('Taylor Swift'),
+  ('Beyoncé'),
+  ('Leonardo DiCaprio'),
+  ('Shakira'),
+  ('Lukas Podolski'),
+  ('Udo Lindenberg'),
+  ('Usain Bolt'),
+  ('Serena Williams'),
+  ('Harry Potter'),
+  ('Ich verstehe nur Bahnhof'),
+  ('Da liegt der Hund begraben'),
+  ('Den Nagel auf den Kopf treffen'),
+  ('Um den heißen Brei reden'),
+  ('Auf dem Holzweg sein'),
+  ('Die Kuh vom Eis holen'),
+  ('Ins Fettnäpfchen treten'),
+  ('Mit dem falschen Fuß aufstehen'),
+  ('Jemandem einen Bären aufbinden'),
+  ('Das ist nicht mein Bier'),
+  ('Alles in Butter'),
+  ('Da steppt der Bär'),
+  ('Tomaten auf den Augen'),
+  ('Ich glaub, mein Schwein pfeift'),
+  ('Hals- und Beinbruch'),
+  ('Jetzt geht’s los'),
+  ('Guten Appetit'),
+  ('Schönen Feierabend'),
+  ('Kölle Alaaf'),
+  ('Et hätt noch immer jot jejange'),
+  ('Wer zuletzt lacht'),
+  ('Ich hab Hunger'),
+  ('Was geht ab'),
+  ('Zack, die Bohne'),
+  ('Mach mal Pause'),
+  ('Ollah, wie geht’s'),
+  ('Butter bei die Fische'),
+  ('Ab durch die Mitte'),
+  ('Schwein gehabt'),
+  ('Liebe geht durch den Magen'),
+  ('Donaudampfschiff'),
+  ('Streichholzschächtelchen'),
+  ('Quietscheentchen'),
+  ('Purzelbaum'),
+  ('Regenschirm'),
+  ('Kuddelmuddel'),
+  ('Schnickschnack'),
+  ('Hokuspokus'),
+  ('Wackelpudding'),
+  ('Trampolin'),
+  ('Zauberstab'),
+  ('Schneemann'),
+  ('Achterbahn'),
+  ('Luftballon'),
+  ('Kaugummi'),
+  ('Plappermaul'),
+  ('Schlafanzug'),
+  ('Kirschkernspucken'),
+  ('Ringelnatter'),
+  ('Fahrradklingel'),
+  ('Butterblume'),
+  ('Zahnbürste')
+on conflict do nothing;
+
 -- ---------- Hilfsfunktionen ------------------------------------------
 
 create or replace function public.is_player(g uuid) returns boolean
@@ -216,7 +407,7 @@ create or replace function public.set_word(
   p_game uuid, p_word_text text, p_word_path text, p_own_path text, p_own_sim real, p_own_stars int
 ) returns json
 language plpgsql security definer set search_path = public as $$
-declare me uuid := auth.uid(); g public.games; opp uuid; nr int; prefix text;
+declare me uuid := auth.uid(); g public.games; opp uuid; nr int; prefix text; v_text text;
 begin
   select * into g from public.games where id = p_game for update;
   if not found or me not in (g.player_a, coalesce(g.player_b, g.player_a)) then raise exception 'Nicht dein Duell'; end if;
@@ -233,8 +424,12 @@ begin
   end if;
   opp := case when me = g.player_a then g.player_b else g.player_a end;
   nr := g.cur_round + 1;
+  v_text := nullif(left(trim(coalesce(p_word_text, '')), 40), '');
+  if g.is_random and v_text is not null and not exists (select 1 from public.words where word = v_text) then
+    v_text := null;
+  end if;
   insert into public.rounds(game_id, round_no, setter, word_text, word_path)
-    values (p_game, nr, me, nullif(left(trim(coalesce(p_word_text, '')), 40), ''), p_word_path);
+    values (p_game, nr, me, v_text, p_word_path);
   insert into public.attempts(game_id, round_no, player, audio_path, sim, stars)
     values (p_game, nr, me, p_own_path, greatest(0, least(1, p_own_sim)), greatest(0, least(3, p_own_stars)));
   update public.games set cur_round = nr, turn = opp, last_move_at = now(), updated_at = now() where id = p_game;
@@ -358,6 +553,46 @@ grant execute on function public.save_profile(text,text,text), public.start_game
   public.answer_round(uuid,text,real,int), public.set_word(uuid,text,text,text,real,int), public.react(uuid,int,uuid,text),
   public.leave_game(uuid), public.my_games(), public.game_detail(uuid) to authenticated;
 grant select on public.profiles, public.games, public.rounds, public.attempts, public.reactions to authenticated;
+
+-- ---------- Punkte & Rangliste ----------------------------------------
+-- Punkte = alle Sterne aus Duellen (mit Gegner) + 5 je gewonnenem Duell
+
+create or replace function public.player_xp(p uuid) returns int
+language sql stable security definer set search_path = public as $$
+  select (
+    coalesce((select sum(a.stars) from public.attempts a join public.games g on g.id = a.game_id
+              where a.player = p and g.player_b is not null), 0)
+    + 5 * (select count(*) from public.games g
+           where g.status = 'done' and g.player_b is not null and p in (g.player_a, g.player_b)
+             and ( (g.forfeit_by is not null and g.forfeit_by <> p)
+                or (g.forfeit_by is null and
+                    coalesce((select sum(stars) from public.attempts where game_id = g.id and player = p), 0) >
+                    coalesce((select sum(stars) from public.attempts where game_id = g.id and player <> p), 0)) ))
+  )::int;
+$$;
+
+create or replace function public.leaderboard() returns json
+language plpgsql stable security definer set search_path = public as $$
+declare me uuid := auth.uid(); res json;
+begin
+  with x as (
+    select p.id, p.nickname, p.avatar, p.color, public.player_xp(p.id) as xp from public.profiles p
+  ), r as (
+    select *, rank() over (order by xp desc) as rk from x where xp > 0
+  )
+  select json_build_object(
+    'top', coalesce((select json_agg(json_build_object('rank', rk, 'nickname', nickname, 'avatar', avatar,
+                                                       'color', color, 'xp', xp, 'me', id = me) order by rk, nickname)
+                     from (select * from r order by rk, nickname limit 50) t), '[]'::json),
+    'me', json_build_object('xp', coalesce((select xp from x where id = me), 0),
+                            'rank', (select rk from r where id = me),
+                            'players', (select count(*) from r))
+  ) into res;
+  return res;
+end $$;
+
+revoke all on function public.player_xp(uuid), public.leaderboard() from public, anon;
+grant execute on function public.leaderboard() to authenticated;
 
 -- ---------- Audio-Speicher -------------------------------------------
 
