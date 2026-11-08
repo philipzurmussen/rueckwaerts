@@ -74,16 +74,42 @@
   .item .meta{color:var(--mute);font-size:13px}
   .item .del{border:0;background:none;color:var(--mute);font-size:18px;cursor:pointer;padding:0 4px}
   .item .btns .play{min-width:0;padding:10px 6px;font-size:14px;border-radius:12px}
+  [hidden]{display:none !important}
+  .view{width:100%;display:flex;flex-direction:column;align-items:center;gap:14px}
+  .tabs{display:flex;gap:4px;background:rgba(255,255,255,.08);padding:4px;border-radius:999px}
+  .tabs button{border:0;border-radius:999px;padding:9px 22px;font-family:inherit;font-size:15px;font-weight:800;background:none;color:var(--mute);cursor:pointer}
+  .tabs button.on{background:var(--ink);color:var(--bg)}
+  .field{width:100%;border:0;border-radius:14px;padding:14px;font-family:inherit;font-size:18px;background:rgba(0,0,0,.25);color:var(--ink);outline:none}
+  .field.code{text-transform:uppercase;letter-spacing:8px;text-align:center;font-weight:800}
+  .bigcode{font-size:48px;font-weight:800;letter-spacing:10px;text-align:center;color:var(--acc);margin:0}
+  .or{color:var(--mute);text-align:center;font-size:14px;margin:0}
+  .board{display:flex;justify-content:space-between;align-items:center;gap:8px}
+  .board .pl{flex:1;text-align:center}
+  .board .nm{font-size:14px;color:var(--mute);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .board .pt{font-size:40px;font-weight:800;line-height:1.1}
+  .board .vs{color:var(--mute);font-size:13px;text-align:center}
+  .msg{margin:0;font-size:18px;font-weight:800;text-align:center;line-height:1.3}
+  .res{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:16px;background:rgba(0,0,0,.2)}
+  .res .who{flex:1;min-width:0}
+  .res .who b{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .res .st{color:var(--acc);font-size:20px;letter-spacing:2px}
+  .res .st i{color:rgba(255,255,255,.15);font-style:normal}
+  .res .play{flex:none;min-width:0;padding:10px 14px;font-size:14px}
+  .status{margin:0;font-size:14px;color:var(--mute);text-align:center;min-height:1.2em}
 </style>
+<script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js"></script>
+<script>window.Peer || document.write('<script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"><\/script>')</script>
 </head>
 <body>
   <h1>Rück<span>wärts</span></h1>
   <p class="sub">Wort aufnehmen · rückwärts anhören · nachsprechen · umdrehen · staunen</p>
+  <div class="tabs"><button id="tabSolo" class="on">Solo</button><button id="tabDuel">Duell</button></div>
 
   <div class="note" id="note">
     Das direkte Mikrofon ist hier gesperrt. Tipp auf den roten Knopf, nimm mit der Aufnahme-App deines Handys auf und wähl die Datei aus – der Rest funktioniert genauso.
   </div>
 
+  <div class="view" id="solo">
   <section class="card" id="cardA">
     <div class="head"><div class="num">1</div><div><h2>Wort aufnehmen</h2><p>Tippen zum Starten, nochmal tippen zum Stoppen</p></div></div>
     <div class="row">
@@ -121,6 +147,67 @@
   </section>
 
   <button class="reset" id="reset">Neues Wort</button>
+  </div>
+
+  <div class="view" id="duel" hidden>
+    <!-- Lobby -->
+    <section class="card" id="lobby">
+      <div class="head"><div class="num">👥</div><div><h2>Duell zu zweit</h2><p>Zwei Handys, 6 Runden, abwechselnd vorgeben</p></div></div>
+      <input class="field" id="myName" maxlength="16" placeholder="Dein Name" autocomplete="off">
+      <button class="play main" id="btnHost">Spiel erstellen</button>
+      <div id="hostBox" hidden>
+        <p class="or">Spielcode für dein Gegenüber:</p>
+        <p class="bigcode" id="hostCode">····</p>
+      </div>
+      <p class="or">– oder –</p>
+      <input class="field code" id="joinCode" maxlength="4" placeholder="CODE" autocomplete="off" autocapitalize="characters">
+      <button class="play" id="btnJoin">Beitreten</button>
+      <p class="status" id="lobbyStatus"></p>
+    </section>
+
+    <!-- Spiel -->
+    <div class="view" id="game" hidden>
+      <section class="card">
+        <div class="board">
+          <div class="pl"><div class="nm" id="nMe">Du</div><div class="pt" id="ptMe">0</div></div>
+          <div class="vs" id="roundInfo">Runde 1 von 6</div>
+          <div class="pl"><div class="nm" id="nThem">Gegner</div><div class="pt" id="ptThem">0</div></div>
+        </div>
+      </section>
+
+      <section class="card">
+        <p class="msg" id="dMsg"></p>
+
+        <div id="pWord" hidden>
+          <div class="row">
+            <button class="recbtn" id="wRec" aria-label="Wort aufnehmen"><span class="dot"></span></button>
+            <canvas id="cvW"></canvas>
+          </div>
+          <div class="btns" style="margin-top:12px">
+            <button class="play main" id="wRev" disabled>▶ Rückwärts</button>
+            <button class="play" id="wFwd" hidden>▶ Original</button>
+            <button class="play main alt" id="wSend" hidden>Senden ➜</button>
+          </div>
+          <input type="file" accept="audio/*" capture id="fileW">
+        </div>
+
+        <div id="pTry" hidden>
+          <div class="row">
+            <button class="recbtn" id="tRec" aria-label="Versuch aufnehmen"><span class="dot"></span></button>
+            <canvas id="cvT"></canvas>
+          </div>
+          <input type="file" accept="audio/*" capture id="fileT">
+        </div>
+
+        <div id="pReveal" hidden style="display:flex;flex-direction:column;gap:10px"></div>
+
+        <button class="play main" id="btnNext" hidden>Nächste Runde</button>
+        <button class="play main" id="btnRematch" hidden>Revanche 🔁</button>
+      </section>
+
+      <button class="reset" id="btnLeave">Spiel verlassen</button>
+    </div>
+  </div>
 
 <script>
 (() => {
@@ -134,7 +221,9 @@
 
   const slots = {
     A: { buf:null, rev:null, cv:$('cvA'), rec:$('recA'), r:$('revA'), f:$('fwdA'), file:$('fileA') },
-    B: { buf:null, rev:null, cv:$('cvB'), rec:$('recB'), r:$('revB'), f:$('fwdB'), file:$('fileB') }
+    B: { buf:null, rev:null, cv:$('cvB'), rec:$('recB'), r:$('revB'), f:$('fwdB'), file:$('fileB') },
+    W: { cv:$('cvW'), rec:$('wRec'), file:$('fileW') },
+    T: { cv:$('cvT'), rec:$('tRec'), file:$('fileT') }
   };
 
   let micMode = !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia && window.MediaRecorder);
@@ -419,6 +508,7 @@
       const raw = await decode(await blob.arrayBuffer());
       const buf = clean(raw);
       if (!buf){ hint(key, 'Da war nichts zu hören – nochmal, etwas lauter.'); return; }
+      if (key === 'W' || key === 'T'){ duelRecorded(key, buf); return; }
       const s = slots[key];
       s.buf = buf; s.rev = reverse(buf);
       s.r.disabled = s.f.disabled = false;
@@ -440,7 +530,7 @@
       hint(key, 'Die Aufnahme konnte nicht gelesen werden.');
     }
   }
-  function hint(key, msg){ $('reveal').textContent = msg; }
+  function hint(key, msg){ $(key === 'W' || key === 'T' ? 'lobbyStatus' : 'reveal').textContent = msg; if (key === 'W' || key === 'T') $('dMsg').textContent = msg; }
   const cheers = ['Und? Klingt’s wie das Original? 😄','Erkennst du dein Wort? 🎉','Gänsehaut oder Gelächter? 🤯','Nochmal? Es wird besser! 🔁'];
   const pick = () => cheers[Math.floor(Math.random()*cheers.length)];
 
@@ -461,10 +551,14 @@
   }
 
   let stopMeter = null;
+  let recLocks = {};
   function setRecUI(key, on){
-    const other = key === 'A' ? 'B' : 'A';
     slots[key].rec.classList.toggle('on', on);
-    slots[other].rec.disabled = on;
+    Object.keys(slots).forEach(k => {
+      if (k === key) return;
+      if (on){ recLocks[k] = slots[k].rec.disabled; slots[k].rec.disabled = true; }
+      else slots[k].rec.disabled = !!recLocks[k];
+    });
     $('reset').disabled = on;
   }
 
@@ -538,6 +632,286 @@
     $('reveal').textContent = ''; $('score').classList.remove('show');
   });
   renderHistory();
+
+  // =====================================================================
+  // DUELL – zwei Geräte, direkt verbunden über PeerJS (WebRTC)
+  // =====================================================================
+  const TOTAL_ROUNDS = 6, NET_SR = 22050, ID_PREFIX = 'rueckwaerts-duell-';
+  const duel = {
+    peer:null, conn:null, host:false, started:false,
+    me:'', them:'', round:0, scores:[0,0], phase:'',
+    draft:null, word:null, wordRev:null, myTry:null, theirTry:null
+  };
+  const isSetter = (r = duel.round) => (r % 2 === 0) === duel.host;
+  const starTxt = n => '★'.repeat(n) + '<i>' + '★'.repeat(3-n) + '</i>';
+  const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+  // Tabs
+  function showMode(m){
+    $('solo').hidden = m !== 'solo'; $('duel').hidden = m !== 'duel';
+    $('tabSolo').classList.toggle('on', m === 'solo'); $('tabDuel').classList.toggle('on', m === 'duel');
+    stopPlay();
+    if (m === 'solo') requestAnimationFrame(() => ['A','B'].forEach(k => draw(k, slots[k].buf)));
+  }
+  $('tabSolo').onclick = () => showMode('solo');
+  $('tabDuel').onclick = () => showMode('duel');
+
+  try { $('myName').value = localStorage.getItem('rw-name') || ''; } catch(e){}
+  const myName = () => {
+    const n = $('myName').value.trim() || 'Ich';
+    try { localStorage.setItem('rw-name', n); } catch(e){}
+    return n;
+  };
+
+  // Audio für die Übertragung: 22 kHz, 16 Bit
+  async function toNet(buf){
+    if (buf.sampleRate === NET_SR) return buf;
+    const OAC = window.OfflineAudioContext || window.webkitOfflineAudioContext;
+    const oc = new OAC(1, Math.max(1, Math.ceil(buf.duration * NET_SR)), NET_SR);
+    const s = oc.createBufferSource(); s.buffer = buf; s.connect(oc.destination); s.start(0);
+    return new Promise((res, rej) => {
+      oc.oncomplete = e => res(e.renderedBuffer);
+      const p = oc.startRendering();
+      if (p && p.then) p.then(res, rej);
+    });
+  }
+  function toPCM(buf){
+    const d = buf.getChannelData(0), out = new Int16Array(d.length);
+    for (let i=0;i<d.length;i++){ const v = Math.max(-1, Math.min(1, d[i])); out[i] = v * 32767; }
+    return out.buffer;
+  }
+  function fromPCM(pcm){
+    const ab = ArrayBuffer.isView(pcm) ? pcm.buffer.slice(pcm.byteOffset, pcm.byteOffset + pcm.byteLength) : pcm;
+    const i16 = new Int16Array(ab), b = ac().createBuffer(1, Math.max(1, i16.length), NET_SR), d = b.getChannelData(0);
+    for (let i=0;i<i16.length;i++) d[i] = i16[i] / 32767;
+    return b;
+  }
+
+  // ---------- Verbindung ----------
+  function lobbyStatus(t){ $('lobbyStatus').textContent = t; }
+  function newPeer(id){
+    return new Promise((res, rej) => {
+      if (!window.Peer){ rej({ type:'nolib' }); return; }
+      const p = id ? new Peer(id, { debug:0 }) : new Peer({ debug:0 });
+      const fail = e => { p.off('open'); rej(e); };
+      p.once('open', () => { p.off('error', fail); res(p); });
+      p.once('error', fail);
+    });
+  }
+  function randCode(){
+    const abc = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    let c = ''; for (let i=0;i<4;i++) c += abc[Math.floor(Math.random()*abc.length)];
+    return c;
+  }
+  function peerErr(e){
+    const t = e && e.type;
+    if (t === 'nolib') return 'Die Verbindungs-Bibliothek konnte nicht geladen werden – Internet prüfen und neu laden.';
+    if (t === 'peer-unavailable') return 'Kein Spiel mit diesem Code gefunden.';
+    if (t === 'network' || t === 'server-error' || t === 'socket-error') return 'Keine Verbindung zum Vermittlungs-Server.';
+    return 'Verbindung fehlgeschlagen (' + (t || 'unbekannt') + ').';
+  }
+  function resetPeer(){
+    try { duel.conn && duel.conn.close(); } catch(e){}
+    try { duel.peer && duel.peer.destroy(); } catch(e){}
+    duel.conn = duel.peer = null;
+  }
+
+  $('btnHost').onclick = async () => {
+    ac(); resetPeer(); duel.host = true;
+    $('btnHost').disabled = true; lobbyStatus('Spiel wird erstellt …');
+    let code, peer = null;
+    for (let i=0; i<4 && !peer; i++){
+      code = randCode();
+      try { peer = await newPeer(ID_PREFIX + code); }
+      catch(e){ if (e.type !== 'unavailable-id'){ lobbyStatus(peerErr(e)); $('btnHost').disabled = false; return; } }
+    }
+    if (!peer){ lobbyStatus('Kein freier Code gefunden – nochmal versuchen.'); $('btnHost').disabled = false; return; }
+    duel.peer = peer;
+    $('hostBox').hidden = false; $('hostCode').textContent = code;
+    $('btnHost').disabled = false; $('btnHost').textContent = 'Neuen Code erstellen';
+    lobbyStatus('Warte auf Mitspieler …');
+    peer.on('connection', c => { if (duel.conn){ c.close(); return; } bindConn(c); });
+    peer.on('error', e => { if (!duel.started) lobbyStatus(peerErr(e)); });
+  };
+
+  $('btnJoin').onclick = async () => {
+    ac();
+    const code = $('joinCode').value.trim().toUpperCase();
+    if (code.length !== 4){ lobbyStatus('Bitte den 4-stelligen Code eingeben.'); return; }
+    resetPeer(); duel.host = false; $('hostBox').hidden = true;
+    $('btnJoin').disabled = true; lobbyStatus('Verbinde …');
+    try { duel.peer = await newPeer(); }
+    catch(e){ lobbyStatus(peerErr(e)); $('btnJoin').disabled = false; return; }
+    duel.peer.on('error', e => { if (!duel.started){ lobbyStatus(peerErr(e)); $('btnJoin').disabled = false; } });
+    const c = duel.peer.connect(ID_PREFIX + code, { reliable:true });
+    bindConn(c);
+    setTimeout(() => {
+      if (!duel.started && !c.open && duel.conn !== c){
+        lobbyStatus('Keine Antwort – Code prüfen, oder beide ins gleiche WLAN gehen.');
+        $('btnJoin').disabled = false;
+        try { c.close(); } catch(e){}
+      }
+    }, 12000);
+  };
+
+  function bindConn(c){
+    c.on('open', () => {
+      duel.conn = c;
+      lobbyStatus('Verbunden!');
+      c.send({ t:'hello', name: myName() });
+    });
+    c.on('data', onMsg);
+    c.on('close', () => { if (duel.conn === c) lost(); });
+    c.on('error', () => { if (duel.conn === c) lost(); });
+  }
+  function send(m){ try { duel.conn && duel.conn.open && duel.conn.send(m); } catch(e){} }
+  function lost(){
+    duel.conn = null;
+    if (duel.started){
+      duel.started = false;
+      render();
+      lobbyStatus('Verbindung zu ' + duel.them + ' verloren. Neues Spiel starten?');
+    }
+    $('btnJoin').disabled = false;
+    resetPeer();
+  }
+
+  $('btnLeave').onclick = () => { stopPlay(); duel.started = false; resetPeer(); $('hostBox').hidden = true; $('btnHost').textContent = 'Spiel erstellen'; lobbyStatus(''); render(); };
+
+  // ---------- Spielablauf ----------
+  function startGame(){
+    duel.started = true; duel.round = 0; duel.scores = [0,0];
+    duel.me = myName();
+    newRound();
+  }
+  function newRound(){
+    duel.phase = 'word'; duel.draft = duel.word = duel.wordRev = duel.myTry = duel.theirTry = null;
+    draw('W', null); draw('T', null);
+    render();
+  }
+  function setWord(buf){
+    duel.word = buf; duel.wordRev = reverse(buf); duel.phase = 'try';
+    render(); draw('W', duel.wordRev);
+    play('W', duel.wordRev);
+  }
+  async function duelRecorded(key, buf){
+    const net = await toNet(buf);
+    if (key === 'W'){
+      if (!(duel.phase === 'word' && isSetter())) return;
+      duel.draft = net;
+      render(); draw('W', reverse(net));
+      play('W', reverse(net));
+    } else {
+      if (duel.phase !== 'try' || duel.myTry) return;
+      const rev = reverse(net);
+      const sim = similarity(duel.word.getChannelData(0), rev.getChannelData(0), NET_SR);
+      duel.myTry = { buf:net, rev, sim, stars: starsFor(sim) };
+      send({ t:'try', round:duel.round, pcm: toPCM(net), sim, stars: duel.myTry.stars });
+      draw('T', net);
+      checkReveal();
+    }
+  }
+  $('wRev').onclick = () => { const b = duel.wordRev || (duel.draft && reverse(duel.draft)); if (b) play('W', b); };
+  $('wFwd').onclick = () => { if (duel.word) play('W', duel.word); };
+  $('wSend').onclick = () => {
+    if (!duel.draft) return;
+    send({ t:'word', round:duel.round, pcm: toPCM(duel.draft) });
+    setWord(duel.draft);
+  };
+  $('btnNext').onclick = () => { send({ t:'next', round:duel.round }); duel.round++; newRound(); };
+  $('btnRematch').onclick = () => { send({ t:'rematch' }); startGame(); };
+
+  function checkReveal(){
+    if (!(duel.myTry && duel.theirTry)){ render(); return; }
+    duel.scores[0] += duel.myTry.stars; duel.scores[1] += duel.theirTry.stars;
+    duel.phase = duel.round + 1 >= TOTAL_ROUNDS ? 'end' : 'reveal';
+    render();
+  }
+
+  function onMsg(m){
+    if (!m || typeof m !== 'object') return;
+    if (m.t === 'hello'){ duel.them = String(m.name || 'Gegner').slice(0,16); startGame(); }
+    else if (m.t === 'word' && m.round === duel.round && !isSetter()){ setWord(fromPCM(m.pcm)); }
+    else if (m.t === 'try' && m.round === duel.round && !duel.theirTry){
+      const b = fromPCM(m.pcm);
+      duel.theirTry = { buf:b, rev:reverse(b), sim:+m.sim || 0, stars: Math.max(0, Math.min(3, m.stars|0)) };
+      checkReveal();
+    }
+    else if (m.t === 'next' && m.round === duel.round){ duel.round++; newRound(); }
+    else if (m.t === 'rematch'){ startGame(); }
+  }
+
+  function render(){
+    $('lobby').hidden = duel.started; $('game').hidden = !duel.started;
+    if (!duel.started) return;
+    $('nMe').textContent = duel.me; $('nThem').textContent = duel.them;
+    $('ptMe').textContent = duel.scores[0]; $('ptThem').textContent = duel.scores[1];
+    $('roundInfo').innerHTML = 'Runde ' + Math.min(duel.round+1, TOTAL_ROUNDS) + '<br>von ' + TOTAL_ROUNDS;
+
+    const ph = duel.phase, iSet = isSetter(), them = esc(duel.them);
+    const show = { word:false, wRec:false, wSend:false, wFwd:false, tryP:false, reveal:false, next:false, rematch:false };
+    let msg = '';
+    if (ph === 'word'){
+      if (iSet){
+        msg = 'Du gibst vor: Nimm ein Wort auf.';
+        show.word = show.wRec = true; show.wSend = !!duel.draft;
+        if (duel.draft) msg = 'Gut so? Dann ab damit – sonst einfach neu aufnehmen.';
+      } else msg = them + ' nimmt gerade ein Wort auf …';
+    } else if (ph === 'try'){
+      show.word = true; show.tryP = true;
+      msg = duel.myTry ? 'Abgegeben! Warte auf ' + them + ' …' : 'Hör dir die Vorgabe rückwärts an und sprich sie nach. Du hast einen Versuch!';
+    } else {
+      show.word = show.wFwd = show.reveal = true;
+      const a = duel.myTry.stars, b = duel.theirTry.stars;
+      msg = a > b ? 'Runde an dich! 🎉' : a < b ? 'Runde an ' + them + '!' : 'Unentschieden!';
+      if (ph === 'reveal'){
+        if (isSetter(duel.round + 1)) show.next = true;
+        else msg += '<br><span style="font-size:14px;color:var(--mute)">' + them + ' startet die nächste Runde …</span>';
+      } else {
+        const [x, y] = duel.scores;
+        msg = (x > y ? '🏆 Du gewinnst ' : x < y ? them + ' gewinnt ' : 'Unentschieden ') + x + ' : ' + y + '!';
+        show.rematch = true;
+      }
+    }
+    $('dMsg').innerHTML = msg;
+    $('pWord').hidden = !show.word;
+    $('wRec').hidden = !show.wRec;
+    $('wSend').hidden = !show.wSend;
+    $('wFwd').hidden = !show.wFwd;
+    $('wRev').disabled = !(duel.wordRev || duel.draft);
+    $('pTry').hidden = !show.tryP;
+    const recording = rec && rec.state === 'recording';
+    if (!recording){ $('tRec').disabled = !!duel.myTry; $('wRec').disabled = false; }
+    $('btnNext').hidden = !show.next;
+    if (show.next) $('btnNext').textContent = (duel.round + 2 > TOTAL_ROUNDS ? 'Weiter' : 'Nächste Runde – du gibst vor');
+    $('btnRematch').hidden = !show.rematch;
+
+    const pr = $('pReveal');
+    pr.hidden = !show.reveal; pr.innerHTML = '';
+    if (show.reveal){
+      [[duel.me, duel.myTry], [duel.them, duel.theirTry]].forEach(([n, t]) => {
+        const el = document.createElement('div'); el.className = 'res';
+        el.innerHTML = '<div class="who"><b>' + esc(n) + '</b><span class="st">' + starTxt(t.stars) + '</span> <span class="pct">' + Math.round(t.sim*100) + ' %</span></div>' +
+          '<button class="play main alt">▶ Ergebnis</button>';
+        el.querySelector('button').onclick = () => play(null, t.rev);
+        pr.appendChild(el);
+      });
+    }
+    requestAnimationFrame(() => {
+      if (!$('pWord').hidden) draw('W', duel.wordRev || (duel.draft && reverse(duel.draft)));
+      if (!$('pTry').hidden) draw('T', duel.myTry ? duel.myTry.buf : null);
+    });
+  }
+
+  ['W','T'].forEach(k => {
+    const s = slots[k];
+    s.rec.addEventListener('click', () => onRec(k));
+    s.file.addEventListener('change', () => {
+      const f = s.file.files && s.file.files[0];
+      if (f) handleAudio(k, f);
+      s.file.value = '';
+    });
+  });
 
   // Ohne Mikro-API direkt Hinweis zeigen
   if (!micMode) $('note').classList.add('show');
