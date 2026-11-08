@@ -217,6 +217,16 @@
   .zw .st{color:var(--acc);letter-spacing:2px}
   .zw .st i{color:rgba(255,255,255,.15);font-style:normal}
   .card.season{background:linear-gradient(135deg,#3a1f6b,#2a1a4f);box-shadow:inset 0 0 0 2px rgba(255,210,63,.35)}
+  #sCard{padding:12px 14px;gap:8px}
+  .srow{display:flex;align-items:center;gap:12px}
+  .sinfo{flex:1;min-width:0}
+  .sinfo h2{margin:0;font-size:17px;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .sinfo p{margin:2px 0 0;font-size:13px;color:var(--mute)}
+  .sinfo .dots{justify-content:flex-start;gap:5px;margin-top:6px}
+  .sinfo .dots span{width:8px;height:8px}
+  .sinfo .dots:empty{display:none}
+  .splay{flex:none;border:0;border-radius:999px;padding:10px 16px;font-family:inherit;font-size:15px;font-weight:800;background:var(--acc);color:var(--bg);cursor:pointer}
+  #sMini:empty{display:none}
   .sres{display:flex;flex-direction:column;align-items:center;gap:6px;padding:12px;border-radius:16px;background:rgba(0,0,0,.2)}
   .sres .stars{font-size:38px}
   .strow{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:8px;border-radius:14px;background:rgba(0,0,0,.2)}
@@ -253,9 +263,11 @@
 
   <div class="view" id="solo">
     <section class="card season" id="sCard" hidden>
-      <div class="head"><div class="num">🗓️</div><div><h2 id="sTitle"></h2><p id="sSub"></p></div></div>
-      <div class="dots" id="sDots"></div>
-      <button class="play main" id="sPlay">Mitmachen</button>
+      <div class="srow">
+        <div class="num">🗓️</div>
+        <div class="sinfo"><h2 id="sTitle"></h2><p id="sSub"></p><div class="dots" id="sDots"></div></div>
+        <button class="splay" id="sPlay">Mitmachen</button>
+      </div>
       <div id="sMini" class="stack"></div>
       <p class="tiny" id="soloLvl" style="text-align:center" hidden></p>
     </section>
@@ -2349,19 +2361,20 @@
         $('sTitle').textContent = 'Letzte Season: ' + d.last.title;
         $('sSub').textContent = d.next ? 'Nächste: ' + d.next.title + ' ab ' + fmtDate(d.next.starts_at) : 'Die nächste Wochen-Challenge kommt bald.';
         $('sDots').innerHTML = ''; $('sPlay').hidden = true;
-        boardRows($('sMini'), d.last.top, '');
+        boardRows($('sMini'), d.last.top.slice(0, 3), '');
       } else card.hidden = true;
       return;
     }
     card.hidden = !onHome;
     const n = s.words.length, played = s.words.filter(w => w.my).length;
-    $('sTitle').textContent = 'Diese Woche: ' + s.title;
-    $('sSub').textContent = timeLeft(s.ends_at) + ' · ' + n + ' Begriffe · mit deiner eigenen Stimme';
+    $('sTitle').textContent = 'Season: ' + s.title;
+    const tl = timeLeft(s.ends_at).replace(/^(noch \d+ Tag(e)?) .*/, '$1');
+    $('sSub').textContent = tl + ' · ' +
+      (s.me && s.me.rank ? 'Platz ' + s.me.rank + ' · ' + s.me.stars + ' ★' : (s.players ? s.players + ' dabei' : 'neu!'));
     seasonDots($('sDots'), s, null);
     $('sPlay').hidden = false;
-    $('sPlay').textContent = played === 0 ? 'Mitmachen 🎙️' : played < n ? 'Weiterspielen (' + played + '/' + n + ')' : 'Ergebnis & Rangliste';
-    $('sMini').innerHTML = '<p class="tiny" style="text-align:center">' +
-      (s.me && s.me.rank ? 'Du: ' + s.me.stars + ' ★ · Platz ' + s.me.rank + ' von ' + s.players : (s.players ? s.players + (s.players === 1 ? ' Spieler' : ' Spieler') + ' schon dabei' : 'Sei der Erste!')) + '</p>';
+    $('sPlay').textContent = played === 0 ? 'Los 🎙️' : played < n ? 'Weiter' : 'Ergebnis';
+    $('sMini').innerHTML = '';
   }
   const nextIdx = s => { const w = s.words.find(w => !w.my); return w ? w.idx : null; };
   function showSoloHome(){
