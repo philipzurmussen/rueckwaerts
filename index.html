@@ -219,7 +219,7 @@
 <body>
   <h1>Ollah<span>!</span></h1>
   <p class="sub"><b>Hallo</b>, nur rückwärts.<br>Wort aufnehmen · rückwärts anhören · nachsprechen · umdrehen · staunen</p>
-  <div class="tabs"><button id="tabSolo" class="on">Solo</button><button id="tabAsync">Duelle</button><button id="tabDuel" hidden>Live</button></div>
+  <div class="tabs"><button id="tabSolo" class="on">Solo</button><button id="tabAsync">Duelle</button><button id="tabRanks">Rangliste</button><button id="tabDuel" hidden>Live</button></div>
 
   <div class="note" id="note">
     Das direkte Mikrofon ist hier gesperrt. Tipp auf den roten Knopf, nimm mit der Aufnahme-App deines Handys auf und wähl die Datei aus – der Rest funktioniert genauso.
@@ -344,6 +344,25 @@
 
   <button class="reset" id="reset">Neues Wort</button>
   </div>
+  </div>
+
+  <div class="view" id="ranks" hidden>
+    <section class="card">
+      <div class="head"><div class="num">🏅</div><div><h2>Dein Stand</h2><p>Sterne aus Duellen und Seasons · +5 je gewonnenem Duell</p></div></div>
+      <div class="lvl">
+        <div class="lvtop"><b id="rkLvName">Level 1 · Anfänger</b><span id="rkLvXp">0 Punkte</span></div>
+        <div class="bar"><span id="rkLvBar"></span></div>
+        <p class="tiny" id="rkLvNext"></p>
+      </div>
+    </section>
+    <section class="card" id="rkSeasonCard" hidden>
+      <h2 style="margin:0;font-size:18px;font-weight:800" id="rkSeasonTitle">🗓️ Diese Woche</h2>
+      <div id="rkSeason" class="stack"></div>
+    </section>
+    <section class="card">
+      <h2 style="margin:0;font-size:18px;font-weight:800">🏆 Gesamt</h2>
+      <div id="rkAll" class="stack"><p class="empty">Lade …</p></div>
+    </section>
   </div>
 
   <div class="view" id="async" hidden>
@@ -1076,7 +1095,9 @@
 
   // Tabs
   function showMode(m){
-    $('solo').hidden = m !== 'solo'; $('duel').hidden = m !== 'duel'; $('async').hidden = m !== 'async';
+    $('solo').hidden = m !== 'solo'; $('duel').hidden = m !== 'duel'; $('async').hidden = m !== 'async'; $('ranks').hidden = m !== 'ranks';
+    $('tabRanks').classList.toggle('on', m === 'ranks');
+    if (m === 'ranks' && window.ranksEnter) window.ranksEnter();
     $('tabSolo').classList.toggle('on', m === 'solo'); $('tabDuel').classList.toggle('on', m === 'duel');
     $('tabAsync').classList.toggle('on', m === 'async');
     // Profil-Kasten dorthin hängen, wo er gebraucht wird
@@ -1090,6 +1111,7 @@
   $('tabSolo').onclick = () => showMode('solo');
   $('tabDuel').onclick = () => showMode('duel');
   $('tabAsync').onclick = () => showMode('async');
+  $('tabRanks').onclick = () => showMode('ranks');
 
   // ---------- Profil ----------
   const AVATARS = ['🦊','🐸','🐼','🐙','🦄','🐯','🐨','🐵','🦉','🐧','🐢','🦖','🐳','🦔','🐝','👾'];
@@ -1768,6 +1790,7 @@
     try { localStorage.setItem('rw-level', String(now)); } catch(e){}
     renderLevel();
     if (!$('aRankCard').hidden) renderRank();
+    if (!$('ranks').hidden) renderRanksTab();
   }
   function renderLevel(){
     const cur = levelOf(myXP), nx = nextLevel(myXP);
@@ -1781,8 +1804,8 @@
       $('aLvNext').textContent = 'Noch ' + (nx.xp - myXP) + ' Punkte bis Level ' + nx.n + (t.length ? ' – schaltet frei: ' + t.join(', ') : ' – Titel „' + nx.name + '“');
     } else $('aLvNext').textContent = 'Höchstes Level erreicht – du bist Ollah-Meister! 👑';
   }
-  function renderRank(){
-    const box = $('aRankList'); box.innerHTML = '';
+  function renderRank(box){
+    box = box || $('aRankList'); box.innerHTML = '';
     const top = (A.lb && A.lb.top) || [];
     if (!top.length){ box.innerHTML = '<p class="empty">Noch niemand hat Punkte. Spiel das erste Duell!</p>'; return; }
     const medal = r => r === 1 ? '🥇' : r === 2 ? '🥈' : r === 3 ? '🥉' : r;
@@ -1800,10 +1823,25 @@
       box.appendChild(el);
     }
   }
-  $('aRankBtn').onclick = async () => {
-    const show = $('aRankCard').hidden;
-    $('aRankCard').hidden = !show;
-    if (show){ renderRank(); await refreshStats(); $('aRankCard').scrollIntoView({ behavior:'smooth', block:'start' }); }
+  $('aRankBtn').onclick = () => { showMode('ranks'); window.scrollTo(0, 0); };
+  // ---------- Ranglisten-Tab ----------
+  function renderRanksTab(){
+    const cur = levelOf(myXP), nx = nextLevel(myXP);
+    $('rkLvName').textContent = 'Level ' + cur.n + ' · ' + cur.name;
+    $('rkLvXp').textContent = myXP + ' Punkte' + (A.lb && A.lb.me && A.lb.me.rank ? ' · Platz ' + A.lb.me.rank : '');
+    $('rkLvBar').style.width = (nx ? Math.round(100 * (myXP - cur.xp) / (nx.xp - cur.xp)) : 100) + '%';
+    $('rkLvNext').textContent = $('aLvNext').textContent;
+    if (A.lb) renderRank($('rkAll'));
+    const s = SZ.data && SZ.data.active;
+    $('rkSeasonCard').hidden = !s;
+    if (s){
+      $('rkSeasonTitle').innerHTML = '🗓️ ' + esc(s.title) + '<span class="tiny" style="display:block;font-weight:500;margin-top:2px">' + timeLeft(s.ends_at) + ' · ' + s.players + (s.players === 1 ? ' Spieler' : ' Spieler') + '</span>';
+      boardRows($('rkSeason'), s.board, 'Noch niemand hat diese Woche gespielt – sei der Erste im Solo-Tab!');
+    }
+  }
+  window.ranksEnter = async () => {
+    try { await asyncInit(); await Promise.all([refreshStats(), refreshSeason()]); renderRanksTab(); }
+    catch(e){ $('rkAll').innerHTML = '<p class="empty">' + esc(errText(e)) + '</p>'; }
   };
   $('aRankClose').onclick = () => { $('aRankCard').hidden = true; };
   function gameLine(g){
