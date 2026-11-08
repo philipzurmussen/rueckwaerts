@@ -271,7 +271,7 @@
   .score{position:relative;overflow:hidden;align-self:center;width:min(100%,280px);padding:34px 16px 26px;background:#6a35d4;border:4px solid var(--acc);border-radius:24px 24px 100px 100px;box-shadow:0 6px 0 #0e0722,inset 0 -8px 0 rgba(0,0,0,.15);gap:2px}
   .score.show{animation:shieldin .55s cubic-bezier(.3,1.5,.5,1) both}
   @keyframes shieldin{0%{transform:scale(.6);opacity:0}70%{transform:scale(1.05);opacity:1}100%{transform:scale(1)}}
-  .score .rays{position:absolute;left:50%;top:45%;width:600px;height:600px;margin:-300px 0 0 -300px;border-radius:50%;background:repeating-conic-gradient(rgba(255,210,63,.14) 0deg 9deg,transparent 9deg 18deg);animation:rays 30s linear infinite;pointer-events:none}
+  .score .rays,.dshield .rays{position:absolute;left:50%;top:45%;width:600px;height:600px;margin:-300px 0 0 -300px;border-radius:50%;background:repeating-conic-gradient(rgba(255,210,63,.14) 0deg 9deg,transparent 9deg 18deg);animation:rays 30s linear infinite;pointer-events:none}
   @keyframes rays{to{transform:rotate(360deg)}}
   .score > :not(.rays){position:relative}
   .score .pct{font-size:12px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:#e9deff}
@@ -285,6 +285,29 @@
   @media (prefers-reduced-motion: reduce){
     #splash .stripes,#splash .smascot,#splash .slogo,.score .rays,.score.show,.reveal.ribbon,.stars span.lit{animation:none}
   }
+
+  /* ---------- Duell-Runde: Ergebnis-Show ---------- */
+  .duelshow{display:flex;flex-direction:column;gap:14px}
+  .dshield{position:relative;overflow:hidden;display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);align-items:center;gap:6px;padding:26px 10px 30px;background:#6a35d4;border:4px solid var(--acc);border-radius:24px 24px 80px 80px;box-shadow:0 6px 0 #0e0722,inset 0 -8px 0 rgba(0,0,0,.15);animation:shieldin .55s cubic-bezier(.3,1.5,.5,1) both}
+  .dshield > :not(.rays){position:relative}
+  .dside{display:flex;flex-direction:column;align-items:center;gap:2px;min-width:0}
+  .dside .ava{margin:0 0 4px;position:relative;box-shadow:0 0 0 3px #0e0722}
+  .dside.win .ava{box-shadow:0 0 0 3px #0e0722,0 0 0 7px var(--acc)}
+  .dside.win .ava::before{content:"👑";position:absolute;top:-26px;left:50%;font-size:24px;transform:translateX(-50%) rotate(-12deg);animation:crown .5s cubic-bezier(.3,1.6,.5,1) both}
+  @keyframes crown{from{opacity:0;transform:translateX(-50%) translateY(10px) scale(.3)}}
+  .dside .nm{font-size:14px;font-weight:800;color:#e9deff;max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .dpct{font-size:50px;font-weight:800;line-height:1.05;color:#fff;-webkit-text-stroke:5px #0e0722;paint-order:stroke fill;text-shadow:0 5px 0 #0e0722;font-variant-numeric:tabular-nums}
+  .dpct small{font-size:24px}
+  .dside .stars{font-size:28px;gap:4px;margin-top:4px}
+  .dside.lose{opacity:.75}
+  .dvs{font-size:22px;font-weight:800;color:var(--acc);-webkit-text-stroke:4px #0e0722;paint-order:stroke fill;text-shadow:0 3px 0 #0e0722}
+  .duelshow .reveal.ribbon{margin-bottom:-30px}
+  .duelshow .rlabel{margin:0;font-size:12px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--mute)}
+  .duelshow .reacts{gap:8px}
+  .duelshow .reacts button{background:#fff;border:3px solid #0e0722;box-shadow:0 4px 0 #0e0722;border-radius:16px;font-size:24px;padding:7px 10px}
+  .duelshow .reacts button:active{transform:translateY(3px);box-shadow:0 1px 0 #0e0722}
+  .duelshow .reacts button.sent{background:var(--acc)}
+  @media (prefers-reduced-motion: reduce){.dshield,.dside.win .ava::before{animation:none}}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -2163,10 +2186,9 @@
     else if (st === 'reveal'){
       const r = g.rounds.find(x => x.round_no === A.revealRound) || cr;
       const a = r && r.my ? r.my.stars : 0, b = r && r.their && !r.their.hidden ? r.their.stars : 0;
-      msg = (a > b ? 'Runde an dich! 🎉' : a < b ? 'Runde an ' + opName + '!' : 'Unentschieden!') +
-        (r && r.word_text ? '<span class="wordwas">Das Wort war: „' + esc(r.word_text) + '“</span>' : '');
+      msg = (r && r.word_text ? 'Das Wort war: <span class="wordwas" style="display:inline">„' + esc(r.word_text) + '“</span>' : 'Runde ' + (r ? r.round_no : '') + ' ist durch!');
       if (g.status === 'done') msg += '<br>' + finalLine(g, sMe, sOp, opName);
-      renderReveal(r);
+      renderReveal(r, a > b ? 'Runde an dich! 🎉' : a < b ? 'Runde an ' + opName + '!' : 'Unentschieden!', a, b);
     }
     else if (st === 'set') msg = '<span class="tiny">Schritt 1 von 2</span><br>' + (A.chosen ? 'Sag „' + esc(A.chosen) + '“ – tipp auf den roten Knopf.' : 'Runde ' + (g.cur_round + 1) + ': Gib ein Wort vor – such dir eins aus oder denk dir eins aus.');
     else if (st === 'own') msg = '<span class="tiny">Schritt 2 von 2</span><br>Jetzt du selbst: Hör dir dein Wort rückwärts an und sprich es nach. Danach geht dein Zug raus' + (op ? '.' : ' und du kannst die Einladung schicken.');
@@ -2226,11 +2248,98 @@
     }
     return el;
   }
-  function renderReveal(r){
+  // Duell-Runde als Show: beide Prozentzahlen zählen hoch, Sterne ploppen, Krone + Konfetti
+  function countUp(el, goal, dur, done){
+    if (RM){ el.textContent = goal; done && done(); return; }
+    const t0 = performance.now();
+    const step = now => {
+      if (!el.isConnected) return;
+      const p = Math.min(1, (now - t0) / dur);
+      el.textContent = Math.round(goal * (1 - Math.pow(1 - p, 3)));
+      if (p < 1) requestAnimationFrame(step); else done && done();
+    };
+    el.textContent = '0'; requestAnimationFrame(step);
+  }
+  function renderReveal(r, verdict, a, b){
     const box = $('aReveal'); box.innerHTML = '';
     if (!r) return;
-    box.appendChild(resultRow(A.game, r, true));
-    box.appendChild(resultRow(A.game, r, false));
+    const g = A.game, key = g.id + ':' + r.round_no, fresh = A.shownReveal !== key;
+    A.shownReveal = key;
+    const side = (mine) => {
+      const p = mine ? (g.me || profile) : g.opponent, t = mine ? r.my : r.their, ok = t && !t.hidden;
+      const res = !ok ? '' : mine ? (a > b ? ' win' : a < b ? ' lose' : '') : (b > a ? ' win' : b < a ? ' lose' : '');
+      return '<div class="dside' + res + '">' + avaHTML(esc(p ? p.avatar : '🙂'), p ? p.color : COLORS[3]) +
+        '<div class="nm">' + esc(mine ? 'Du' : (p ? p.nickname : 'Gegner')) + '</div>' +
+        '<div class="dpct"><span data-goal="' + (ok ? Math.round(t.sim * 100) : '') + '">' + (ok ? Math.round(t.sim * 100) : '?') + '</span><small> %</small></div>' +
+        '<div class="stars" data-n="' + (ok ? t.stars : 0) + '"><span>★</span><span>★</span><span>★</span></div></div>';
+    };
+    const w = document.createElement('div'); w.className = 'duelshow';
+    w.innerHTML = '<p class="reveal ribbon">' + verdict + '</p>' +
+      '<div class="dshield"' + (fresh ? '' : ' style="animation:none"') + '><div class="rays" aria-hidden="true"></div>' + side(true) + '<div class="dvs">VS</div>' + side(false) + '</div>';
+    // Abspielen
+    const btns = document.createElement('div'); btns.className = 'btns';
+    [[true, '▶ Dein Ergebnis'], [false, '▶ ' + (g.opponent ? g.opponent.nickname : 'Gegner')]].forEach(([mine, label]) => {
+      const t = mine ? r.my : r.their, bt = document.createElement('button');
+      const locked = !t || t.hidden || !t.path;
+      bt.className = 'play' + (mine ? ' main alt' : ' main');
+      bt.textContent = locked && t && !t.hidden ? '🔒 Zu weit weg' : label;
+      bt.disabled = locked;
+      if (!locked) bt.onclick = () => playPath(t.path, true);
+      btns.appendChild(bt);
+    });
+    w.appendChild(btns);
+    // Reaktionen an den Gegner
+    if (g.opponent && r.their && !r.their.hidden){
+      const lab = document.createElement('p'); lab.className = 'rlabel'; lab.textContent = 'Reagieren';
+      const rx = document.createElement('div'); rx.className = 'reacts';
+      REACTS.forEach(e => {
+        const bt = document.createElement('button'); bt.textContent = e; bt.setAttribute('aria-label', 'Reaktion ' + e);
+        if ((r.sent || []).includes(e)) bt.className = 'sent';
+        bt.onclick = async () => {
+          floatEmoji(e); bt.className = 'sent'; buzz(20);
+          try { await rpc('react', { p_game: g.id, p_round: r.round_no, p_target: g.opponent.id, p_emoji: e }); } catch(err){}
+        };
+        rx.appendChild(bt);
+      });
+      w.appendChild(lab); w.appendChild(rx);
+    }
+    if (r.got && r.got.length){
+      const ch = document.createElement('div'); ch.className = 'chips';
+      ch.innerHTML = r.got.map(e => '<span>' + e + '</span>').join(''); w.appendChild(ch);
+    }
+    box.appendChild(w);
+
+    const sides = [...w.querySelectorAll('.dside')];
+    const lightStars = (sd, anim, delay) => {
+      const n = +sd.querySelector('.stars').dataset.n, sp = sd.querySelectorAll('.stars span');
+      for (let i = 0; i < n; i++){
+        if (!anim) sp[i].classList.add('lit');
+        else setTimeout(() => { if (sp[i].isConnected){ sp[i].classList.add('lit'); buzz(25); } }, delay + 260 * i);
+      }
+      return n;
+    };
+    const winners = sides.filter(sd => sd.classList.contains('win'));
+    if (!fresh || RM){ sides.forEach(sd => lightStars(sd, false)); return; }
+    // Krone erst am Ende zeigen
+    winners.forEach(sd => sd.classList.remove('win'));
+    const ribbon = w.querySelector('.ribbon'); ribbon.style.visibility = 'hidden';
+    let pending = sides.length;
+    sides.forEach(sd => {
+      const num = sd.querySelector('[data-goal]'), goal = num.dataset.goal;
+      const after = () => { if (--pending === 0) finale(); };
+      if (goal === '') after(); else countUp(num, +goal, 900, after);
+    });
+    function finale(){
+      const nMe = lightStars(sides[0], true, 80);
+      const nOp = lightStars(sides[1], true, 80 + 260 * nMe + 120);
+      const t = 80 + 260 * (nMe + nOp) + 260;
+      setTimeout(() => {
+        if (!w.isConnected) return;
+        winners.forEach(sd => sd.classList.add('win'));
+        ribbon.style.visibility = ''; ribbon.style.animation = 'none'; void ribbon.offsetWidth; ribbon.style.animation = '';
+        if (a > b || (a === b && a >= 2)) confetti(a === 3 ? 90 : 55);
+      }, t);
+    }
   }
   function renderRounds(){
     const g = A.game, box = $('aRounds'); box.innerHTML = '';
