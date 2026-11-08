@@ -554,14 +554,160 @@ grant execute on function public.save_profile(text,text,text), public.start_game
   public.leave_game(uuid), public.my_games(), public.game_detail(uuid) to authenticated;
 grant select on public.profiles, public.games, public.rounds, public.attempts, public.reactions to authenticated;
 
+-- ---------- Seasons (Wochen-Challenges) -----------------------------
+-- Philip legt pro Woche eine Kategorie mit eingesprochenen Begriffen an,
+-- alle spielen dieselben Aufnahmen (ein Versuch je Begriff).
+
+create table if not exists public.admins (uid uuid primary key);
+alter table public.admins enable row level security;
+
+create table if not exists public.seasons (
+  id          uuid primary key,
+  title       text not null check (char_length(title) between 1 and 40),
+  topic       text check (char_length(topic) <= 40),
+  starts_at   timestamptz not null default now(),
+  ends_at     timestamptz not null,
+  created_at  timestamptz not null default now()
+);
+create table if not exists public.season_words (
+  season_id  uuid not null references public.seasons(id) on delete cascade,
+  idx        int  not null,
+  word_text  text not null check (char_length(word_text) between 1 and 40),
+  path       text not null,
+  primary key (season_id, idx)
+);
+create table if not exists public.season_attempts (
+  season_id  uuid not null,
+  idx        int  not null,
+  player     uuid not null references public.profiles(id) on delete cascade,
+  sim        real not null check (sim between 0 and 1),
+  stars      int  not null check (stars between 0 and 3),
+  created_at timestamptz not null default now(),
+  primary key (season_id, idx, player),
+  foreign key (season_id, idx) references public.season_words(season_id, idx) on delete cascade
+);
+alter table public.seasons         enable row level security;
+alter table public.season_words    enable row level security;
+alter table public.season_attempts enable row level security;
+
+create or replace function public.is_admin() returns boolean
+language sql stable security definer set search_path = public as $$
+  select exists (select 1 from public.admins where uid = auth.uid());
+$$;
+
+create or replace function public.whoami() returns json
+language sql stable security definer set search_path = public as $$
+  select json_build_object('uid', auth.uid(), 'admin', public.is_admin());
+$$;
+
+-- Neue Season anlegen (nur Admin). p_words: [{"text": "...", "path": "season/<id>/..."}]
+create or replace function public.create_season(p_id uuid, p_title text, p_topic text, p_ends timestamptz, p_words json) returns json
+language plpgsql security definer set search_path = public as $$
+declare w json; i int := 0; prefix text := 'season/' || p_id::text || '/';
+begin
+  if not public.is_admin() then raise exception 'Nur für Admins'; end if;
+  if json_array_length(p_words) < 3 or json_array_length(p_words) > 20 then raise exception 'Bitte 3 bis 20 Begriffe'; end if;
+  if p_ends <= now() then raise exception 'Das Enddatum liegt in der Vergangenheit'; end if;
+  insert into public.seasons(id, title, topic, ends_at) values (p_id, trim(p_title), nullif(trim(coalesce(p_topic, '')), ''), p_ends);
+  for w in select * from json_array_elements(p_words) loop
+    i := i + 1;
+    if left(w->>'path', length(prefix)) <> prefix then raise exception 'Aufnahme % fehlt', i; end if;
+    insert into public.season_words(season_id, idx, word_text, path) values (p_id, i, trim(w->>'text'), w->>'path');
+  end loop;
+  return json_build_object('ok', true, 'id', p_id);
+end $$;
+
+-- Season vorzeitig beenden oder löschen (nur Admin)
+create or replace function public.end_season(p_id uuid) returns json
+language plpgsql security definer set search_path = public as $$
+begin
+  if not public.is_admin() then raise exception 'Nur für Admins'; end if;
+  update public.seasons set ends_at = least(ends_at, now()) where id = p_id;
+  return json_build_object('ok', true);
+end $$;
+
+-- Rangliste einer Season
+create or replace function public.season_board(p_id uuid, p_limit int default 50) returns json
+language sql stable security definer set search_path = public as $$
+  with t as (
+    select player, sum(stars) as st, sum(sim) as sm, count(*) as n
+    from public.season_attempts where season_id = p_id group by player
+  ), r as (
+    select t.*, rank() over (order by st desc, sm desc) as rk from t
+  )
+  select coalesce(json_agg(json_build_object('rank', r.rk, 'nickname', p.nickname, 'avatar', p.avatar, 'color', p.color,
+                                             'stars', r.st, 'played', r.n, 'me', r.player = auth.uid()) order by r.rk), '[]'::json)
+  from (select * from r order by rk limit p_limit) r join public.profiles p on p.id = r.player;
+$$;
+
+-- Aktuelle Season mit meinem Stand (Begriffe erst nach eigenem Versuch sichtbar)
+create or replace function public.current_season() returns json
+language plpgsql stable security definer set search_path = public as $$
+declare me uuid := auth.uid(); s public.seasons; l public.seasons; res json; last json;
+begin
+  select * into l from public.seasons where ends_at <= now() order by ends_at desc limit 1;
+  if found then
+    last := json_build_object('id', l.id, 'title', l.title, 'top', public.season_board(l.id, 3));
+  end if;
+  select * into s from public.seasons where starts_at <= now() and ends_at > now() order by starts_at desc limit 1;
+  if not found then return json_build_object('active', null, 'last', last); end if;
+  with r as (
+    select player, rank() over (order by sum(stars) desc, sum(sim) desc) as rk, sum(stars) as st
+    from public.season_attempts where season_id = s.id group by player
+  )
+  select json_build_object(
+    'active', json_build_object(
+      'id', s.id, 'title', s.title, 'topic', s.topic, 'ends_at', s.ends_at,
+      'words', (select json_agg(json_build_object(
+                  'idx', w.idx, 'path', w.path,
+                  'word_text', case when a.player is not null then w.word_text end,
+                  'my', case when a.player is null then null else json_build_object('sim', a.sim, 'stars', a.stars) end
+                ) order by w.idx)
+                from public.season_words w
+                left join public.season_attempts a on a.season_id = w.season_id and a.idx = w.idx and a.player = me
+                where w.season_id = s.id),
+      'board', public.season_board(s.id, 10),
+      'me', json_build_object('rank', (select rk from r where player = me), 'stars', coalesce((select st from r where player = me), 0)),
+      'players', (select count(*) from r)
+    ),
+    'last', last
+  ) into res;
+  return res;
+end $$;
+
+-- Einen Begriff der Season spielen (ein Versuch)
+create or replace function public.season_attempt(p_season uuid, p_idx int, p_sim real, p_stars int) returns json
+language plpgsql security definer set search_path = public as $$
+declare me uuid := auth.uid(); t text;
+begin
+  if me is null or not exists (select 1 from public.profiles where id = me) then raise exception 'Bitte zuerst ein Profil anlegen'; end if;
+  if not exists (select 1 from public.seasons where id = p_season and starts_at <= now() and ends_at > now()) then
+    raise exception 'Diese Season ist vorbei';
+  end if;
+  select word_text into t from public.season_words where season_id = p_season and idx = p_idx;
+  if not found then raise exception 'Begriff nicht gefunden'; end if;
+  if exists (select 1 from public.season_attempts where season_id = p_season and idx = p_idx and player = me) then
+    raise exception 'Diesen Begriff hast du schon gespielt';
+  end if;
+  insert into public.season_attempts(season_id, idx, player, sim, stars)
+    values (p_season, p_idx, me, greatest(0, least(1, p_sim)), greatest(0, least(3, p_stars)));
+  return json_build_object('ok', true, 'word_text', t);
+end $$;
+
+revoke all on function public.is_admin(), public.whoami(), public.create_season(uuid,text,text,timestamptz,json),
+  public.end_season(uuid), public.season_board(uuid,int), public.current_season(), public.season_attempt(uuid,int,real,int) from public, anon;
+grant execute on function public.is_admin(), public.whoami(), public.create_season(uuid,text,text,timestamptz,json),
+  public.end_season(uuid), public.current_season(), public.season_attempt(uuid,int,real,int) to authenticated;
+
 -- ---------- Punkte & Rangliste ----------------------------------------
--- Punkte = alle Sterne aus Duellen (mit Gegner) + 5 je gewonnenem Duell
+-- Punkte = alle Sterne aus Duellen (mit Gegner) und Seasons + 5 je gewonnenem Duell
 
 create or replace function public.player_xp(p uuid) returns int
 language sql stable security definer set search_path = public as $$
   select (
     coalesce((select sum(a.stars) from public.attempts a join public.games g on g.id = a.game_id
               where a.player = p and g.player_b is not null), 0)
+    + coalesce((select sum(stars) from public.season_attempts where player = p), 0)
     + 5 * (select count(*) from public.games g
            where g.status = 'done' and g.player_b is not null and p in (g.player_a, g.player_b)
              and ( (g.forfeit_by is not null and g.forfeit_by <> p)
@@ -602,11 +748,13 @@ on conflict (id) do nothing;
 
 drop policy if exists "Ollah Audio hochladen" on storage.objects;
 create policy "Ollah Audio hochladen" on storage.objects for insert to authenticated
-  with check (bucket_id = 'audio' and public.is_player(((storage.foldername(name))[1])::uuid));
+  with check (bucket_id = 'audio' and case when (storage.foldername(name))[1] = 'season' then public.is_admin()
+                                           else public.is_player(((storage.foldername(name))[1])::uuid) end);
 
 drop policy if exists "Ollah Audio lesen" on storage.objects;
 create policy "Ollah Audio lesen" on storage.objects for select to authenticated
-  using (bucket_id = 'audio' and public.is_player(((storage.foldername(name))[1])::uuid));
+  using (bucket_id = 'audio' and case when (storage.foldername(name))[1] = 'season' then true
+                                      else public.is_player(((storage.foldername(name))[1])::uuid) end);
 
 -- ---------- Live-Aktualisierung --------------------------------------
 

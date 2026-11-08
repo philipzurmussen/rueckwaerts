@@ -169,6 +169,19 @@
   .rank .nm2 b{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .rank .nm2 small{color:var(--mute);font-size:12px}
   .rank .xp{font-weight:800;color:var(--acc)}
+  .card.season{background:linear-gradient(135deg,#3a1f6b,#2a1a4f);box-shadow:inset 0 0 0 2px rgba(255,210,63,.35)}
+  .sres{display:flex;flex-direction:column;align-items:center;gap:6px;padding:12px;border-radius:16px;background:rgba(0,0,0,.2)}
+  .sres .stars{font-size:38px}
+  .strow{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:8px;border-radius:14px;background:rgba(0,0,0,.2)}
+  .strow .field{padding:10px;font-size:16px;flex:1 1 calc(100% - 40px);min-width:0}
+  .strow canvas{order:2;flex:1 1 40%;min-width:0;height:44px;border-radius:8px}
+  .strow .recbtn{order:1}
+  .strow .mini{order:3}
+  .strow .recbtn{width:44px;height:44px;box-shadow:0 3px 0 #b8243f}
+  .strow .recbtn .dot{width:14px;height:14px}
+  .strow .recbtn.on .dot{width:13px;height:13px}
+  .strow .mini{flex:none;border:0;border-radius:10px;background:rgba(255,255,255,.1);color:var(--ink);font-size:16px;padding:8px 10px;cursor:pointer}
+  .strow .ok{flex:none;width:18px;text-align:center}
   .ghead{margin:6px 0 0;font-size:13px;font-weight:800;color:var(--mute);text-transform:uppercase;letter-spacing:1px}
   .rnd{display:flex;flex-direction:column;gap:8px;padding:12px;border-radius:16px;background:rgba(0,0,0,.18)}
   .rnd .rt{display:flex;justify-content:space-between;align-items:center;gap:8px}
@@ -249,6 +262,12 @@
       <button class="play" id="aRankBtn">🏆 Rangliste</button>
       <p class="status" id="aStatus"></p>
     </section>
+    <section class="card season" id="sCard" hidden>
+      <div class="head"><div class="num">🗓️</div><div><h2 id="sTitle"></h2><p id="sSub"></p></div></div>
+      <div class="dots" id="sDots"></div>
+      <button class="play main" id="sPlay">Mitmachen</button>
+      <div id="sMini" class="stack"></div>
+    </section>
     <section class="card" id="aRankCard" hidden>
       <div class="lvtop" style="display:flex;justify-content:space-between;align-items:center">
         <h2 style="margin:0;font-size:18px;font-weight:800">🏆 Rangliste</h2>
@@ -260,6 +279,52 @@
     <section class="card" id="aListCard">
       <div id="aList" class="stack"><p class="empty">Noch keine Duelle.</p></div>
     </section>
+
+    <div class="view" id="sGame" hidden>
+      <button class="reset" id="sBack" style="align-self:flex-start">← Zurück</button>
+      <section class="card">
+        <div class="head"><div class="num">🗓️</div><div><h2 id="sTitle2"></h2><p id="sSub2"></p></div></div>
+        <div class="dots" id="sDots2"></div>
+        <p class="msg" id="sMsg"></p>
+        <div id="sStep" class="stack" hidden>
+          <div class="row">
+            <button class="recbtn" id="sRec" aria-label="Versuch aufnehmen"><span class="dot"></span></button>
+            <canvas id="cvS"></canvas>
+          </div>
+          <div class="btns"><button class="play main" id="sRef">▶ Begriff rückwärts</button></div>
+          <input type="file" accept="audio/*" capture id="fileS">
+        </div>
+        <div id="sResult" class="stack" hidden></div>
+        <button class="play main" id="sNext" hidden>Nächster Begriff ➜</button>
+      </section>
+      <section class="card">
+        <h2 style="margin:0;font-size:18px;font-weight:800">🏆 Wochen-Rangliste</h2>
+        <div id="sBoard" class="stack"></div>
+      </section>
+    </div>
+
+    <div class="view" id="studio" hidden>
+      <button class="reset" id="stBack" style="align-self:flex-start">← Zurück</button>
+      <section class="card">
+        <div class="head"><div class="num">🎛️</div><div><h2>Season-Studio</h2><p>Neue Wochen-Challenge anlegen</p></div></div>
+        <div id="stNoAdmin" class="stack" hidden></div>
+        <div id="stForm" class="stack" hidden>
+          <input class="field" id="stTitle" maxlength="40" placeholder="Titel, z. B. Köln-Woche">
+          <div class="topics" id="stTopics"></div>
+          <label class="tiny">Ende der Season</label>
+          <input class="field" id="stEnd" type="datetime-local">
+          <p class="tiny">Begriffe eintragen und jeweils selbst einsprechen (🎙 tippen = Start, nochmal = Stopp). Deine Aufnahme ist die Vorgabe für alle.</p>
+          <div id="stWords" class="stack"></div>
+          <div class="btns">
+            <button class="play" id="stAdd">+ Begriff</button>
+            <button class="play" id="stFill">🎲 Vorschläge</button>
+          </div>
+          <button class="play main alt" id="stPublish">Season veröffentlichen 🚀</button>
+          <p class="status" id="stStatus"></p>
+        </div>
+        <div id="stRunning" class="stack" hidden></div>
+      </section>
+    </div>
 
     <div class="view" id="aGame" hidden>
       <button class="reset" id="aBack" style="align-self:flex-start">← Alle Duelle</button>
@@ -417,7 +482,8 @@
     T: { cv:$('cvT'), rec:$('tRec'), file:$('fileT') },
     X: { cv:$('cvX'), rec:$('xRec'), file:$('fileX') },
     Y: { cv:$('cvY'), rec:$('yRec'), file:$('fileY') },
-    Z: { cv:$('cvZ'), rec:$('zRec'), file:$('fileZ') }
+    Z: { cv:$('cvZ'), rec:$('zRec'), file:$('fileZ') },
+    S: { cv:$('cvS'), rec:$('sRec'), file:$('fileS') }
   };
 
   let micMode = !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia && window.MediaRecorder);
@@ -736,6 +802,8 @@
       if (!buf){ hint(key, 'Da war nichts zu hören – nochmal, etwas lauter.'); return; }
       if (key === 'W' || key === 'T'){ duelRecorded(key, buf); return; }
       if (key === 'X' || key === 'Y' || key === 'Z'){ asyncRecorded(key, buf); return; }
+      if (key === 'S'){ seasonRecorded(buf); return; }
+      if (key[0] === 'R'){ studioRecorded(+key.slice(1), buf); return; }
       const s = slots[key];
       s.buf = buf; s.rev = reverse(buf);
       s.r.disabled = s.f.disabled = false;
@@ -757,7 +825,7 @@
       hint(key, 'Die Aufnahme konnte nicht gelesen werden.');
     }
   }
-  function hint(key, msg){ if (key === 'X' || key === 'Y' || key === 'Z'){ toast(msg); return; } $(key === 'W' || key === 'T' ? 'lobbyStatus' : 'reveal').textContent = msg; if (key === 'W' || key === 'T') $('dMsg').textContent = msg; }
+  function hint(key, msg){ if (!['A','B','W','T'].includes(key)){ toast(msg); return; } $(key === 'W' || key === 'T' ? 'lobbyStatus' : 'reveal').textContent = msg; if (key === 'W' || key === 'T') $('dMsg').textContent = msg; }
   const cheers = ['Und? Klingt’s wie das Original? 😄','Erkennst du dein Wort? 🎉','Gänsehaut oder Gelächter? 🤯','Nochmal? Es wird besser! 🔁'];
   const pick = () => cheers[Math.floor(Math.random()*cheers.length)];
 
@@ -1446,6 +1514,7 @@
     try { navigator.setAppBadge && (turns.size ? navigator.setAppBadge(turns.size) : navigator.clearAppBadge()); } catch(e){}
     renderList();
     refreshStats();
+    refreshSeason();
   }
 
   // ---------- Punkte, Level, Rangliste ----------
@@ -1595,17 +1664,13 @@
   async function openGame(id){
     stopPlay();
     A.gid = id; A.stage = 'load'; A.draft = A.draftRev = A.wordNet = null; A.chosen = null; A.choices = [];
-    $('aHome').hidden = true; $('aListCard').hidden = true; $('aRankCard').hidden = true; $('aGame').hidden = false;
+    hideAsyncViews(); $('aGame').hidden = false;
     $('aMsg').textContent = 'Lade …';
     ['aStepAnswer','aStepSet','aStepOwn','aReveal','aNext','aShare'].forEach(k => $(k).hidden = true);
     window.scrollTo(0, 0);
     await loadGame(id);
   }
-  function backToList(){
-    stopPlay(); A.gid = null; A.game = null;
-    $('aGame').hidden = true; $('aHome').hidden = false; $('aListCard').hidden = false;
-    refreshList();
-  }
+  function backToList(){ goHome(); }
   $('aBack').onclick = backToList;
 
   async function loadGame(id, silent){
@@ -1886,6 +1951,277 @@
     });
   });
 
+  // =====================================================================
+  // SEASONS – Wochen-Challenges mit Philips eingesprochenen Begriffen
+  // =====================================================================
+  const SZ = { data:null, ref:null, busy:false, result:null };
+  function hideAsyncViews(){
+    ['aHome','aListCard','aRankCard','sCard','sGame','studio','aGame'].forEach(k => $(k).hidden = true);
+  }
+  function goHome(){
+    stopPlay(); A.gid = null; A.game = null;
+    hideAsyncViews();
+    $('aHome').hidden = false; $('aListCard').hidden = false;
+    renderSeasonCard();
+    refreshList();
+  }
+  async function refreshSeason(){
+    try { SZ.data = await rpc('current_season'); } catch(e){ return; }
+    renderSeasonCard();
+    if (!$('sGame').hidden) renderSeason();
+  }
+  function timeLeft(iso){
+    const ms = new Date(iso) - Date.now();
+    if (ms <= 0) return 'beendet';
+    const d = Math.floor(ms / 864e5), h = Math.floor(ms % 864e5 / 36e5);
+    if (d > 0) return 'noch ' + d + (d > 1 ? ' Tage' : ' Tag') + (h ? ' ' + h + ' Std.' : '');
+    if (h > 0) return 'noch ' + h + ' Std.';
+    return 'noch ' + Math.max(1, Math.ceil(ms / 6e4)) + ' Min.';
+  }
+  function seasonDots(box, s, cur){
+    box.innerHTML = '';
+    s.words.forEach(w => {
+      const sp = document.createElement('span');
+      if (w.my) sp.className = 'done'; else if (w.idx === cur) sp.className = 'now';
+      box.appendChild(sp);
+    });
+  }
+  function boardRows(box, list, empty){
+    box.innerHTML = '';
+    if (!list || !list.length){ box.innerHTML = '<p class="empty">' + empty + '</p>'; return; }
+    const medal = r => r === 1 ? '🥇' : r === 2 ? '🥈' : r === 3 ? '🥉' : r;
+    list.forEach(p => {
+      const el = document.createElement('div'); el.className = 'rank' + (p.me ? ' me' : '');
+      el.innerHTML = '<div class="no">' + medal(p.rank) + '</div>' + avaHTML(esc(p.avatar), p.color) +
+        '<div class="nm2"><b>' + esc(p.nickname) + (p.me ? ' (du)' : '') + '</b><small>' + p.played + ' gespielt</small></div>' +
+        '<div class="xp">' + p.stars + ' ★</div>';
+      box.appendChild(el);
+    });
+  }
+  function renderSeasonCard(){
+    const d = SZ.data, s = d && d.active, card = $('sCard');
+    const onHome = !$('aHome').hidden;
+    if (!s){
+      if (d && d.last && d.last.top && d.last.top.length){
+        card.hidden = !onHome;
+        $('sTitle').textContent = 'Letzte Season: ' + d.last.title;
+        $('sSub').textContent = 'Die nächste Wochen-Challenge kommt bald.';
+        $('sDots').innerHTML = ''; $('sPlay').hidden = true;
+        boardRows($('sMini'), d.last.top, '');
+      } else card.hidden = true;
+      return;
+    }
+    card.hidden = !onHome;
+    const n = s.words.length, played = s.words.filter(w => w.my).length;
+    $('sTitle').textContent = 'Diese Woche: ' + s.title;
+    $('sSub').textContent = timeLeft(s.ends_at) + ' · ' + n + ' Begriffe · ein Versuch je Begriff';
+    seasonDots($('sDots'), s, null);
+    $('sPlay').hidden = false;
+    $('sPlay').textContent = played === 0 ? 'Mitmachen 🎙️' : played < n ? 'Weiterspielen (' + played + '/' + n + ')' : 'Ergebnis & Rangliste';
+    $('sMini').innerHTML = '<p class="tiny" style="text-align:center">' +
+      (s.me && s.me.rank ? 'Du: ' + s.me.stars + ' ★ · Platz ' + s.me.rank + ' von ' + s.players : (s.players ? s.players + (s.players === 1 ? ' Spieler' : ' Spieler') + ' schon dabei' : 'Sei der Erste!')) + '</p>';
+  }
+  const nextIdx = s => { const w = s.words.find(w => !w.my); return w ? w.idx : null; };
+  function openSeason(){
+    stopPlay(); hideAsyncViews(); $('sGame').hidden = false; SZ.result = null; window.scrollTo(0, 0);
+    renderSeason();
+  }
+  $('sPlay').onclick = openSeason;
+  $('sBack').onclick = goHome;
+  function renderSeason(){
+    const s = SZ.data && SZ.data.active;
+    if (!s){ toast('Diese Season ist vorbei'); goHome(); return; }
+    const n = s.words.length, idx = SZ.result ? SZ.result.idx : nextIdx(s);
+    $('sTitle2').textContent = s.title;
+    $('sSub2').textContent = timeLeft(s.ends_at) + (s.me && s.me.rank ? ' · du: ' + s.me.stars + ' ★, Platz ' + s.me.rank : '');
+    seasonDots($('sDots2'), s, idx);
+    $('sStep').hidden = !!SZ.result || !idx;
+    $('sResult').hidden = !SZ.result;
+    $('sNext').hidden = !(SZ.result && nextIdx(s));
+    if (SZ.result){
+      const r = SZ.result;
+      $('sMsg').innerHTML = ['Hmm… knapp daneben 🙈', 'Da ist was dran! 🙂', 'Richtig gut! 😄', 'Perfekt rückwärts! 🤯'][r.stars] +
+        (r.word ? '<span class="wordwas">Der Begriff war: „' + esc(r.word) + '“</span>' : '');
+      const box = $('sResult');
+      box.innerHTML = '<div class="sres"><div class="stars">' + [0,1,2].map(i => '<span class="' + (i < r.stars ? 'lit' : '') + '">★</span>').join('') + '</div><div class="pct">Ähnlichkeit ' + Math.round(r.sim * 100) + ' %</div></div>' +
+        '<div class="btns"><button class="play main alt" id="sMine">▶ Dein Ergebnis</button><button class="play" id="sOrig">▶ Original</button></div>';
+      $('sMine').onclick = () => play(null, r.rev);
+      $('sOrig').onclick = () => r.ref && play(null, r.ref.buf);
+      if (!nextIdx(s)) $('sMsg').innerHTML += '<br><span style="font-size:15px">Alle ' + n + ' Begriffe geschafft – ' + s.me.stars + ' von ' + (n * 3) + ' Sternen! 🎉</span>';
+    }
+    else if (idx){
+      const pos = s.words.findIndex(w => w.idx === idx) + 1;
+      $('sMsg').innerHTML = 'Begriff ' + pos + ' von ' + n + ': Hör ihn dir rückwärts an und sprich ihn nach. Ein Versuch!';
+      requestAnimationFrame(() => draw('S', SZ.ref && SZ.ref.idx === idx ? SZ.ref.rev : null));
+    }
+    else {
+      $('sMsg').innerHTML = 'Geschafft! 🎉 ' + s.me.stars + ' von ' + (n * 3) + ' Sternen' + (s.me.rank ? ' · Platz ' + s.me.rank + ' von ' + s.players : '') +
+        '<span class="wordwas">' + s.words.map(w => w.word_text).filter(Boolean).join(' · ') + '</span>';
+    }
+    boardRows($('sBoard'), s.board, 'Noch niemand hat gespielt.');
+  }
+  async function loadRef(idx){
+    const s = SZ.data.active, w = s.words.find(x => x.idx === idx);
+    if (!SZ.ref || SZ.ref.idx !== idx || SZ.ref.sid !== s.id){
+      const b = await getAudio(w.path);
+      SZ.ref = { sid: s.id, idx, buf: b, rev: reverse(b) };
+    }
+    return SZ.ref;
+  }
+  $('sRef').onclick = async () => {
+    const s = SZ.data && SZ.data.active; if (!s) return;
+    try { const r = await loadRef(nextIdx(s)); draw('S', r.rev); play('S', r.rev); }
+    catch(e){ toast('Begriff konnte nicht geladen werden'); }
+  };
+  async function seasonRecorded(buf){
+    const s = SZ.data && SZ.data.active;
+    if (!s || SZ.busy || SZ.result) return;
+    const idx = nextIdx(s); if (!idx) return;
+    SZ.busy = true; $('sMsg').textContent = 'Wird ausgewertet …';
+    try {
+      const net = await toNet(buf), ref = await loadRef(idx), rev = reverse(net);
+      const sim = similarity(ref.buf.getChannelData(0), rev.getChannelData(0), NET_SR), stars = starsFor(sim);
+      const r = await rpc('season_attempt', { p_season: s.id, p_idx: idx, p_sim: sim, p_stars: stars });
+      SZ.result = { idx, sim, stars, word: r && r.word_text, rev, ref };
+      play(null, rev);
+      await refreshSeason();
+      renderSeason();
+      refreshStats();
+    } catch(e){ toast(errText(e)); renderSeason(); }
+    finally { SZ.busy = false; }
+  }
+  $('sNext').onclick = () => { SZ.result = null; renderSeason(); window.scrollTo(0, 0); };
+  $('sRec').addEventListener('click', () => onRec('S'));
+  $('fileS').addEventListener('change', () => { const f = $('fileS').files && $('fileS').files[0]; if (f) handleAudio('S', f); $('fileS').value = ''; });
+
+  // ---------- Studio (nur Admin) ----------
+  const ST = { rows: [], topic: MIX };
+  function nextSunday(){
+    const d = new Date(); d.setDate(d.getDate() + ((7 - d.getDay()) % 7 || 7)); d.setHours(23, 59, 0, 0);
+    const p = n => String(n).padStart(2, '0');
+    return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate()) + 'T23:59';
+  }
+  async function openStudio(){
+    hideAsyncViews(); $('studio').hidden = false; stopPlay();
+    $('stNoAdmin').hidden = $('stForm').hidden = $('stRunning').hidden = true;
+    let w;
+    try { await asyncInit(); w = await rpc('whoami'); }
+    catch(e){ $('stNoAdmin').hidden = false; $('stNoAdmin').innerHTML = '<p class="status">' + esc(errText(e)) + '</p>'; return; }
+    if (!w.admin){
+      const sql = "insert into public.admins values ('" + w.uid + "');";
+      $('stNoAdmin').hidden = false;
+      $('stNoAdmin').innerHTML = '<p class="msg" style="font-size:16px">Dieses Gerät ist noch nicht als Admin freigeschaltet.</p>' +
+        '<p class="tiny">Führe diese eine Zeile einmal im Supabase SQL Editor aus und öffne das Studio dann neu:</p>' +
+        '<input class="field" readonly id="stSql" style="font-size:13px">' +
+        '<button class="play main" id="stCopy">Zeile kopieren</button>' +
+        '<button class="play" id="stRecheck">Freigeschaltet? Nochmal prüfen</button>';
+      $('stSql').value = sql;
+      $('stCopy').onclick = async () => { try { await navigator.clipboard.writeText(sql); toast('Kopiert'); } catch(e){ $('stSql').select(); } };
+      $('stRecheck').onclick = () => openStudio();
+      return;
+    }
+    $('stForm').hidden = false;
+    if (!$('stEnd').value) $('stEnd').value = nextSunday();
+    if (!ST.rows.length) fillRows(true);
+    renderStudio();
+    await refreshSeason();
+    const s = SZ.data && SZ.data.active;
+    if (s){
+      $('stRunning').hidden = false;
+      $('stRunning').innerHTML = '<p class="tiny">Läuft gerade: <b>' + esc(s.title) + '</b> (' + timeLeft(s.ends_at) + ', ' + s.players + ' Spieler). Eine neue Season ersetzt sie, sobald diese endet – oder beende sie jetzt.</p><button class="reset" id="stEndNow">Laufende Season jetzt beenden</button>';
+      let armed = 0;
+      $('stEndNow').onclick = async () => {
+        if (Date.now() - armed > 3000){ armed = Date.now(); $('stEndNow').textContent = 'Wirklich beenden? Nochmal tippen'; return; }
+        try { await rpc('end_season', { p_id: s.id }); toast('Season beendet'); await refreshSeason(); openStudio(); } catch(e){ toast(errText(e)); }
+      };
+    }
+  }
+  function studioPool(){ return ST.topic === MIX ? [...ALL_WORDS] : TOPICS[ST.topic]; }
+  function fillRows(initial){
+    const used = new Set(ST.rows.map(r => r.text));
+    const pool = studioPool().filter(w => !used.has(w));
+    if (initial) ST.rows = [];
+    while (ST.rows.length < 10) ST.rows.push({ text:'', buf:null });
+    ST.rows.forEach(r => {
+      if (!r.buf && pool.length) r.text = pool.splice(Math.floor(Math.random() * pool.length), 1)[0];
+    });
+  }
+  function renderStudio(){
+    const tr = $('stTopics'); tr.innerHTML = '';
+    [MIX, ...Object.keys(TOPICS)].forEach(t => {
+      const b = document.createElement('button'); b.textContent = t; if (t === ST.topic) b.className = 'on';
+      b.onclick = () => {
+        ST.topic = t;
+        if (!$('stTitle').value || $('stTitle').dataset.auto === '1'){ $('stTitle').value = t === MIX ? 'Bunte Woche' : t + '-Woche'; $('stTitle').dataset.auto = '1'; }
+        fillRows(false); renderStudio();
+      };
+      tr.appendChild(b);
+    });
+    const box = $('stWords'); box.innerHTML = '';
+    Object.keys(slots).filter(k => k[0] === 'R').forEach(k => delete slots[k]);
+    ST.rows.forEach((r, i) => {
+      const el = document.createElement('div'); el.className = 'strow';
+      el.innerHTML = '<span class="ok">' + (r.buf ? '✅' : (i + 1)) + '</span>' +
+        '<input class="field" maxlength="40" placeholder="Begriff">' +
+        '<canvas></canvas>' +
+        '<button class="recbtn" aria-label="Aufnehmen"><span class="dot"></span></button>' +
+        '<button class="mini" aria-label="Anhören">▶</button>' +
+        '<button class="mini" aria-label="Entfernen">✕</button>' +
+        '<input type="file" accept="audio/*" capture hidden>';
+      const [inp, file] = el.querySelectorAll('input');
+      const [rec, pl, del] = el.querySelectorAll('button');
+      inp.value = r.text;
+      inp.oninput = () => { r.text = inp.value; };
+      slots['R' + i] = { cv: el.querySelector('canvas'), rec, file };
+      rec.onclick = () => onRec('R' + i);
+      file.onchange = () => { const f = file.files && file.files[0]; if (f) handleAudio('R' + i, f); file.value = ''; };
+      pl.onclick = () => r.buf && play('R' + i, r.buf);
+      del.onclick = () => { ST.rows.splice(i, 1); renderStudio(); };
+      box.appendChild(el);
+      requestAnimationFrame(() => draw('R' + i, r.buf));
+    });
+  }
+  async function studioRecorded(i, buf){
+    const r = ST.rows[i]; if (!r) return;
+    $('stStatus').textContent = '';
+    r.buf = await toNet(buf);
+    renderStudio();
+    play('R' + i, r.buf);
+  }
+  $('stAdd').onclick = () => { ST.rows.push({ text:'', buf:null }); renderStudio(); };
+  $('stFill').onclick = () => { fillRows(false); renderStudio(); };
+  $('stTitle').addEventListener('input', () => { $('stTitle').dataset.auto = '0'; });
+  $('stBack').onclick = () => { try { history.replaceState(null, '', location.pathname); } catch(e){} goHome(); };
+  $('stPublish').onclick = async () => {
+    const st = t => $('stStatus').textContent = t;
+    const title = $('stTitle').value.trim();
+    const rows = ST.rows.filter(r => r.text.trim());
+    const ends = new Date($('stEnd').value);
+    if (!title) return st('Bitte einen Titel eingeben.');
+    if (rows.length < 3) return st('Bitte mindestens 3 Begriffe.');
+    const missing = rows.findIndex(r => !r.buf);
+    if (missing >= 0) return st('„' + rows[missing].text + '“ ist noch nicht eingesprochen.');
+    if (!(ends > new Date())) return st('Das Ende muss in der Zukunft liegen.');
+    $('stPublish').disabled = true; st('Lade Aufnahmen hoch …');
+    try {
+      const id = uuid(), words = [];
+      for (let i = 0; i < rows.length; i++){
+        const path = 'season/' + id + '/' + (i + 1) + '-' + uuid() + '.wav';
+        const { error } = await A.sb.storage.from('audio').upload(path, wavBlob(rows[i].buf), { contentType:'audio/wav', upsert:false });
+        if (error) throw error;
+        words.push({ text: rows[i].text.trim(), path });
+        st('Lade Aufnahmen hoch … ' + (i + 1) + '/' + rows.length);
+      }
+      await rpc('create_season', { p_id: id, p_title: title, p_topic: ST.topic === MIX ? null : ST.topic, p_ends: ends.toISOString(), p_words: words });
+      st(''); toast('Season „' + title + '“ ist live! 🚀');
+      ST.rows = []; $('stTitle').value = ''; $('stEnd').value = '';
+      await refreshSeason();
+      try { history.replaceState(null, '', location.pathname); } catch(e){}
+      goHome();
+    } catch(e){ st(errText(e)); }
+    finally { $('stPublish').disabled = false; }
+  };
+
   // Regelmäßig nachsehen, falls die Live-Aktualisierung mal hängt
   setInterval(() => {
     if (!document.hidden && !$('async').hidden && A.uid) scheduleRefresh();
@@ -1897,9 +2233,14 @@
     navigator.serviceWorker.register('sw.js').catch(() => {});
   }
 
-  // Über Einladungslink geöffnet? → Duell mit vorausgefülltem Code
+  // Über Einladungslink oder #studio geöffnet? (auch bei bereits offener Seite)
+  function handleHash(){
   const invite = (location.hash || '').slice(1).toUpperCase();
-  if (/^D[A-Z0-9]{6}$/.test(invite)){
+  if (invite === 'STUDIO'){
+    showMode('async');
+    openStudio();
+  }
+  else if (/^D[A-Z0-9]{6}$/.test(invite)){
     // Einladung zu einem rundenbasierten Duell
     A.pendingInvite = invite.slice(1);
     try { history.replaceState(null, '', location.pathname); } catch(e){}
@@ -1915,6 +2256,9 @@
     $('btnHost').hidden = true;
     try { history.replaceState(null, '', location.pathname); } catch(e){}
   }
+  }
+  handleHash();
+  window.addEventListener('hashchange', handleHash);
 
   // Ohne Mikro-API direkt Hinweis zeigen
   if (!micMode) $('note').classList.add('show');
