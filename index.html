@@ -376,7 +376,7 @@
   let ctx = null;
   const ac = () => {
     if (!ctx) ctx = new (window.AudioContext || window.webkitAudioContext)();
-    if (ctx.state === 'suspended') ctx.resume();
+    if (ctx.state !== 'running' && ctx.state !== 'closed'){ try { ctx.resume(); } catch(e){} }
     return ctx;
   };
 
@@ -473,22 +473,54 @@
   }
 
   // ---------- Abspielen ----------
+  // Wiedergabe über ein normales <audio>-Element: übersteht auf dem iPhone das
+  // Umschalten der Audio-Hardware beim Mikrofon, und die Waveform folgt der
+  // tatsächlichen Abspielposition.
+  const player = new Audio();
+  player.preload = 'auto';
+  player.setAttribute('playsinline', '');
+  let unlocked = false;
+  const unlock = () => {
+    if (unlocked) return; unlocked = true;
+    // einmal innerhalb einer Berührung starten, danach darf das Element frei abspielen
+    try {
+      player.src = URL.createObjectURL(wavBlob(new AudioBuffer({ length: 1, sampleRate: 22050, numberOfChannels: 1 })));
+      const pr = player.play(); if (pr && pr.catch) pr.catch(() => {});
+      player.pause();
+    } catch(e){}
+  };
+  ['touchend','click'].forEach(ev => document.addEventListener(ev, unlock, { capture:true, once:false, passive:true }));
+
   function stopPlay(){
-    if (playing){ try{ playing.src.onended = null; playing.src.stop(); }catch(e){} if (playing.slot) draw(playing.slot, playing.buffer); playing = null; }
+    if (playing){
+      const p = playing; playing = null;
+      try { player.onended = null; player.pause(); } catch(e){}
+      if (p.url) setTimeout(() => URL.revokeObjectURL(p.url), 1000);
+      if (p.slot) draw(p.slot, p.buffer);
+    }
   }
   function play(key, buffer, onEnd){
     stopPlay();
     if (!buffer) return;
-    const c = ac(), src = c.createBufferSource();
-    src.buffer = buffer; src.connect(c.destination);
-    const p = { src, slot:key, buffer, t0:c.currentTime };
+    const url = URL.createObjectURL(wavBlob(buffer));
+    const p = { slot:key, buffer, url };
     playing = p;
-    src.onended = () => { if (playing === p){ playing = null; if (key) draw(key, buffer); onEnd && onEnd(); } };
-    src.start();
+    const done = () => {
+      if (playing !== p) return;
+      playing = null; setTimeout(() => URL.revokeObjectURL(url), 1000);
+      if (key) draw(key, buffer);
+      onEnd && onEnd();
+    };
+    player.onended = done;
+    player.src = url;
+    try { player.currentTime = 0; } catch(e){}
+    const pr = player.play();
+    if (pr && pr.catch) pr.catch(() => { if (playing === p){ playing = null; if (key) draw(key, buffer); toast('Zum Abspielen nochmal tippen ▶'); } });
     if (!key) return;
     (function tick(){
       if (playing !== p) return;
-      draw(key, buffer, (c.currentTime - p.t0) / buffer.duration);
+      const d = (isFinite(player.duration) && player.duration > 0) ? player.duration : buffer.duration;
+      draw(key, buffer, player.currentTime / d);
       requestAnimationFrame(tick);
     })();
   }
