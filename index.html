@@ -313,11 +313,12 @@
     <div class="btns">
       <button class="play main" id="revA" disabled>▶ Rückwärts</button>
       <button class="play" id="fwdA" disabled>▶ Original</button>
+      <button class="play main alt" id="okA" hidden style="flex-basis:100%">Passt so ➜ nachsprechen</button>
     </div>
     <input type="file" accept="audio/*" capture id="fileA">
   </section>
 
-  <section class="card off" id="cardB">
+  <section class="card" id="cardB" hidden>
     <div class="head"><div class="num">2</div><div><h2>Rückwärts nachsprechen</h2><p>So genau wie möglich nachmachen</p></div></div>
     <div class="row">
       <button class="recbtn" id="recB" aria-label="Aufnahme 2"><span class="dot"></span></button>
@@ -326,6 +327,7 @@
     <div class="btns">
       <button class="play main alt" id="revB" disabled>▶ Ergebnis</button>
       <button class="play" id="fwdB" disabled>▶ Dein Versuch</button>
+      <button class="play" id="refB" style="flex-basis:100%">▶ Vorlage rückwärts</button>
     </div>
     <p class="reveal" id="reveal"></p>
     <div class="score" id="score">
@@ -931,7 +933,7 @@
       if (key === 'A'){
         slots.B.buf = slots.B.rev = null; slots.B.r.disabled = slots.B.f.disabled = true;
         draw('B', null); $('reveal').textContent = ''; $('score').classList.remove('show');
-        $('cardB').classList.remove('off');
+        $('okA').hidden = false;
         play('A', s.rev);
       } else {
         $('reveal').textContent = ''; $('score').classList.remove('show');
@@ -1044,9 +1046,19 @@
   $('reset').addEventListener('click', () => {
     stopPlay();
     ['A','B'].forEach(k => { const s = slots[k]; s.buf = s.rev = null; s.r.disabled = s.f.disabled = true; draw(k, null); });
-    $('cardB').classList.add('off');
+    $('cardB').hidden = true; $('cardA').hidden = false; $('okA').hidden = true;
     $('reveal').textContent = ''; $('score').classList.remove('show');
   });
+  // Schritt 1 → Schritt 2: Karte ersetzen wie im Duell
+  $('okA').addEventListener('click', () => {
+    if (!slots.A.rev) return;
+    stopPlay();
+    $('cardA').hidden = true; $('cardB').hidden = false;
+    window.scrollTo(0, 0);
+    requestAnimationFrame(() => draw('B', slots.B.buf));
+    play('B', slots.A.rev);
+  });
+  $('refB').addEventListener('click', () => { if (slots.A.rev) play('B', slots.A.rev); });
   renderHistory();
 
   // =====================================================================
