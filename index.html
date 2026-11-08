@@ -173,7 +173,7 @@
   .sres{display:flex;flex-direction:column;align-items:center;gap:6px;padding:12px;border-radius:16px;background:rgba(0,0,0,.2)}
   .sres .stars{font-size:38px}
   .strow{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:8px;border-radius:14px;background:rgba(0,0,0,.2)}
-  .strow .field{padding:10px;font-size:16px;flex:1 1 calc(100% - 40px);min-width:0}
+  .strow .field{padding:10px;font-size:16px;flex:1;min-width:0}
   .strow canvas{order:2;flex:1 1 40%;min-width:0;height:44px;border-radius:8px}
   .strow .recbtn{order:1}
   .strow .mini{order:3}
@@ -291,7 +291,10 @@
             <button class="recbtn" id="sRec" aria-label="Versuch aufnehmen"><span class="dot"></span></button>
             <canvas id="cvS"></canvas>
           </div>
-          <div class="btns"><button class="play main" id="sRef">▶ Begriff rückwärts</button></div>
+          <div class="btns">
+            <button class="play main" id="sRef" disabled>▶ Rückwärts</button>
+            <button class="play main alt" id="sOk" hidden>Passt so ➜ nachsprechen</button>
+          </div>
           <input type="file" accept="audio/*" capture id="fileS">
         </div>
         <div id="sResult" class="stack" hidden></div>
@@ -306,23 +309,28 @@
     <div class="view" id="studio" hidden>
       <button class="reset" id="stBack" style="align-self:flex-start">← Zurück</button>
       <section class="card">
-        <div class="head"><div class="num">🎛️</div><div><h2>Season-Studio</h2><p>Neue Wochen-Challenge anlegen</p></div></div>
+        <div class="head"><div class="num">🎛️</div><div><h2>Season-Studio</h2><p>Wochen-Challenges planen</p></div></div>
         <div id="stNoAdmin" class="stack" hidden></div>
         <div id="stForm" class="stack" hidden>
           <input class="field" id="stTitle" maxlength="40" placeholder="Titel, z. B. Köln-Woche">
           <div class="topics" id="stTopics"></div>
-          <label class="tiny">Ende der Season</label>
+          <label class="tiny">Start</label>
+          <input class="field" id="stStart" type="datetime-local">
+          <label class="tiny">Ende</label>
           <input class="field" id="stEnd" type="datetime-local">
-          <p class="tiny">Begriffe eintragen und jeweils selbst einsprechen (🎙 tippen = Start, nochmal = Stopp). Deine Aufnahme ist die Vorgabe für alle.</p>
+          <p class="tiny">Begriffe auswählen oder eintippen. Alle Spieler bekommen dieselben Begriffe und sprechen sie mit ihrer eigenen Stimme.</p>
           <div id="stWords" class="stack"></div>
           <div class="btns">
             <button class="play" id="stAdd">+ Begriff</button>
             <button class="play" id="stFill">🎲 Vorschläge</button>
           </div>
-          <button class="play main alt" id="stPublish">Season veröffentlichen 🚀</button>
+          <button class="play main alt" id="stPublish">Season einplanen 🚀</button>
           <p class="status" id="stStatus"></p>
         </div>
-        <div id="stRunning" class="stack" hidden></div>
+      </section>
+      <section class="card" id="stPlannedCard" hidden>
+        <h2 style="margin:0;font-size:18px;font-weight:800">📅 Geplant & laufend</h2>
+        <div id="stPlanned" class="stack"></div>
       </section>
     </div>
 
@@ -803,7 +811,6 @@
       if (key === 'W' || key === 'T'){ duelRecorded(key, buf); return; }
       if (key === 'X' || key === 'Y' || key === 'Z'){ asyncRecorded(key, buf); return; }
       if (key === 'S'){ seasonRecorded(buf); return; }
-      if (key[0] === 'R'){ studioRecorded(+key.slice(1), buf); return; }
       const s = slots[key];
       s.buf = buf; s.rev = reverse(buf);
       s.r.disabled = s.f.disabled = false;
@@ -1954,7 +1961,8 @@
   // =====================================================================
   // SEASONS – Wochen-Challenges mit Philips eingesprochenen Begriffen
   // =====================================================================
-  const SZ = { data:null, ref:null, busy:false, result:null };
+  const SZ = { data:null, busy:false, result:null, stage:'say', orig:null, origRev:null };
+  const fmtDate = iso => new Date(iso).toLocaleString('de-DE', { weekday:'short', day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' });
   function hideAsyncViews(){
     ['aHome','aListCard','aRankCard','sCard','sGame','studio','aGame'].forEach(k => $(k).hidden = true);
   }
@@ -2005,7 +2013,7 @@
       if (d && d.last && d.last.top && d.last.top.length){
         card.hidden = !onHome;
         $('sTitle').textContent = 'Letzte Season: ' + d.last.title;
-        $('sSub').textContent = 'Die nächste Wochen-Challenge kommt bald.';
+        $('sSub').textContent = d.next ? 'Nächste: ' + d.next.title + ' ab ' + fmtDate(d.next.starts_at) : 'Die nächste Wochen-Challenge kommt bald.';
         $('sDots').innerHTML = ''; $('sPlay').hidden = true;
         boardRows($('sMini'), d.last.top, '');
       } else card.hidden = true;
@@ -2014,7 +2022,7 @@
     card.hidden = !onHome;
     const n = s.words.length, played = s.words.filter(w => w.my).length;
     $('sTitle').textContent = 'Diese Woche: ' + s.title;
-    $('sSub').textContent = timeLeft(s.ends_at) + ' · ' + n + ' Begriffe · ein Versuch je Begriff';
+    $('sSub').textContent = timeLeft(s.ends_at) + ' · ' + n + ' Begriffe · mit deiner eigenen Stimme';
     seasonDots($('sDots'), s, null);
     $('sPlay').hidden = false;
     $('sPlay').textContent = played === 0 ? 'Mitmachen 🎙️' : played < n ? 'Weiterspielen (' + played + '/' + n + ')' : 'Ergebnis & Rangliste';
@@ -2023,7 +2031,8 @@
   }
   const nextIdx = s => { const w = s.words.find(w => !w.my); return w ? w.idx : null; };
   function openSeason(){
-    stopPlay(); hideAsyncViews(); $('sGame').hidden = false; SZ.result = null; window.scrollTo(0, 0);
+    stopPlay(); hideAsyncViews(); $('sGame').hidden = false;
+    SZ.result = null; SZ.stage = 'say'; SZ.orig = SZ.origRev = null; window.scrollTo(0, 0);
     renderSeason();
   }
   $('sPlay').onclick = openSeason;
@@ -2032,6 +2041,7 @@
     const s = SZ.data && SZ.data.active;
     if (!s){ toast('Diese Season ist vorbei'); goHome(); return; }
     const n = s.words.length, idx = SZ.result ? SZ.result.idx : nextIdx(s);
+    const word = idx ? s.words.find(w => w.idx === idx).word_text : null;
     $('sTitle2').textContent = s.title;
     $('sSub2').textContent = timeLeft(s.ends_at) + (s.me && s.me.rank ? ' · du: ' + s.me.stars + ' ★, Platz ' + s.me.rank : '');
     seasonDots($('sDots2'), s, idx);
@@ -2041,48 +2051,51 @@
     if (SZ.result){
       const r = SZ.result;
       $('sMsg').innerHTML = ['Hmm… knapp daneben 🙈', 'Da ist was dran! 🙂', 'Richtig gut! 😄', 'Perfekt rückwärts! 🤯'][r.stars] +
-        (r.word ? '<span class="wordwas">Der Begriff war: „' + esc(r.word) + '“</span>' : '');
-      const box = $('sResult');
-      box.innerHTML = '<div class="sres"><div class="stars">' + [0,1,2].map(i => '<span class="' + (i < r.stars ? 'lit' : '') + '">★</span>').join('') + '</div><div class="pct">Ähnlichkeit ' + Math.round(r.sim * 100) + ' %</div></div>' +
-        '<div class="btns"><button class="play main alt" id="sMine">▶ Dein Ergebnis</button><button class="play" id="sOrig">▶ Original</button></div>';
+        '<span class="wordwas">„' + esc(r.word) + '“</span>';
+      $('sResult').innerHTML = '<div class="sres"><div class="stars">' + [0,1,2].map(i => '<span class="' + (i < r.stars ? 'lit' : '') + '">★</span>').join('') + '</div><div class="pct">Ähnlichkeit ' + Math.round(r.sim * 100) + ' %</div></div>' +
+        '<div class="btns"><button class="play main alt" id="sMine">▶ Dein Ergebnis</button><button class="play" id="sOrig">▶ Dein Original</button></div>';
       $('sMine').onclick = () => play(null, r.rev);
-      $('sOrig').onclick = () => r.ref && play(null, r.ref.buf);
+      $('sOrig').onclick = () => play(null, r.orig);
       if (!nextIdx(s)) $('sMsg').innerHTML += '<br><span style="font-size:15px">Alle ' + n + ' Begriffe geschafft – ' + s.me.stars + ' von ' + (n * 3) + ' Sternen! 🎉</span>';
     }
     else if (idx){
       const pos = s.words.findIndex(w => w.idx === idx) + 1;
-      $('sMsg').innerHTML = 'Begriff ' + pos + ' von ' + n + ': Hör ihn dir rückwärts an und sprich ihn nach. Ein Versuch!';
-      requestAnimationFrame(() => draw('S', SZ.ref && SZ.ref.idx === idx ? SZ.ref.rev : null));
+      if (SZ.stage === 'say'){
+        $('sMsg').innerHTML = '<span class="tiny">Begriff ' + pos + ' von ' + n + ' · Schritt 1 von 2</span><br>Sag „' + esc(word) + '“ – tipp auf den roten Knopf.' +
+          (SZ.orig ? '<br><span style="font-size:15px;font-weight:500">Gut so? Sonst einfach neu aufnehmen.</span>' : '');
+        $('sRef').textContent = '▶ Rückwärts'; $('sRef').disabled = !SZ.orig;
+        $('sOk').hidden = !SZ.orig;
+      } else {
+        $('sMsg').innerHTML = '<span class="tiny">Begriff ' + pos + ' von ' + n + ' · Schritt 2 von 2</span><br>Jetzt rückwärts nachsprechen – du hast einen Versuch!';
+        $('sRef').textContent = '▶ Deine Aufnahme rückwärts'; $('sRef').disabled = false;
+        $('sOk').hidden = true;
+      }
+      requestAnimationFrame(() => draw('S', SZ.origRev));
     }
     else {
       $('sMsg').innerHTML = 'Geschafft! 🎉 ' + s.me.stars + ' von ' + (n * 3) + ' Sternen' + (s.me.rank ? ' · Platz ' + s.me.rank + ' von ' + s.players : '') +
-        '<span class="wordwas">' + s.words.map(w => w.word_text).filter(Boolean).join(' · ') + '</span>';
+        '<span class="wordwas">' + s.words.map(w => esc(w.word_text)).join(' · ') + '</span>';
     }
     boardRows($('sBoard'), s.board, 'Noch niemand hat gespielt.');
   }
-  async function loadRef(idx){
-    const s = SZ.data.active, w = s.words.find(x => x.idx === idx);
-    if (!SZ.ref || SZ.ref.idx !== idx || SZ.ref.sid !== s.id){
-      const b = await getAudio(w.path);
-      SZ.ref = { sid: s.id, idx, buf: b, rev: reverse(b) };
-    }
-    return SZ.ref;
-  }
-  $('sRef').onclick = async () => {
-    const s = SZ.data && SZ.data.active; if (!s) return;
-    try { const r = await loadRef(nextIdx(s)); draw('S', r.rev); play('S', r.rev); }
-    catch(e){ toast('Begriff konnte nicht geladen werden'); }
-  };
+  $('sRef').onclick = () => { if (SZ.origRev){ draw('S', SZ.origRev); play('S', SZ.origRev); } };
+  $('sOk').onclick = () => { if (!SZ.orig) return; SZ.stage = 'try'; renderSeason(); play('S', SZ.origRev); };
   async function seasonRecorded(buf){
     const s = SZ.data && SZ.data.active;
     if (!s || SZ.busy || SZ.result) return;
     const idx = nextIdx(s); if (!idx) return;
+    const net = await toNet(buf);
+    if (SZ.stage === 'say'){
+      SZ.orig = net; SZ.origRev = reverse(net);
+      renderSeason(); play('S', SZ.origRev);
+      return;
+    }
     SZ.busy = true; $('sMsg').textContent = 'Wird ausgewertet …';
     try {
-      const net = await toNet(buf), ref = await loadRef(idx), rev = reverse(net);
-      const sim = similarity(ref.buf.getChannelData(0), rev.getChannelData(0), NET_SR), stars = starsFor(sim);
+      const rev = reverse(net);
+      const sim = similarity(SZ.orig.getChannelData(0), rev.getChannelData(0), NET_SR), stars = starsFor(sim);
       const r = await rpc('season_attempt', { p_season: s.id, p_idx: idx, p_sim: sim, p_stars: stars });
-      SZ.result = { idx, sim, stars, word: r && r.word_text, rev, ref };
+      SZ.result = { idx, sim, stars, word: (r && r.word_text) || '', rev, orig: SZ.orig };
       play(null, rev);
       await refreshSeason();
       renderSeason();
@@ -2090,20 +2103,37 @@
     } catch(e){ toast(errText(e)); renderSeason(); }
     finally { SZ.busy = false; }
   }
-  $('sNext').onclick = () => { SZ.result = null; renderSeason(); window.scrollTo(0, 0); };
+  $('sNext').onclick = () => { SZ.result = null; SZ.stage = 'say'; SZ.orig = SZ.origRev = null; renderSeason(); window.scrollTo(0, 0); };
   $('sRec').addEventListener('click', () => onRec('S'));
   $('fileS').addEventListener('change', () => { const f = $('fileS').files && $('fileS').files[0]; if (f) handleAudio('S', f); $('fileS').value = ''; });
 
-  // ---------- Studio (nur Admin) ----------
-  const ST = { rows: [], topic: MIX };
-  function nextSunday(){
-    const d = new Date(); d.setDate(d.getDate() + ((7 - d.getDay()) % 7 || 7)); d.setHours(23, 59, 0, 0);
-    const p = n => String(n).padStart(2, '0');
-    return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate()) + 'T23:59';
+  // ---------- Studio (nur Admin): Seasons planen ----------
+  const STUDIO_THEMES = {
+    'Herbst': ['Kastanie','Laubhaufen','Kürbissuppe','Regenschirm','Drachensteigen','Nebelschwaden','Eichhörnchen','Pilzsammeln','Gummistiefel','Zwiebelkuchen','Martinsgans','Laternenumzug','Apfelstrudel','Herbstferien','Blätterrauschen'],
+    'Sport': ['Elfmeter','Basketball','Tischtennis','Marathon','Schwimmbad','Weitsprung','Skispringen','Handball','Torwart','Schiedsrichter','Abseits','Olympiade','Hürdenlauf','Kopfball','Fallrückzieher'],
+    'EU': ['Europäische Union','Brüssel','Straßburg','Europaparlament','Euro','Schengen','Binnenmarkt','Erasmus','Sternenkranz','Europahymne','Mitgliedsstaat','Kommission','Roaming','Europawahl','Grenzkontrolle'],
+    'Naturspektakel': ['Polarlicht','Vulkanausbruch','Sonnenfinsternis','Regenbogen','Sternschnuppe','Wasserfall','Gewitter','Tornado','Blutmond','Gletscher','Geysir','Meteoritenschauer','Ebbe und Flut','Tropfsteinhöhle','Vogelzug'],
+    'Weihnachten': ['Adventskranz','Lebkuchen','Tannenbaum','Christkind','Weihnachtsmarkt','Plätzchen','Geschenkpapier','Rentier','Schneeflocke','Nikolaus','Wunschzettel','Kerzenschein','Lametta','Bratapfel','Rudolph'],
+    'Winter': ['Schneemann','Schlittschuh','Rodelbahn','Eiszapfen','Pudelmütze','Schneeballschlacht','Glatteis','Fäustlinge','Kaminfeuer','Skipiste','Iglu','Wärmflasche','Frostbeule','Raureif','Schneeschaufel']
+  };
+  const ST = { rows: [], theme: null, planned: [] };
+  const themePool = t => STUDIO_THEMES[t] || TOPICS[t] || [];
+  const pad = n => String(n).padStart(2, '0');
+  const toLocalInput = d => d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) + 'T' + pad(d.getHours()) + ':' + pad(d.getMinutes());
+  function sundayAfter(d){
+    const e = new Date(d); e.setDate(e.getDate() + ((7 - e.getDay()) % 7 || 7)); e.setHours(23, 59, 0, 0);
+    if (e - d < 2 * 864e5) e.setDate(e.getDate() + 7);   // mindestens zwei Tage Laufzeit
+    return e;
+  }
+  function suggestDates(){
+    const lastEnd = ST.planned.length ? new Date(ST.planned[ST.planned.length - 1].ends_at) : null;
+    const start = lastEnd && lastEnd > new Date() ? new Date(lastEnd.getTime() + 60000) : new Date();
+    $('stStart').value = toLocalInput(start);
+    $('stEnd').value = toLocalInput(sundayAfter(start));
   }
   async function openStudio(){
     hideAsyncViews(); $('studio').hidden = false; stopPlay();
-    $('stNoAdmin').hidden = $('stForm').hidden = $('stRunning').hidden = true;
+    $('stNoAdmin').hidden = $('stForm').hidden = true; $('stPlannedCard').hidden = true;
     let w;
     try { await asyncInit(); w = await rpc('whoami'); }
     catch(e){ $('stNoAdmin').hidden = false; $('stNoAdmin').innerHTML = '<p class="status">' + esc(errText(e)) + '</p>'; return; }
@@ -2121,103 +2151,80 @@
       return;
     }
     $('stForm').hidden = false;
-    if (!$('stEnd').value) $('stEnd').value = nextSunday();
-    if (!ST.rows.length) fillRows(true);
+    await loadPlanned();
+    if (!$('stStart').value) suggestDates();
+    if (!ST.rows.length){ ST.theme = 'Herbst'; fillRows(true); if (!$('stTitle').value){ $('stTitle').value = 'Herbst-Woche'; $('stTitle').dataset.auto = '1'; } }
     renderStudio();
-    await refreshSeason();
-    const s = SZ.data && SZ.data.active;
-    if (s){
-      $('stRunning').hidden = false;
-      $('stRunning').innerHTML = '<p class="tiny">Läuft gerade: <b>' + esc(s.title) + '</b> (' + timeLeft(s.ends_at) + ', ' + s.players + ' Spieler). Eine neue Season ersetzt sie, sobald diese endet – oder beende sie jetzt.</p><button class="reset" id="stEndNow">Laufende Season jetzt beenden</button>';
-      let armed = 0;
-      $('stEndNow').onclick = async () => {
-        if (Date.now() - armed > 3000){ armed = Date.now(); $('stEndNow').textContent = 'Wirklich beenden? Nochmal tippen'; return; }
-        try { await rpc('end_season', { p_id: s.id }); toast('Season beendet'); await refreshSeason(); openStudio(); } catch(e){ toast(errText(e)); }
-      };
-    }
   }
-  function studioPool(){ return ST.topic === MIX ? [...ALL_WORDS] : TOPICS[ST.topic]; }
-  function fillRows(initial){
-    const used = new Set(ST.rows.map(r => r.text));
-    const pool = studioPool().filter(w => !used.has(w));
-    if (initial) ST.rows = [];
-    while (ST.rows.length < 10) ST.rows.push({ text:'', buf:null });
-    ST.rows.forEach(r => {
-      if (!r.buf && pool.length) r.text = pool.splice(Math.floor(Math.random() * pool.length), 1)[0];
+  async function loadPlanned(){
+    try { ST.planned = await rpc('list_seasons') || []; } catch(e){ ST.planned = []; }
+    const box = $('stPlanned'); box.innerHTML = '';
+    $('stPlannedCard').hidden = !ST.planned.length;
+    ST.planned.forEach(p => {
+      const el = document.createElement('div'); el.className = 'rnd';
+      el.innerHTML = '<div class="rt"><b>' + (p.running ? '▶️ ' : '📅 ') + esc(p.title) + '</b><button class="gdel">' + (p.running ? 'Beenden' : '✕') + '</button></div>' +
+        '<p class="tiny">' + fmtDate(p.starts_at) + ' – ' + fmtDate(p.ends_at) + (p.running ? ' · ' + p.players + ' Spieler' : '') + '</p>' +
+        '<p class="tiny">' + (p.words || []).map(esc).join(' · ') + '</p>';
+      const x = el.querySelector('.gdel'); let armed = 0;
+      x.onclick = async () => {
+        if (Date.now() - armed > 3000){ armed = Date.now(); x.textContent = p.running ? 'Wirklich beenden?' : 'Löschen?'; x.classList.add('armed'); return; }
+        try { await rpc('end_season', { p_id: p.id }); toast(p.running ? 'Season beendet' : 'Season gelöscht'); await loadPlanned(); suggestDates(); refreshSeason(); }
+        catch(e){ toast(errText(e)); }
+      };
+      box.appendChild(el);
     });
+  }
+  function fillRows(initial){
+    const keep = initial ? [] : ST.rows.filter(r => r.custom);
+    const pool = themePool(ST.theme).filter(w => !keep.some(r => r.text === w));
+    const out = keep.slice();
+    while (out.length < 10 && pool.length) out.push({ text: pool.splice(Math.floor(Math.random() * pool.length), 1)[0], custom:false });
+    ST.rows = out;
   }
   function renderStudio(){
     const tr = $('stTopics'); tr.innerHTML = '';
-    [MIX, ...Object.keys(TOPICS)].forEach(t => {
-      const b = document.createElement('button'); b.textContent = t; if (t === ST.topic) b.className = 'on';
+    [...Object.keys(STUDIO_THEMES), ...Object.keys(TOPICS)].forEach(t => {
+      const b = document.createElement('button'); b.textContent = t; if (t === ST.theme) b.className = 'on';
       b.onclick = () => {
-        ST.topic = t;
-        if (!$('stTitle').value || $('stTitle').dataset.auto === '1'){ $('stTitle').value = t === MIX ? 'Bunte Woche' : t + '-Woche'; $('stTitle').dataset.auto = '1'; }
+        ST.theme = t;
+        if (!$('stTitle').value || $('stTitle').dataset.auto === '1'){ $('stTitle').value = t + '-Woche'; $('stTitle').dataset.auto = '1'; }
         fillRows(false); renderStudio();
       };
       tr.appendChild(b);
     });
     const box = $('stWords'); box.innerHTML = '';
-    Object.keys(slots).filter(k => k[0] === 'R').forEach(k => delete slots[k]);
     ST.rows.forEach((r, i) => {
       const el = document.createElement('div'); el.className = 'strow';
-      el.innerHTML = '<span class="ok">' + (r.buf ? '✅' : (i + 1)) + '</span>' +
-        '<input class="field" maxlength="40" placeholder="Begriff">' +
-        '<canvas></canvas>' +
-        '<button class="recbtn" aria-label="Aufnehmen"><span class="dot"></span></button>' +
-        '<button class="mini" aria-label="Anhören">▶</button>' +
-        '<button class="mini" aria-label="Entfernen">✕</button>' +
-        '<input type="file" accept="audio/*" capture hidden>';
-      const [inp, file] = el.querySelectorAll('input');
-      const [rec, pl, del] = el.querySelectorAll('button');
+      el.innerHTML = '<span class="ok">' + (i + 1) + '</span><input class="field" maxlength="40" placeholder="Begriff"><button class="mini" aria-label="Entfernen">✕</button>';
+      const inp = el.querySelector('input');
       inp.value = r.text;
-      inp.oninput = () => { r.text = inp.value; };
-      slots['R' + i] = { cv: el.querySelector('canvas'), rec, file };
-      rec.onclick = () => onRec('R' + i);
-      file.onchange = () => { const f = file.files && file.files[0]; if (f) handleAudio('R' + i, f); file.value = ''; };
-      pl.onclick = () => r.buf && play('R' + i, r.buf);
-      del.onclick = () => { ST.rows.splice(i, 1); renderStudio(); };
+      inp.oninput = () => { r.text = inp.value; r.custom = true; };
+      el.querySelector('.mini').onclick = () => { ST.rows.splice(i, 1); renderStudio(); };
       box.appendChild(el);
-      requestAnimationFrame(() => draw('R' + i, r.buf));
     });
   }
-  async function studioRecorded(i, buf){
-    const r = ST.rows[i]; if (!r) return;
-    $('stStatus').textContent = '';
-    r.buf = await toNet(buf);
-    renderStudio();
-    play('R' + i, r.buf);
-  }
-  $('stAdd').onclick = () => { ST.rows.push({ text:'', buf:null }); renderStudio(); };
+  $('stAdd').onclick = () => { ST.rows.push({ text:'', custom:true }); renderStudio(); const ins = $('stWords').querySelectorAll('input'); ins[ins.length - 1].focus(); };
   $('stFill').onclick = () => { fillRows(false); renderStudio(); };
   $('stTitle').addEventListener('input', () => { $('stTitle').dataset.auto = '0'; });
   $('stBack').onclick = () => { try { history.replaceState(null, '', location.pathname); } catch(e){} goHome(); };
   $('stPublish').onclick = async () => {
     const st = t => $('stStatus').textContent = t;
     const title = $('stTitle').value.trim();
-    const rows = ST.rows.filter(r => r.text.trim());
-    const ends = new Date($('stEnd').value);
+    const words = ST.rows.map(r => r.text.trim()).filter(Boolean);
+    const start = new Date($('stStart').value), end = new Date($('stEnd').value);
     if (!title) return st('Bitte einen Titel eingeben.');
-    if (rows.length < 3) return st('Bitte mindestens 3 Begriffe.');
-    const missing = rows.findIndex(r => !r.buf);
-    if (missing >= 0) return st('„' + rows[missing].text + '“ ist noch nicht eingesprochen.');
-    if (!(ends > new Date())) return st('Das Ende muss in der Zukunft liegen.');
-    $('stPublish').disabled = true; st('Lade Aufnahmen hoch …');
+    if (words.length < 3) return st('Bitte mindestens 3 Begriffe.');
+    if (!(end > start) || !(end > new Date())) return st('Bitte Start und Ende prüfen.');
+    $('stPublish').disabled = true; st('Wird eingeplant …');
     try {
-      const id = uuid(), words = [];
-      for (let i = 0; i < rows.length; i++){
-        const path = 'season/' + id + '/' + (i + 1) + '-' + uuid() + '.wav';
-        const { error } = await A.sb.storage.from('audio').upload(path, wavBlob(rows[i].buf), { contentType:'audio/wav', upsert:false });
-        if (error) throw error;
-        words.push({ text: rows[i].text.trim(), path });
-        st('Lade Aufnahmen hoch … ' + (i + 1) + '/' + rows.length);
-      }
-      await rpc('create_season', { p_id: id, p_title: title, p_topic: ST.topic === MIX ? null : ST.topic, p_ends: ends.toISOString(), p_words: words });
-      st(''); toast('Season „' + title + '“ ist live! 🚀');
-      ST.rows = []; $('stTitle').value = ''; $('stEnd').value = '';
-      await refreshSeason();
-      try { history.replaceState(null, '', location.pathname); } catch(e){}
-      goHome();
+      await rpc('create_season', { p_title: title, p_topic: ST.theme, p_starts: start.toISOString(), p_ends: end.toISOString(), p_words: words });
+      st(''); toast(start <= new Date() ? 'Season „' + title + '“ ist live! 🚀' : 'Season „' + title + '“ ist eingeplant 📅');
+      ST.rows = []; $('stTitle').value = ''; $('stTitle').dataset.auto = '1';
+      await loadPlanned(); suggestDates();
+      const keys = Object.keys(STUDIO_THEMES), nxt = keys[(keys.indexOf(ST.theme) + 1) % keys.length];
+      ST.theme = nxt; fillRows(true); $('stTitle').value = nxt + '-Woche';
+      renderStudio(); refreshSeason();
+      window.scrollTo(0, 0);
     } catch(e){ st(errText(e)); }
     finally { $('stPublish').disabled = false; }
   };
