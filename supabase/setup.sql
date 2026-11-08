@@ -324,6 +324,12 @@ begin
   return public.profile_json(me);
 end $$;
 
+-- Eigenes Profil lesen (z. B. nach dem Anmelden auf einem neuen Gerät)
+create or replace function public.my_profile() returns json
+language sql stable security definer set search_path = public as $$
+  select public.profile_json(auth.uid());
+$$;
+
 -- Neues Duell (Freund) oder Zufallsgegner suchen
 create or replace function public.start_game(p_random boolean default false) returns json
 language plpgsql security definer set search_path = public as $$
@@ -546,6 +552,8 @@ begin
 end $$;
 
 -- Ausführrechte: nur angemeldete Nutzer (auch anonyme)
+revoke all on function public.my_profile() from public, anon;
+grant execute on function public.my_profile() to authenticated;
 revoke all on function public.save_profile(text,text,text), public.start_game(boolean), public.join_game(text),
   public.answer_round(uuid,text,real,int), public.set_word(uuid,text,text,text,real,int), public.react(uuid,int,uuid,text),
   public.leave_game(uuid), public.my_games(), public.game_detail(uuid) from public, anon;

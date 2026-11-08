@@ -154,6 +154,10 @@
   .gitem .sc{font-size:20px;font-weight:800;white-space:nowrap}
   .gdel{flex:none;border:0;border-radius:10px;background:rgba(255,255,255,.08);color:var(--mute);font-family:inherit;font-size:15px;font-weight:800;padding:8px 10px;cursor:pointer}
   .gdel.armed{background:var(--rec);color:#fff}
+  .acct{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:4px 10px;font-size:13px;color:var(--mute)}
+  .acct .reset{padding:2px 0;font-size:13px}
+  .acctBtns{display:flex;gap:12px}
+  .acctForm{padding:12px;border-radius:16px;background:rgba(0,0,0,.2)}
   .topics button.locked{opacity:.45;border-style:dashed}
   .lvl{display:flex;flex-direction:column;gap:6px;padding:12px;border-radius:16px;background:rgba(0,0,0,.2)}
   .lvl .lvtop{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
@@ -407,6 +411,23 @@
       <div class="avapick" id="avaPick" hidden>
         <div class="emojis" id="avaEmojis"></div>
         <div class="colors" id="avaColors"></div>
+      </div>
+      <div class="acct" id="acct" hidden>
+        <span id="acctTxt"></span>
+        <span class="acctBtns">
+          <button class="reset" id="acctSecure">Konto sichern</button>
+          <button class="reset" id="acctLogin">Anmelden</button>
+          <button class="reset" id="acctOut" hidden>Abmelden</button>
+        </span>
+      </div>
+      <div class="acctForm stack" id="acctForm" hidden>
+        <p class="tiny" id="acctHint"></p>
+        <input class="field" id="acctEmail" type="email" placeholder="deine@email.de" autocomplete="email" inputmode="email">
+        <button class="play main" id="acctSend">Code schicken ✉️</button>
+        <input class="field code" id="acctCode" inputmode="numeric" autocomplete="one-time-code" maxlength="10" placeholder="Code" hidden>
+        <button class="play main alt" id="acctVerify" hidden>Bestätigen</button>
+        <button class="reset" id="acctCancel">Abbrechen</button>
+        <p class="status" id="acctStatus"></p>
       </div>
       </div></div>
       <p class="msg" id="inviteHint" hidden></p>
@@ -1425,8 +1446,9 @@
         if (r.error) throw new Error(/anonymous/i.test(r.error.message) ? 'Die anonyme Anmeldung ist in Supabase noch nicht eingeschaltet.' : r.error.message);
         session = r.data.session;
       }
-      A.uid = session.user.id;
-      await rpc('save_profile', { p_nickname: profile.name || 'Spieler', p_avatar: profile.avatar, p_color: profile.color });
+      A.uid = session.user.id; A.user = session.user;
+      await syncProfile();
+      renderAccount();
       // Live-Aktualisierung: jede Änderung an meinen Duellen
       try {
         A.sb.channel('ollah-games')
@@ -1460,6 +1482,106 @@
       if (A.pendingInvite) showInvite();
       await refreshList();
     } catch(e){ aStatus(errText(e)); }
+  };
+
+  // ---------- Konto: Gast oder per E-Mail angemeldet ----------
+  // Das Serverprofil hat Vorrang (gleiches Profil auf allen Geräten)
+  async function syncProfile(){
+    let sp = null;
+    try { sp = await rpc('my_profile'); } catch(e){}
+    if (sp && sp.nickname){
+      profile.name = sp.nickname;
+      if (AVATARS.includes(sp.avatar)) profile.avatar = sp.avatar;
+      if (COLORS.includes(sp.color)) profile.color = sp.color;
+      $('myName').value = profile.name;
+      try { localStorage.setItem('rw-profile', JSON.stringify(profile)); } catch(e){}
+      renderPicker();
+    } else {
+      await rpc('save_profile', { p_nickname: profile.name || 'Spieler', p_avatar: profile.avatar, p_color: profile.color });
+    }
+  }
+  const isGuest = () => !A.user || A.user.is_anonymous || !A.user.email;
+  function renderAccount(){
+    if (!A.user){ $('acct').hidden = true; return; }
+    $('acct').hidden = false;
+    const guest = isGuest();
+    $('acctTxt').textContent = guest ? '👤 Gast-Konto (nur auf diesem Gerät)' : '🔒 ' + A.user.email;
+    $('acctSecure').hidden = !guest; $('acctLogin').hidden = !guest; $('acctOut').hidden = guest;
+  }
+  let acctMode = null;
+  function openAcct(mode){
+    acctMode = mode;
+    $('acctForm').hidden = false; $('acctStatus').textContent = '';
+    $('acctCode').hidden = $('acctVerify').hidden = true; $('acctCode').value = '';
+    $('acctSend').hidden = false; $('acctEmail').disabled = false;
+    $('acctHint').innerHTML = mode === 'secure'
+      ? '<b>Konto sichern:</b> Dein Spielstand (Punkte, Duelle, Profil) wird mit deiner E-Mail verknüpft. Danach kannst du dich auf jedem Gerät anmelden.'
+      : '<b>Anmelden:</b> Mit der E-Mail deines Kontos. ' + ((A.list && A.list.length) ? 'Die Gast-Spiele auf diesem Gerät sind danach nicht mehr zu sehen.' : '');
+    $('acctEmail').focus();
+  }
+  $('acctSecure').onclick = () => openAcct('secure');
+  $('acctLogin').onclick = () => openAcct('login');
+  $('acctCancel').onclick = () => { $('acctForm').hidden = true; acctMode = null; };
+  function authErr(e){
+    const m = errText(e);
+    if (/rate|too many|seconds|security purposes/i.test(m)) return 'Zu viele Codes angefordert – bitte in ein paar Minuten nochmal versuchen.';
+    if (/already|registered|exists/i.test(m)) return 'Zu dieser E-Mail gibt es schon ein Konto – tippe auf „Anmelden“.';
+    if (/signup|not allowed|not found|user not/i.test(m)) return 'Zu dieser E-Mail gibt es noch kein Konto – tippe auf „Konto sichern“.';
+    if (/expired|invalid|token/i.test(m)) return 'Der Code stimmt nicht oder ist abgelaufen.';
+    if (/email/i.test(m) && /valid/i.test(m)) return 'Bitte eine gültige E-Mail-Adresse eingeben.';
+    return m;
+  }
+  $('acctSend').onclick = async () => {
+    const email = $('acctEmail').value.trim().toLowerCase();
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) { $('acctStatus').textContent = 'Bitte eine gültige E-Mail-Adresse eingeben.'; return; }
+    $('acctSend').disabled = true; $('acctStatus').textContent = 'Sende Code …';
+    try {
+      await asyncInit();
+      const r = acctMode === 'secure'
+        ? await A.sb.auth.updateUser({ email })
+        : await A.sb.auth.signInWithOtp({ email, options: { shouldCreateUser: false } });
+      if (r.error) throw r.error;
+      $('acctStatus').textContent = 'Wir haben dir einen Code an ' + email + ' geschickt. Schau auch im Spam-Ordner nach.';
+      $('acctSend').hidden = true; $('acctEmail').disabled = true;
+      $('acctCode').hidden = $('acctVerify').hidden = false; $('acctCode').focus();
+    } catch(e){ $('acctStatus').textContent = authErr(e); }
+    finally { $('acctSend').disabled = false; }
+  };
+  $('acctVerify').onclick = async () => {
+    const email = $('acctEmail').value.trim().toLowerCase(), token = $('acctCode').value.replace(/\s/g, '');
+    if (token.length < 6){ $('acctStatus').textContent = 'Bitte den Code aus der E-Mail eingeben.'; return; }
+    $('acctVerify').disabled = true; $('acctStatus').textContent = 'Prüfe …';
+    try {
+      const r = await A.sb.auth.verifyOtp({ email, token, type: acctMode === 'secure' ? 'email_change' : 'email' });
+      if (r.error) throw r.error;
+      const { data } = await A.sb.auth.getSession();
+      const user = (data && data.session && data.session.user) || (r.data && r.data.user);
+      const switched = user && user.id !== A.uid;
+      A.uid = user.id; A.user = Object.assign({}, user, { email: user.email || email, is_anonymous: false });
+      $('acctForm').hidden = true;
+      if (switched){
+        // anderes Konto: alles neu laden
+        audioCache.clear(); A.list = []; A.knownIds = new Set(); A.myTurnIds = new Set(); A.firstList = true;
+        await syncProfile();
+        toast('Angemeldet als ' + email + ' 🎉');
+      } else {
+        toast('Konto gesichert! Melde dich auf anderen Geräten mit ' + email + ' an.');
+      }
+      renderAccount();
+      if (typeof goHome === 'function') goHome();
+    } catch(e){ $('acctStatus').textContent = authErr(e); }
+    finally { $('acctVerify').disabled = false; }
+  };
+  let outArmed = 0;
+  $('acctOut').onclick = async () => {
+    if (Date.now() - outArmed > 3000){
+      outArmed = Date.now(); $('acctOut').textContent = 'Wirklich abmelden?';
+      setTimeout(() => { $('acctOut').textContent = 'Abmelden'; }, 3000);
+      return;
+    }
+    try { await A.sb.auth.signOut(); } catch(e){}
+    try { localStorage.removeItem('rw-level'); } catch(e){}
+    location.reload();
   };
 
   // ---------- Audio speichern & laden ----------
