@@ -2218,7 +2218,7 @@
   }
 
   // Ergebnis-Zeile für mich bzw. den Gegner
-  function resultRow(g, r, mine){
+  function resultRow(g, r, mine, inShow){
     const p = mine ? (g.me || profile) : g.opponent, t = mine ? r.my : r.their;
     const el = document.createElement('div'); el.className = 'res';
     const who = '<div class="line">' + avaHTML(esc(p ? p.avatar : '🙂'), p ? p.color : COLORS[3]) + '<div class="who"><b>' + esc(p ? p.nickname : 'Gegner') + '</b>';
@@ -2228,7 +2228,8 @@
     el.innerHTML = who + '<span class="st">' + starTxt(t.stars) + '</span> <span class="pct">' + Math.round(t.sim*100) + ' %</span></div>' +
       '<button class="play main alt"' + (locked ? ' disabled' : '') + '>' + (locked ? '🔒 Zu weit weg' : '▶ Ergebnis') + '</button></div>';
     if (!locked) el.querySelector('.play').onclick = () => playPath(t.path, true);
-    if (mine){
+    if (inShow){ /* Reaktionen stehen schon in der Ergebnis-Show oben */ }
+    else if (mine){
       if (r.got && r.got.length){
         const ch = document.createElement('div'); ch.className = 'chips';
         ch.innerHTML = r.got.map(e => '<span>' + e + '</span>').join(''); el.appendChild(ch);
@@ -2349,8 +2350,9 @@
       const el = document.createElement('div'); el.className = 'rnd';
       const title = 'Runde ' + r.round_no + ' · ' + (r.word_text ? '„' + esc(r.word_text) + '“' : (r.mine ? 'dein Wort' : 'Wort von ' + esc(g.opponent ? g.opponent.nickname : 'Gegner')));
       el.innerHTML = '<div class="rt"><b>' + title + '</b></div>';
-      el.appendChild(resultRow(g, r, true));
-      el.appendChild(resultRow(g, r, false));
+      const inShow = A.stage === 'reveal' && !$('aReveal').hidden && r.round_no === (A.revealRound || g.cur_round);
+      el.appendChild(resultRow(g, r, true, inShow));
+      el.appendChild(resultRow(g, r, false, inShow));
       box.appendChild(el);
     });
   }
