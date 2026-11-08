@@ -2358,7 +2358,7 @@
     const keep = initial ? [] : ST.rows.filter(r => r.custom);
     const pool = themePool(ST.theme).filter(w => !keep.some(r => r.text === w));
     const out = keep.slice();
-    while (out.length < 10 && pool.length) out.push({ text: pool.splice(Math.floor(Math.random() * pool.length), 1)[0], custom:false });
+    while (out.length < 6 && pool.length) out.push({ text: pool.splice(Math.floor(Math.random() * pool.length), 1)[0], custom:false });
     ST.rows = out;
   }
   function renderStudio(){
