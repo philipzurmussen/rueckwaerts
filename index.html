@@ -165,6 +165,13 @@
   .acct .reset{padding:2px 0;font-size:13px}
   .acctBtns{display:flex;gap:12px}
   .acctForm{padding:12px;border-radius:16px;background:rgba(0,0,0,.2)}
+  .overlay{position:fixed;inset:0;z-index:40;background:rgba(10,5,25,.75);display:flex;align-items:center;justify-content:center;padding:calc(env(safe-area-inset-top) + 16px) 16px calc(env(safe-area-inset-bottom) + 16px)}
+  .overlay[hidden]{display:none !important}
+  .fbstars{display:flex;gap:8px;justify-content:center}
+  .fbstars button{border:0;background:none;font-size:38px;color:rgba(255,255,255,.18);cursor:pointer;padding:0 2px}
+  .fbstars button.on{color:var(--acc)}
+  .fbitem{padding:10px 12px;border-radius:14px;background:rgba(0,0,0,.2);font-size:14px;line-height:1.4}
+  .fbitem .meta{color:var(--mute);font-size:12px}
   .topics button.locked{opacity:.45;border-style:dashed}
   .lvl{display:flex;flex-direction:column;gap:6px;padding:12px;border-radius:16px;background:rgba(0,0,0,.2)}
   .lvl .lvtop{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
@@ -343,6 +350,10 @@
           <p class="status" id="stStatus"></p>
         </div>
       </section>
+      <section class="card" id="stFbCard" hidden>
+        <h2 style="margin:0;font-size:18px;font-weight:800">💬 Feedback</h2>
+        <div id="stFb" class="stack"></div>
+      </section>
       <section class="card" id="stPlannedCard" hidden>
         <h2 style="margin:0;font-size:18px;font-weight:800">📅 Geplant & laufend</h2>
         <div id="stPlanned" class="stack"></div>
@@ -503,6 +514,24 @@
 
       <button class="reset" id="btnLeave">Spiel verlassen</button>
     </div>
+  </div>
+
+  <button class="reset" id="fbOpen" style="margin-top:8px">💬 Feedback geben</button>
+  <div class="overlay" id="fbBox" hidden>
+    <section class="card stack" style="max-height:90vh;overflow:auto">
+      <div class="head"><div class="num">💬</div><div><h2>Dein Feedback</h2><p>Hilft, Ollah! besser zu machen – dauert 30 Sekunden.</p></div></div>
+      <p class="tiny">Wie gefällt dir Ollah! insgesamt?</p>
+      <div class="fbstars" id="fbStars"></div>
+      <p class="tiny">Ein Duell-Zug ist …</p>
+      <div class="topics" id="fbTurn"></div>
+      <p class="tiny">Was macht dir am meisten Spaß? (mehrere möglich)</p>
+      <div class="topics" id="fbFun" style="flex-wrap:wrap"></div>
+      <p class="tiny">Was fehlt, was nervt, was wünschst du dir?</p>
+      <textarea class="field" id="fbMsg" rows="4" maxlength="2000" placeholder="Schreib einfach drauflos …" style="resize:vertical;font-size:16px"></textarea>
+      <button class="play main" id="fbSend">Absenden</button>
+      <button class="reset" id="fbClose">Abbrechen</button>
+      <p class="status" id="fbStatus"></p>
+    </section>
   </div>
 
 <script>
@@ -2283,7 +2312,7 @@
   }
   async function openStudio(){
     hideAsyncViews(); $('studio').hidden = false; stopPlay();
-    $('stNoAdmin').hidden = $('stForm').hidden = true; $('stPlannedCard').hidden = true;
+    $('stNoAdmin').hidden = $('stForm').hidden = true; $('stPlannedCard').hidden = true; $('stFbCard').hidden = true;
     let w;
     try { await asyncInit(); w = await rpc('whoami'); }
     catch(e){ $('stNoAdmin').hidden = false; $('stNoAdmin').innerHTML = '<p class="status">' + esc(errText(e)) + '</p>'; return; }
@@ -2302,6 +2331,7 @@
     }
     $('stForm').hidden = false;
     await loadPlanned();
+    loadFeedback();
     if (!$('stStart').value) suggestDates();
     if (!ST.rows.length){ ST.theme = 'Herbst'; fillRows(true); if (!$('stTitle').value){ $('stTitle').value = 'Herbst-Woche'; $('stTitle').dataset.auto = '1'; } }
     renderStudio();
@@ -2378,6 +2408,62 @@
     } catch(e){ st(errText(e)); }
     finally { $('stPublish').disabled = false; }
   };
+
+  // ---------- Feedback ----------
+  const FB = { rating:0, turn:'', fun:new Set() };
+  const FB_TURN = [['kurz','zu kurz'], ['richtig','genau richtig'], ['lang','zu lang']];
+  const FB_FUN = ['Ergebnisse vergleichen', 'Reaktionen', 'Duelle', 'Season', 'Solo', 'Rangliste & Level'];
+  function renderFb(){
+    if (FB.rating || FB.turn || FB.fun.size) $('fbStatus').textContent = '';
+    const st = $('fbStars'); st.innerHTML = '';
+    for (let i = 1; i <= 5; i++){
+      const b = document.createElement('button'); b.textContent = '★'; if (i <= FB.rating) b.className = 'on';
+      b.setAttribute('aria-label', i + ' Sterne'); b.onclick = () => { FB.rating = i; renderFb(); };
+      st.appendChild(b);
+    }
+    const tr = $('fbTurn'); tr.innerHTML = '';
+    FB_TURN.forEach(([k, l]) => {
+      const b = document.createElement('button'); b.textContent = l; if (FB.turn === k) b.className = 'on';
+      b.onclick = () => { FB.turn = FB.turn === k ? '' : k; renderFb(); };
+      tr.appendChild(b);
+    });
+    const fr = $('fbFun'); fr.innerHTML = '';
+    FB_FUN.forEach(f => {
+      const b = document.createElement('button'); b.textContent = f; if (FB.fun.has(f)) b.className = 'on';
+      b.onclick = () => { FB.fun.has(f) ? FB.fun.delete(f) : FB.fun.add(f); renderFb(); };
+      fr.appendChild(b);
+    });
+  }
+  $('fbOpen').onclick = () => { $('fbBox').hidden = false; $('fbStatus').textContent = ''; renderFb(); };
+  $('fbClose').onclick = () => { $('fbBox').hidden = true; };
+  $('fbBox').addEventListener('click', e => { if (e.target === $('fbBox')) $('fbBox').hidden = true; });
+  $('fbSend').onclick = async () => {
+    const msg = $('fbMsg').value.trim();
+    if (!FB.rating && !FB.turn && !FB.fun.size && !msg){ $('fbStatus').textContent = 'Wähl wenigstens etwas aus oder schreib ein paar Worte.'; return; }
+    $('fbSend').disabled = true; $('fbStatus').textContent = 'Sende …';
+    try {
+      await asyncInit();
+      await rpc('send_feedback', { p_rating: FB.rating || null, p_turn: FB.turn, p_fun: [...FB.fun], p_message: msg, p_ua: navigator.userAgent });
+      FB.rating = 0; FB.turn = ''; FB.fun = new Set(); $('fbMsg').value = '';
+      $('fbBox').hidden = true; toast('Danke für dein Feedback! 💛');
+    } catch(e){ $('fbStatus').textContent = errText(e); }
+    finally { $('fbSend').disabled = false; }
+  };
+  async function loadFeedback(){
+    let d; try { d = await rpc('list_feedback'); } catch(e){ return; }
+    $('stFbCard').hidden = false;
+    const box = $('stFb');
+    if (!d || !d.count){ box.innerHTML = '<p class="empty">Noch kein Feedback.</p>'; return; }
+    const t = d.turn || {}, f = d.fun || {};
+    const funTop = Object.entries(f).sort((a, b) => b[1] - a[1]).map(([k, n]) => esc(k) + ' (' + n + ')').join(' · ');
+    box.innerHTML = '<div class="fbitem"><b>' + d.count + (d.count == 1 ? ' Rückmeldung' : ' Rückmeldungen') + '</b>' + (d.avg ? ' · Ø ' + d.avg + ' ★' : '') +
+      '<br>Zug: zu kurz ' + (t.kurz || 0) + ' · genau richtig ' + (t.richtig || 0) + ' · zu lang ' + (t.lang || 0) +
+      (funTop ? '<br>Spaß: ' + funTop : '') + '</div>' +
+      d.items.map(i => '<div class="fbitem"><div class="meta">' + esc(i.nickname || 'Gast') + ' · ' + fmtDate(i.at) +
+        (i.rating ? ' · ' + '★'.repeat(i.rating) : '') + (i.turn ? ' · Zug ' + esc(i.turn) : '') + '</div>' +
+        (i.fun && i.fun.length ? '<div class="meta">♥ ' + i.fun.map(esc).join(', ') + '</div>' : '') +
+        (i.message ? esc(i.message).replace(/\n/g, '<br>') : '') + '</div>').join('');
+  }
 
   // Im Solo-Tab still im Hintergrund verbinden und die Season laden
   window.soloEnter = async () => {

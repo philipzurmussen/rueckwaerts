@@ -777,6 +777,59 @@ end $$;
 revoke all on function public.player_xp(uuid), public.leaderboard() from public, anon;
 grant execute on function public.leaderboard() to authenticated;
 
+-- ---------- Feedback der Tester ---------------------------------------
+
+create table if not exists public.feedback (
+  id          bigint generated always as identity primary key,
+  player      uuid references public.profiles(id) on delete set null,
+  rating      int  check (rating between 1 and 5),
+  turn_length text check (turn_length in ('kurz','richtig','lang')),
+  fun         text[],
+  message     text check (char_length(message) <= 2000),
+  user_agent  text,
+  created_at  timestamptz not null default now()
+);
+alter table public.feedback enable row level security;
+
+create or replace function public.send_feedback(p_rating int, p_turn text, p_fun text[], p_message text, p_ua text) returns json
+language plpgsql security definer set search_path = public as $$
+declare me uuid := auth.uid();
+begin
+  if me is null then raise exception 'Nicht angemeldet'; end if;
+  if (select count(*) from public.feedback where player = me and created_at > now() - interval '1 day') >= 10 then
+    raise exception 'Danke, für heute ist genug Feedback angekommen';
+  end if;
+  insert into public.feedback(player, rating, turn_length, fun, message, user_agent)
+    values ((select id from public.profiles where id = me), p_rating, nullif(p_turn, ''), p_fun,
+            nullif(left(trim(coalesce(p_message, '')), 2000), ''), left(p_ua, 300));
+  return json_build_object('ok', true);
+end $$;
+
+-- Übersicht für den Admin (im Studio)
+create or replace function public.list_feedback() returns json
+language plpgsql stable security definer set search_path = public as $$
+declare res json;
+begin
+  if not public.is_admin() then raise exception 'Nur für Admins'; end if;
+  select json_build_object(
+    'count', (select count(*) from public.feedback),
+    'avg', (select round(avg(rating)::numeric, 1) from public.feedback),
+    'turn', (select coalesce(json_object_agg(turn_length, n), '{}'::json)
+             from (select turn_length, count(*) n from public.feedback where turn_length is not null group by turn_length) t),
+    'fun', (select coalesce(json_object_agg(f, n), '{}'::json)
+            from (select unnest(fun) f, count(*) n from public.feedback group by 1) t),
+    'items', (select coalesce(json_agg(json_build_object('at', f.created_at, 'rating', f.rating, 'turn', f.turn_length,
+                                                         'fun', f.fun, 'message', f.message, 'nickname', p.nickname)
+                                       order by f.created_at desc), '[]'::json)
+              from (select * from public.feedback order by created_at desc limit 200) f
+              left join public.profiles p on p.id = f.player)
+  ) into res;
+  return res;
+end $$;
+
+revoke all on function public.send_feedback(int,text,text[],text,text), public.list_feedback() from public, anon;
+grant execute on function public.send_feedback(int,text,text[],text,text), public.list_feedback() to authenticated;
+
 -- ---------- Audio-Speicher -------------------------------------------
 
 insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
