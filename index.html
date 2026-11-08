@@ -152,6 +152,8 @@
   .gitem small{display:block;color:var(--mute);font-size:13px;margin-top:2px}
   .gitem.turn small{color:var(--acc2);font-weight:800}
   .gitem .sc{font-size:20px;font-weight:800;white-space:nowrap}
+  .gdel{flex:none;border:0;border-radius:10px;background:rgba(255,255,255,.08);color:var(--mute);font-family:inherit;font-size:15px;font-weight:800;padding:8px 10px;cursor:pointer}
+  .gdel.armed{background:var(--rec);color:#fff}
   .ghead{margin:6px 0 0;font-size:13px;font-weight:800;color:var(--mute);text-transform:uppercase;letter-spacing:1px}
   .rnd{display:flex;flex-direction:column;gap:8px;padding:12px;border-radius:16px;background:rgba(0,0,0,.18)}
   .rnd .rt{display:flex;justify-content:space-between;align-items:center;gap:8px}
@@ -1381,13 +1383,31 @@
       const gs = A.list.filter(f); if (!gs.length) return;
       const h = document.createElement('p'); h.className = 'ghead'; h.textContent = title; el.appendChild(h);
       gs.forEach(g => {
-        const b = document.createElement('button');
+        const b = document.createElement('div');
+        b.setAttribute('role', 'button'); b.tabIndex = 0;
         b.className = 'gitem' + (g.status !== 'done' && g.my_turn ? ' turn' : '');
         const opp = g.opponent;
         b.innerHTML = (opp ? avaHTML(esc(opp.avatar), opp.color) : '<div class="ava" style="background:rgba(255,255,255,.12)">' + (g.is_random ? '🎲' : '⏳') + '</div>') +
           '<div class="gi"><b>' + (opp ? esc(opp.nickname) : (g.is_random ? 'Zufälliger Gegner' : 'Offene Einladung')) + '</b><small>' + gameLine(g) + '</small></div>' +
           '<div class="sc">' + g.my_score + ' : ' + g.opp_score + '</div>';
         b.onclick = () => openGame(g.id);
+        // offene Einladungen direkt aus der Liste löschen
+        if (!opp && g.status !== 'done'){
+          const x = document.createElement('button'); x.className = 'gdel'; x.textContent = '✕';
+          x.setAttribute('aria-label', 'Einladung löschen');
+          let armed = 0;
+          x.onclick = async ev => {
+            ev.stopPropagation();
+            if (Date.now() - armed > 3000){
+              armed = Date.now(); x.textContent = 'Löschen?'; x.classList.add('armed');
+              setTimeout(() => { x.textContent = '✕'; x.classList.remove('armed'); }, 3000);
+              return;
+            }
+            try { await rpc('leave_game', { p_game: g.id }); toast(g.is_random ? 'Suche beendet' : 'Einladung gelöscht'); refreshList(); }
+            catch(e){ toast(errText(e)); }
+          };
+          b.appendChild(x);
+        }
         el.appendChild(b);
       });
     });
