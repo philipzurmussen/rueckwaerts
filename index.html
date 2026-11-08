@@ -48,13 +48,10 @@
   @keyframes pulse{from{opacity:1;transform:scale(.95)}to{opacity:0;transform:scale(1.25)}}
   .recbtn:disabled{opacity:.4}
   canvas{flex:1;min-width:0;height:84px;border-radius:14px;background:rgba(0,0,0,.25)}
-  /* Einhändig spielbar: Waveform oben über die volle Breite, großer Aufnahmeknopf mittig darunter */
-  .row{flex-direction:column;align-items:stretch;gap:16px}
-  .row canvas{flex:none;width:100%;height:72px;order:1}
-  .row .recbtn{order:2;align-self:center;width:104px;height:104px;box-shadow:0 7px 0 #b8243f}
-  .row .recbtn:active{box-shadow:0 3px 0 #b8243f}
-  .row .recbtn .dot{width:32px;height:32px}
-  .row .recbtn.on .dot{width:28px;height:28px}
+  /* Aufnahmeknopf neben der Waveform: standardmäßig rechts (Daumen), für Linkshänder links */
+  .row canvas{order:1}
+  .row .recbtn{order:2}
+  body.lefty .row .recbtn{order:0}
   .btns{display:flex;gap:10px;flex-wrap:wrap}
   .play{
     flex:1;min-width:120px;border:0;border-radius:16px;padding:14px 12px;cursor:pointer;
@@ -516,7 +513,10 @@
     </div>
   </div>
 
-  <button class="reset" id="fbOpen" style="margin-top:8px">💬 Feedback geben</button>
+  <div style="display:flex;gap:18px;justify-content:center;margin-top:8px">
+    <button class="reset" id="fbOpen">💬 Feedback geben</button>
+    <button class="reset" id="handBtn">🤚 Knopf links</button>
+  </div>
   <div class="overlay" id="fbBox" hidden>
     <section class="card stack" style="max-height:90vh;overflow:auto">
       <div class="head"><div class="num">💬</div><div><h2>Dein Feedback</h2><p>Hilft, Ollah! besser zu machen – dauert 30 Sekunden.</p></div></div>
@@ -2408,6 +2408,20 @@
     } catch(e){ st(errText(e)); }
     finally { $('stPublish').disabled = false; }
   };
+
+  // ---------- Rechts-/Linkshänder ----------
+  function applyHand(){
+    let left = false; try { left = localStorage.getItem('rw-hand') === 'left'; } catch(e){}
+    document.body.classList.toggle('lefty', left);
+    $('handBtn').textContent = left ? '✋ Knopf rechts' : '🤚 Knopf links';
+  }
+  $('handBtn').onclick = () => {
+    const left = !document.body.classList.contains('lefty');
+    try { localStorage.setItem('rw-hand', left ? 'left' : 'right'); } catch(e){}
+    applyHand();
+    toast(left ? 'Aufnahmeknopf jetzt links' : 'Aufnahmeknopf jetzt rechts');
+  };
+  applyHand();
 
   // ---------- Feedback ----------
   const FB = { rating:0, turn:'', fun:new Set() };
