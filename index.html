@@ -209,6 +209,40 @@
   </div>
 
   <div class="view" id="solo">
+    <section class="card season" id="sCard" hidden>
+      <div class="head"><div class="num">🗓️</div><div><h2 id="sTitle"></h2><p id="sSub"></p></div></div>
+      <div class="dots" id="sDots"></div>
+      <button class="play main" id="sPlay">Mitmachen</button>
+      <div id="sMini" class="stack"></div>
+      <p class="tiny" id="soloLvl" style="text-align:center" hidden></p>
+    </section>
+    <div class="view" id="sGame" hidden>
+      <button class="reset" id="sBack" style="align-self:flex-start">← Zurück</button>
+      <section class="card">
+        <div class="head"><div class="num">🗓️</div><div><h2 id="sTitle2"></h2><p id="sSub2"></p></div></div>
+        <div class="dots" id="sDots2"></div>
+        <p class="msg" id="sMsg"></p>
+        <div id="sStep" class="stack" hidden>
+          <div class="row">
+            <button class="recbtn" id="sRec" aria-label="Versuch aufnehmen"><span class="dot"></span></button>
+            <canvas id="cvS"></canvas>
+          </div>
+          <div class="btns">
+            <button class="play main" id="sRef" disabled>▶ Rückwärts</button>
+            <button class="play main alt" id="sOk" hidden>Passt so ➜ nachsprechen</button>
+          </div>
+          <input type="file" accept="audio/*" capture id="fileS">
+        </div>
+        <div id="sResult" class="stack" hidden></div>
+        <button class="play main" id="sNext" hidden>Nächster Begriff ➜</button>
+      </section>
+      <section class="card">
+        <h2 style="margin:0;font-size:18px;font-weight:800">🏆 Wochen-Rangliste</h2>
+        <div id="sBoard" class="stack"></div>
+      </section>
+    </div>
+
+  <div class="view" id="soloFree">
   <section class="card" id="cardA">
     <div class="head"><div class="num">1</div><div><h2>Wort aufnehmen</h2><p>Tippen zum Starten, nochmal tippen zum Stoppen</p></div></div>
     <div class="row">
@@ -247,6 +281,7 @@
 
   <button class="reset" id="reset">Neues Wort</button>
   </div>
+  </div>
 
   <div class="view" id="async" hidden>
     <section class="card" id="aHome">
@@ -266,12 +301,7 @@
       <button class="play" id="aRankBtn">🏆 Rangliste</button>
       <p class="status" id="aStatus"></p>
     </section>
-    <section class="card season" id="sCard" hidden>
-      <div class="head"><div class="num">🗓️</div><div><h2 id="sTitle"></h2><p id="sSub"></p></div></div>
-      <div class="dots" id="sDots"></div>
-      <button class="play main" id="sPlay">Mitmachen</button>
-      <div id="sMini" class="stack"></div>
-    </section>
+    <button class="gitem" id="sHint" hidden style="justify-content:center;text-align:center"></button>
     <section class="card" id="aRankCard" hidden>
       <div class="lvtop" style="display:flex;justify-content:space-between;align-items:center">
         <h2 style="margin:0;font-size:18px;font-weight:800">🏆 Rangliste</h2>
@@ -283,32 +313,6 @@
     <section class="card" id="aListCard">
       <div id="aList" class="stack"><p class="empty">Noch keine Duelle.</p></div>
     </section>
-
-    <div class="view" id="sGame" hidden>
-      <button class="reset" id="sBack" style="align-self:flex-start">← Zurück</button>
-      <section class="card">
-        <div class="head"><div class="num">🗓️</div><div><h2 id="sTitle2"></h2><p id="sSub2"></p></div></div>
-        <div class="dots" id="sDots2"></div>
-        <p class="msg" id="sMsg"></p>
-        <div id="sStep" class="stack" hidden>
-          <div class="row">
-            <button class="recbtn" id="sRec" aria-label="Versuch aufnehmen"><span class="dot"></span></button>
-            <canvas id="cvS"></canvas>
-          </div>
-          <div class="btns">
-            <button class="play main" id="sRef" disabled>▶ Rückwärts</button>
-            <button class="play main alt" id="sOk" hidden>Passt so ➜ nachsprechen</button>
-          </div>
-          <input type="file" accept="audio/*" capture id="fileS">
-        </div>
-        <div id="sResult" class="stack" hidden></div>
-        <button class="play main" id="sNext" hidden>Nächster Begriff ➜</button>
-      </section>
-      <section class="card">
-        <h2 style="margin:0;font-size:18px;font-weight:800">🏆 Wochen-Rangliste</h2>
-        <div id="sBoard" class="stack"></div>
-      </section>
-    </div>
 
     <div class="view" id="studio" hidden>
       <button class="reset" id="stBack" style="align-self:flex-start">← Zurück</button>
@@ -978,6 +982,7 @@
     if (m === 'async') $('aProfSlot').appendChild($('profBox'));
     if (m === 'duel') $('lProfSlot').appendChild($('profBox'));
     if (m === 'async' && window.asyncEnter) window.asyncEnter();
+    if (m === 'solo' && window.soloEnter) window.soloEnter();
     stopPlay();
     if (m === 'solo') requestAnimationFrame(() => ['A','B'].forEach(k => draw(k, slots[k].buf)));
   }
@@ -1666,6 +1671,8 @@
   function renderLevel(){
     const cur = levelOf(myXP), nx = nextLevel(myXP);
     $('aLvName').textContent = 'Level ' + cur.n + ' · ' + cur.name;
+    $('soloLvl').hidden = false;
+    $('soloLvl').textContent = 'Level ' + cur.n + ' · ' + cur.name + ' · ' + myXP + ' Punkte';
     $('aLvXp').textContent = myXP + ' Punkte' + (A.lb && A.lb.me && A.lb.me.rank ? ' · Platz ' + A.lb.me.rank : '');
     $('aLvBar').style.width = (nx ? Math.round(100 * (myXP - cur.xp) / (nx.xp - cur.xp)) : 100) + '%';
     if (nx){
@@ -2086,7 +2093,7 @@
   const SZ = { data:null, busy:false, result:null, stage:'say', orig:null, origRev:null };
   const fmtDate = iso => new Date(iso).toLocaleString('de-DE', { weekday:'short', day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' });
   function hideAsyncViews(){
-    ['aHome','aListCard','aRankCard','sCard','sGame','studio','aGame'].forEach(k => $(k).hidden = true);
+    ['aHome','aListCard','aRankCard','sHint','studio','aGame'].forEach(k => $(k).hidden = true);
   }
   function goHome(){
     stopPlay(); A.gid = null; A.game = null;
@@ -2130,7 +2137,16 @@
   }
   function renderSeasonCard(){
     const d = SZ.data, s = d && d.active, card = $('sCard');
-    const onHome = !$('aHome').hidden;
+    const onHome = $('sGame').hidden;
+    // kleiner Hinweis im Duelle-Tab
+    const hint = $('sHint');
+    hint.hidden = !(s && !$('aHome').hidden);
+    if (s){
+      const left = s.words.filter(w => !w.my).length;
+      hint.innerHTML = '<div class="gi" style="text-align:center"><b>🗓️ ' + esc(s.title) + ' läuft</b><small>' +
+        (left ? 'Im Solo-Tab mitmachen ➜' : 'Alles gespielt · Platz ' + (s.me.rank || '–') + ' ➜') + '</small></div>';
+      hint.onclick = () => { showMode('solo'); window.scrollTo(0, 0); };
+    }
     if (!s){
       if (d && d.last && d.last.top && d.last.top.length){
         card.hidden = !onHome;
@@ -2152,16 +2168,21 @@
       (s.me && s.me.rank ? 'Du: ' + s.me.stars + ' ★ · Platz ' + s.me.rank + ' von ' + s.players : (s.players ? s.players + (s.players === 1 ? ' Spieler' : ' Spieler') + ' schon dabei' : 'Sei der Erste!')) + '</p>';
   }
   const nextIdx = s => { const w = s.words.find(w => !w.my); return w ? w.idx : null; };
+  function showSoloHome(){
+    stopPlay();
+    $('sGame').hidden = true; $('soloFree').hidden = false;
+    renderSeasonCard();
+  }
   function openSeason(){
-    stopPlay(); hideAsyncViews(); $('sGame').hidden = false;
+    stopPlay(); $('soloFree').hidden = true; $('sCard').hidden = true; $('sGame').hidden = false;
     SZ.result = null; SZ.stage = 'say'; SZ.orig = SZ.origRev = null; window.scrollTo(0, 0);
     renderSeason();
   }
   $('sPlay').onclick = openSeason;
-  $('sBack').onclick = goHome;
+  $('sBack').onclick = showSoloHome;
   function renderSeason(){
     const s = SZ.data && SZ.data.active;
-    if (!s){ toast('Diese Season ist vorbei'); goHome(); return; }
+    if (!s){ toast('Diese Season ist vorbei'); showSoloHome(); return; }
     const n = s.words.length, idx = SZ.result ? SZ.result.idx : nextIdx(s);
     const word = idx ? s.words.find(w => w.idx === idx).word_text : null;
     $('sTitle2').textContent = s.title;
@@ -2351,6 +2372,11 @@
     finally { $('stPublish').disabled = false; }
   };
 
+  // Im Solo-Tab still im Hintergrund verbinden und die Season laden
+  window.soloEnter = async () => {
+    try { await asyncInit(); await refreshSeason(); refreshStats(); } catch(e){ /* offline: nur freies Spiel */ }
+  };
+
   // Regelmäßig nachsehen, falls die Live-Aktualisierung mal hängt
   setInterval(() => {
     if (!document.hidden && !$('async').hidden && A.uid) scheduleRefresh();
@@ -2388,6 +2414,7 @@
   }
   handleHash();
   window.addEventListener('hashchange', handleHash);
+  if (!$('solo').hidden) window.soloEnter();
 
   // Ohne Mikro-API direkt Hinweis zeigen
   if (!micMode) $('note').classList.add('show');
