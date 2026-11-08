@@ -184,6 +184,23 @@
   .rank .nm2 b{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .rank .nm2 small{color:var(--mute);font-size:12px}
   .rank .xp{font-weight:800;color:var(--acc)}
+  .helpbtn{position:absolute;top:calc(env(safe-area-inset-top) + 14px);right:14px;width:36px;height:36px;border-radius:50%;border:1px solid rgba(255,255,255,.25);background:rgba(255,255,255,.06);color:var(--ink);font-family:inherit;font-size:18px;font-weight:800;cursor:pointer}
+  .howto{display:flex;align-items:flex-start;justify-content:center;gap:6px;margin:-4px 0 2px;font-size:22px}
+  .howto span{display:flex;flex-direction:column;align-items:center;gap:2px;width:64px}
+  .howto small{font-size:11px;color:var(--mute);text-align:center;line-height:1.2}
+  .howto i{font-style:normal;color:var(--mute);font-size:14px;margin-top:5px}
+  .helpstep{display:flex;flex-direction:column;gap:2px;padding:10px 12px;border-radius:14px;background:rgba(0,0,0,.2)}
+  .helpstep span{color:var(--mute);font-size:14px}
+  .firsthint{position:relative;padding:12px 34px 12px 12px;border-radius:14px;background:rgba(62,230,193,.12);border:1px solid rgba(62,230,193,.35);font-size:14px;line-height:1.45}
+  .firsthint .reset{position:absolute;top:4px;right:6px;padding:6px;text-decoration:none;font-size:15px}
+  .tour-hi{position:relative;z-index:61 !important;box-shadow:0 0 0 4px var(--acc),0 0 0 9999px rgba(10,5,25,.74) !important;border-radius:20px}
+  .recbtn.tour-hi{border-radius:50%}
+  .tourbub{position:fixed;left:16px;right:16px;z-index:62;max-width:420px;margin:0 auto;background:var(--ink);color:var(--bg);border-radius:18px;padding:14px 16px;box-shadow:0 10px 30px rgba(0,0,0,.4);animation:toastin .3s cubic-bezier(.3,1.6,.5,1)}
+  .tourbub[hidden]{display:none !important}
+  .tourbub p{margin:0 0 10px;font-size:16px;font-weight:800;line-height:1.35}
+  .tourbub .tourbtns{display:flex;justify-content:space-between;align-items:center;gap:10px}
+  .tourbub .reset{color:#6b5a8e;padding:4px 0}
+  .tourbub .play{flex:none;min-width:0;padding:10px 16px}
   .zsent{margin:0;text-align:center;font-size:18px;line-height:1.5;color:var(--mute)}
   .zsent b{color:var(--ink);background:rgba(255,210,63,.25);padding:1px 6px;border-radius:8px}
   .zsent s{text-decoration:none;color:var(--acc2)}
@@ -217,8 +234,10 @@
 <script>window.Peer || document.write('<script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"><\/script>')</script>
 </head>
 <body>
+  <button class="helpbtn" id="helpBtn" aria-label="So geht's">?</button>
   <h1>Ollah<span>!</span></h1>
-  <p class="sub"><b>Hallo</b>, nur rückwärts.<br>Wort aufnehmen · rückwärts anhören · nachsprechen · umdrehen · staunen</p>
+  <p class="sub"><b>Hallo</b>, nur rückwärts.</p>
+  <div class="howto"><span>🎙️<small>sagen</small></span><i>→</i><span>🔁<small>rückwärts hören</small></span><i>→</i><span>🦜<small>nachmachen</small></span><i>→</i><span>🤯<small>umdrehen</small></span></div>
   <div class="tabs"><button id="tabSolo" class="on">Solo</button><button id="tabAsync">Duelle</button><button id="tabRanks">Rangliste</button><button id="tabDuel" hidden>Live</button></div>
 
   <div class="note" id="note">
@@ -348,6 +367,7 @@
 
   <div class="view" id="ranks" hidden>
     <section class="card">
+      <div class="firsthint" data-hint="rangliste" hidden>👋 Jeder Stern aus Duellen und Seasons zählt – mit mehr Punkten steigst du im Level auf und schaltest neue Themen frei.<button class="reset" aria-label="Hinweis schließen">✕</button></div>
       <div class="head"><div class="num">🏅</div><div><h2>Dein Stand</h2><p>Sterne aus Duellen und Seasons · +5 je gewonnenem Duell</p></div></div>
       <div class="lvl">
         <div class="lvtop"><b id="rkLvName">Level 1 · Anfänger</b><span id="rkLvXp">0 Punkte</span></div>
@@ -368,6 +388,7 @@
   <div class="view" id="async" hidden>
     <section class="card" id="aHome">
       <div class="head"><div class="num">⚔️</div><div><h2>Duelle</h2><p>Spiel, wann du Zeit hast · 6 Runden · 48 Std. pro Zug</p></div></div>
+      <div class="firsthint" data-hint="duelle" hidden>👋 <b>So funktionieren Duelle:</b> Fordere Freunde oder einen Zufallsgegner heraus. Jeder spielt, wann er Zeit hat: das Wort des Gegners nachsprechen, dann selbst eins vorgeben. 6 Runden, wer mehr Sterne hat, gewinnt.<button class="reset" aria-label="Hinweis schließen">✕</button></div>
       <div id="aProfSlot"></div>
       <div class="lvl" id="aLevel">
         <div class="lvtop"><b id="aLvName">Level 1 · Anfänger</b><span id="aLvXp">0 Punkte</span></div>
@@ -588,6 +609,19 @@
     <button class="reset" id="fbOpen">💬 Feedback geben</button>
     <button class="reset" id="handBtn">🤚 Knopf links</button>
   </div>
+  <div class="overlay" id="helpBox" hidden>
+    <section class="card stack" style="max-height:90vh;overflow:auto">
+      <div class="head"><div class="num">❓</div><div><h2>So geht Ollah!</h2><p>Hallo, nur rückwärts.</p></div></div>
+      <div class="helpstep"><b>🎙️ 1. Sag ein Wort</b><span>zum Beispiel deinen Namen.</span></div>
+      <div class="helpstep"><b>🔁 2. Hör es rückwärts</b><span>Klingt wie eine fremde Sprache.</span></div>
+      <div class="helpstep"><b>🦜 3. Mach es nach</b><span>Sprich genau diese Rückwärts-Version nach – so gut du kannst.</span></div>
+      <div class="helpstep"><b>🤯 4. Umdrehen!</b><span>Dein Versuch wird umgedreht – und klingt plötzlich wie dein Wort. Je ähnlicher, desto mehr ⭐.</span></div>
+      <p class="tiny"><b>Solo</b> zum Üben und für die Season der Woche · <b>Duelle</b> gegen Freunde oder Zufallsgegner, jeder spielt, wann er Zeit hat · <b>Rangliste</b>: Sterne sammeln, Level aufsteigen, neue Themen freischalten.</p>
+      <button class="play main" id="helpTour">Geführte Runde starten</button>
+      <button class="reset" id="helpClose">Schließen</button>
+    </section>
+  </div>
+  <div class="tourbub" id="tourBub" hidden><p id="tourTxt"></p><div class="tourbtns"><button class="reset" id="tourSkip">Überspringen</button><button class="play main" id="tourNext" hidden>Verstanden 👍</button></div></div>
   <div class="overlay" id="fbBox" hidden>
     <section class="card stack" style="max-height:90vh;overflow:auto">
       <div class="head"><div class="num">💬</div><div><h2>Dein Feedback</h2><p>Hilft, Ollah! besser zu machen – dauert 30 Sekunden.</p></div></div>
@@ -2636,6 +2670,63 @@
   $('qRec').addEventListener('click', () => onRec('Q'));
   $('fileQ').addEventListener('change', () => { const f = $('fileQ').files && $('fileQ').files[0]; if (f) handleAudio('Q', f); $('fileQ').value = ''; });
 
+  // =====================================================================
+  // EINSTIEG: geführte erste Runde, Hilfe, einmalige Hinweise
+  // =====================================================================
+  const store = { get: k => { try { return localStorage.getItem(k); } catch(e){ return null; } }, set: (k, v) => { try { localStorage.setItem(k, v); } catch(e){} } };
+  const TOUR = [
+    { el:'recA', text:'Tipp hier und sag ein Wort – zum Beispiel deinen Namen. Nochmal tippen zum Stoppen.' },
+    { el:'okA',  text:'Das bist du – rückwärts! 😄 Hör es dir ruhig nochmal an. Dann tipp auf „Passt so“.' },
+    { el:'recB', text:'Jetzt sprich genau das nach, was du rückwärts gehört hast. „Vorlage rückwärts“ spielt es nochmal.' },
+    { el:'score', text:'Und jetzt der Trick: Dein Versuch wurde umgedreht 🤯 Klingt er wie dein Wort? Je ähnlicher, desto mehr Sterne!', last:true }
+  ];
+  let tourStep = -1;
+  function tourEl(){ return tourStep >= 0 && TOUR[tourStep] ? $(TOUR[tourStep].el) : null; }
+  function placeBubble(){
+    const el = tourEl(), bub = $('tourBub'); if (!el || bub.hidden) return;
+    const r = el.getBoundingClientRect(), h = bub.offsetHeight, vh = window.innerHeight;
+    const below = r.bottom + 14, above = r.top - h - 14;
+    bub.style.top = (below + h < vh - 8 || above < 8 ? Math.min(below, vh - h - 8) : above) + 'px';
+  }
+  function showTour(i){
+    document.querySelectorAll('.tour-hi').forEach(e => e.classList.remove('tour-hi'));
+    tourStep = i;
+    if (i < 0 || i >= TOUR.length){ $('tourBub').hidden = true; return; }
+    const st = TOUR[i], el = $(st.el);
+    el.classList.add('tour-hi');
+    $('tourTxt').textContent = st.text;
+    $('tourNext').hidden = !st.last;
+    $('tourBub').hidden = false;
+    el.scrollIntoView({ behavior:'smooth', block:'center' });
+    setTimeout(placeBubble, 350); placeBubble();
+  }
+  function endTour(){ showTour(-1); store.set('rw-tour', 'done'); }
+  function startTour(){
+    showMode('solo');
+    $('reset').click();
+    setTimeout(() => showTour(0), 250);
+  }
+  // Fortschritt an echte Spielschritte koppeln
+  new MutationObserver(() => { if (tourStep === 0 && !$('okA').hidden) showTour(1); }).observe($('okA'), { attributes:true });
+  $('okA').addEventListener('click', () => { if (tourStep === 1) setTimeout(() => showTour(2), 200); });
+  new MutationObserver(() => { if (tourStep === 2 && $('score').classList.contains('show')) showTour(3); }).observe($('score'), { attributes:true });
+  $('tourSkip').onclick = endTour;
+  $('tourNext').onclick = endTour;
+  $('reset').addEventListener('click', () => { if (tourStep > 0) showTour(0); });
+  window.addEventListener('resize', placeBubble);
+  window.addEventListener('scroll', placeBubble, { passive:true });
+
+  $('helpBtn').onclick = () => { $('helpBox').hidden = false; };
+  $('helpClose').onclick = () => { $('helpBox').hidden = true; };
+  $('helpBox').addEventListener('click', e => { if (e.target === $('helpBox')) $('helpBox').hidden = true; });
+  $('helpTour').onclick = () => { $('helpBox').hidden = true; startTour(); };
+
+  document.querySelectorAll('.firsthint').forEach(h => {
+    const k = 'rw-hint-' + h.dataset.hint;
+    h.hidden = store.get(k) === 'done';
+    h.querySelector('.reset').onclick = () => { h.hidden = true; store.set(k, 'done'); };
+  });
+
   // ---------- Rechts-/Linkshänder ----------
   function applyHand(){
     let left = false; try { left = localStorage.getItem('rw-hand') === 'left'; } catch(e){}
@@ -2749,6 +2840,7 @@
   handleHash();
   window.addEventListener('hashchange', handleHash);
   if (!$('solo').hidden) window.soloEnter();
+  if (!$('solo').hidden && store.get('rw-tour') !== 'done' && !store.get('rw-profile')) setTimeout(() => showTour(0), 600);
 
   // Ohne Mikro-API direkt Hinweis zeigen
   if (!micMode) $('note').classList.add('show');
