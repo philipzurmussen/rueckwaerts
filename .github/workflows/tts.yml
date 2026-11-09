@@ -29,7 +29,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898283+github-actions[bot]@users.noreply.github.com"
-          git add tts/*.mp3
+          git add tts/*.mp3 tts/index.json
           git commit -m "Kunststimme: fehlende Wörter erzeugt" || exit 0
           git pull --rebase origin main
           git push

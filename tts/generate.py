@@ -15,15 +15,28 @@ def words():
     block = re.search(r"insert into public\.words\(word\) values(.*?)on conflict do nothing;", sql, re.S).group(1)
     return [w.replace("''", "'") for w in re.findall(r"\('((?:[^']|'')*)'\)", block)]
 
+# Zusatzwörter für das Einstiegs-Beispiel („Hallo“ rückwärts ≈ „Olla“)
+EXTRA = ["Hallo", "Olla"]
+
 def fname(word):
     return hashlib.md5(word.encode("utf-8")).hexdigest()[:12] + ".mp3"
 
-missing = [w for w in words() if not os.path.exists(os.path.join(OUT, fname(w)))]
-print(len(words()), "Wörter,", len(missing), "fehlen")
+import json
+ALL = words() + [w for w in EXTRA if w not in words()]
+INDEX = os.path.join(OUT, "index.json")
+index = {w: fname(w) for w in ALL}
+missing = [w for w in ALL if not os.path.exists(os.path.join(OUT, fname(w)))]
+stale = not os.path.exists(INDEX) or json.load(open(INDEX, encoding="utf-8")) != index
+print(len(ALL), "Wörter,", len(missing), "fehlen", "| Index veraltet" if stale else "")
 if "--check" in sys.argv:
-    sys.exit(1 if missing else 0)
+    sys.exit(1 if (missing or stale) else 0)
+
+def write_index():
+    with open(INDEX, "w", encoding="utf-8") as f:
+        json.dump(index, f, ensure_ascii=False, indent=0, sort_keys=True)
+
 if not missing:
-    sys.exit(0)
+    write_index(); sys.exit(0)
 
 from piper import PiperVoice
 models = os.path.join(os.path.expanduser("~"), "piper-models"); os.makedirs(models, exist_ok=True)
@@ -44,3 +57,4 @@ for w in missing:
                     os.path.join(OUT, fname(w))], check=True)
     os.remove(path)
     print("OK", w)
+write_index()
