@@ -368,6 +368,45 @@
   .card.enter{animation:cardin .45s cubic-bezier(.3,1.3,.5,1) both}
   @keyframes cardin{from{opacity:0;transform:translateX(36px) scale(.97)}}
   @media (prefers-reduced-motion: reduce){.islide,.islide.out,.islide::before,.islide img,.islide .it,.islide .is,.card.enter{animation:none}}
+
+  /* ---------- Weniger scrollen: Tabs unten, Kacheln, Spiel-Kopf, Ausklapp-Fenster ---------- */
+  html,body{overflow-x:clip}
+  body{padding-bottom:calc(env(safe-area-inset-bottom) + 104px)}
+  .bnav{position:fixed;left:0;right:0;bottom:0;z-index:50;display:flex;justify-content:center;padding:8px 12px calc(env(safe-area-inset-bottom) + 10px);background:#0e0722}
+  .bnav .tabs{width:100%;max-width:440px;display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);gap:6px;background:none;padding:0;border-radius:0}
+  .bnav .tabs button{position:relative;min-height:56px;border-radius:16px;padding:4px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font-size:13px;color:var(--mute)}
+  .bnav .tabs button[hidden]{display:none}
+  .bnav .tabs button.on{background:var(--acc);color:#0e0722;box-shadow:inset 0 -4px 0 rgba(0,0,0,.18)}
+  .bnav .tabs button[data-n]::after{content:attr(data-n);position:absolute;top:3px;left:calc(50% + 6px);min-width:20px;height:20px;padding:0 5px;border-radius:10px;background:var(--rec);border:2px solid #0e0722;color:#fff;font-size:11px;line-height:16px;text-align:center}
+  .pchips{flex-direction:row;align-items:center}
+  .pchip{min-height:36px}
+  .pbar .helpbtn{width:36px;height:36px;border-width:2px;background:#0e0722;box-shadow:none;font-size:17px}
+  .tiles{width:100%;max-width:440px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+  .tile{min-height:150px;padding:16px;border-radius:24px;border:3px solid #0e0722;box-shadow:0 6px 0 #0e0722,inset 0 -8px 0 rgba(0,0,0,.15);color:#0e0722;font-family:inherit;text-align:left;display:flex;flex-direction:column;justify-content:space-between;gap:12px;cursor:pointer}
+  .tile.free{background:var(--rec)}
+  .tile.sent{background:var(--acc2)}
+  .tile .ti{width:52px;height:52px;border-radius:50%;background:#fff;border:3px solid #0e0722;display:grid;place-items:center}
+  .tile b{display:block;font-size:21px;line-height:1.1}
+  .tile small{font-size:13px;font-weight:800;opacity:.8}
+  .tile:active{transform:translateY(4px);box-shadow:0 2px 0 #0e0722,inset 0 -8px 0 rgba(0,0,0,.15)}
+  .histbar{width:100%;max-width:440px;min-height:50px;padding:0 16px;border-radius:16px;border:3px solid #0e0722;background:var(--card);color:var(--ink);box-shadow:0 4px 0 #0e0722;display:flex;align-items:center;justify-content:space-between;gap:10px;font-family:inherit;font-size:15px;font-weight:800;cursor:pointer}
+  .histbar .hi{font-size:13px;color:var(--mute)}
+  .histbar .hi::after{content:" ⌃";font-weight:800}
+  .histbar:active{transform:translateY(3px);box-shadow:0 1px 0 #0e0722}
+  .gamehead{width:100%;max-width:440px;display:flex;align-items:center;gap:12px}
+  .gamehead h2{margin:0;font-size:20px;font-weight:800}
+  .backbtn{flex:none;width:44px;height:44px;border-radius:14px;border:3px solid #0e0722;background:var(--card);color:var(--ink);box-shadow:0 4px 0 #0e0722;font-family:inherit;font-size:24px;font-weight:800;line-height:1;cursor:pointer;display:grid;place-items:center;padding:0}
+  .backbtn:active{transform:translateY(3px);box-shadow:0 1px 0 #0e0722}
+  .sheetwrap{position:fixed;inset:0;z-index:80;display:flex;align-items:flex-end;justify-content:center}
+  .sheetwrap[hidden]{display:none}
+  .sheetwrap .scrim{position:absolute;inset:0;background:rgba(14,7,34,.6);animation:isin .2s both}
+  .sheetwrap .card{position:relative;max-height:78vh;overflow:auto;border-radius:26px 26px 0 0;border-bottom:0;box-shadow:none;padding-bottom:calc(env(safe-area-inset-bottom) + 24px);animation:sheetup .32s cubic-bezier(.3,1.2,.5,1) both}
+  @keyframes sheetup{from{transform:translateY(100%)}}
+  .sgrip{align-self:center;width:44px;height:5px;border-radius:3px;background:rgba(255,255,255,.25)}
+  .shead{display:flex;align-items:center;justify-content:space-between}
+  .shead h2{margin:0}
+  .shead .backbtn{font-size:16px}
+  @media (prefers-reduced-motion: reduce){.sheetwrap .card,.sheetwrap .scrim{animation:none}}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -402,12 +441,20 @@
     </div>
     <div class="pchips">
       <button class="pchip" id="pRank" hidden><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 4h8v6a4 4 0 0 1-8 0z"/><path d="M8 6H5a3 3 0 0 0 3 4M16 6h3a3 3 0 0 1-3 4M12 14v4M8 20h8"/></svg><span id="pRankTxt"></span></button>
-      <button class="pchip duel" id="pTurns"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.5 17.5L3 6V3h3l11.5 11.5M13 19l6-6M16 16l4 4M19 21l2-2"/></svg><span id="pTurnsTxt">Duelle</span></button>
+      <button class="helpbtn" id="helpBtn" aria-label="So geht's">?</button>
+      <button class="pchip duel" id="pTurns" hidden><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.5 17.5L3 6V3h3l11.5 11.5M13 19l6-6M16 16l4 4M19 21l2-2"/></svg><span id="pTurnsTxt">Duelle</span></button>
     </div>
   </header>
-  <div class="tabrow">
-    <div class="tabs"><button id="tabSolo" class="on">Solo</button><button id="tabAsync">Duelle</button><button id="tabRanks">Rangliste</button><button id="tabDuel" hidden>Live</button></div>
-    <button class="helpbtn" id="helpBtn" aria-label="So geht's">?</button>
+  <nav class="bnav" aria-label="Hauptnavigation">
+    <div class="tabs"><button id="tabSolo" class="on"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>Solo</button><button id="tabAsync"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.5 17.5L3 6V3h3l11.5 11.5M13 19l6-6M16 16l4 4M19 21l2-2"/></svg>Duelle</button><button id="tabRanks"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 4h8v6a4 4 0 0 1-8 0z"/><path d="M8 6H5a3 3 0 0 0 3 4M16 6h3a3 3 0 0 1-3 4M12 14v4M8 20h8"/></svg>Rangliste</button><button id="tabDuel" hidden><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M6.3 6.3a8 8 0 0 0 0 11.4M17.7 6.3a8 8 0 0 1 0 11.4"/></svg>Live</button></div>
+  </nav>
+  <div class="sheetwrap" id="histSheet" hidden role="dialog" aria-modal="true" aria-label="Letzte Runden">
+    <div class="scrim" id="histScrim"></div>
+    <section class="card hist">
+      <div class="sgrip" aria-hidden="true"></div>
+      <div class="shead"><h2>Letzte Runden</h2><button class="backbtn" id="histClose" aria-label="Schließen">✕</button></div>
+      <div id="histList"><p class="empty">Noch keine Runde gespielt.</p></div>
+    </section>
   </div>
 
   <div class="note" id="note">
@@ -415,6 +462,7 @@
   </div>
 
   <div class="view" id="solo">
+   <div class="view" id="soloHome">
     <section class="card season" id="sCard" hidden>
       <div class="srow">
         <div class="num">🗓️</div>
@@ -424,6 +472,12 @@
       <div id="sMini" class="stack"></div>
       <p class="tiny" id="soloLvl" style="text-align:center" hidden></p>
     </section>
+    <div class="tiles">
+      <button class="tile free" id="tFree"><span class="ti"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg></span><span><b>Freies Spiel</b><small>Eigenes Wort</small></span></button>
+      <button class="tile sent" id="zStart"><span class="ti"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 6h16M4 12h10M4 18h13"/></svg></span><span><b>Satz-Modus</b><small>Wort für Wort</small></span></button>
+    </div>
+    <button class="histbar" id="tHist" aria-haspopup="dialog"><span>Letzte Runden</span><span class="hi" id="tHistInfo">noch keine</span></button>
+   </div>
     <div class="view" id="sGame" hidden>
       <button class="reset" id="sBack" style="align-self:flex-start">← Zurück</button>
       <section class="card">
@@ -490,7 +544,8 @@
       </div>
     </section>
   </div>
-  <div class="view" id="soloFree">
+  <div class="view" id="soloFree" hidden>
+  <div class="gamehead"><button class="backbtn" id="fBack" aria-label="Zurück">‹</button><h2>Freies Spiel</h2></div>
   <section class="card" id="cardA">
     <div class="head"><div class="num">1</div><div><h2>Wort aufnehmen</h2><p>Tippen zum Starten, nochmal tippen zum Stoppen</p></div></div>
     <div class="row">
@@ -527,14 +582,6 @@
     <input type="file" accept="audio/*" capture id="fileB">
   </section>
 
-  <section class="card" id="zCard">
-    <div class="head"><div class="num">🧩</div><div><h2>Satz-Modus</h2><p>Wort für Wort rückwärts – am Ende hörst du den ganzen Satz</p></div></div>
-    <button class="play main alt" id="zStart">Satz bauen</button>
-  </section>
-  <section class="card hist">
-    <h2>Letzte Runden</h2>
-    <div id="histList"><p class="empty">Noch keine Runde gespielt.</p></div>
-  </section>
 
   <button class="reset" id="reset">Neues Wort</button>
   </div>
@@ -1178,6 +1225,7 @@
   async function renderHistory(){
     const list = $('histList'), rounds = await loadRounds();
     list.innerHTML = '';
+    $('tHistInfo').textContent = rounds.length ? 'Bestwert ' + Math.round(Math.max(...rounds.map(r => r.sim)) * 100) + ' %' : 'noch keine';
     if (!rounds.length){ list.innerHTML = '<p class="empty">Noch keine Runde gespielt.</p>'; return; }
     rounds.forEach(r => {
       const el = document.createElement('div'); el.className = 'item';
@@ -1374,7 +1422,7 @@
     stopPlay();
     if (m === 'solo') requestAnimationFrame(() => ['A','B'].forEach(k => draw(k, slots[k].buf)));
   }
-  $('tabSolo').onclick = () => showMode('solo');
+  $('tabSolo').onclick = () => { if (!$('solo').hidden && $('soloHome').hidden) showSoloHome(); showMode('solo'); };
   $('tabDuel').onclick = () => showMode('duel');
   $('tabAsync').onclick = () => showMode('async');
   $('tabRanks').onclick = () => showMode('ranks');
@@ -1394,7 +1442,8 @@
       const turns = (A.list || []).filter(g => g.my_turn && g.status !== 'done').length;
       $('pTurnsTxt').textContent = turns ? turns + ' dran' : 'Duelle';
       $('pTurns').setAttribute('aria-label', turns ? 'Duelle, ' + turns + ' mal bist du dran' : 'Duelle');
-      $('pTurns').classList.toggle('dot', turns > 0); $('tabAsync').classList.toggle('dot', turns > 0);
+      if (turns) $('tabAsync').dataset.n = turns; else delete $('tabAsync').dataset.n;
+      $('tabAsync').setAttribute('aria-label', turns ? 'Duelle, ' + turns + ' mal bist du dran' : 'Duelle');
     } catch(e){}
   }
   $('pRank').onclick = () => { showMode('ranks'); window.scrollTo(0, 0); };
@@ -2681,7 +2730,7 @@
   }
   function renderSeasonCard(){
     const d = SZ.data, s = d && d.active, card = $('sCard');
-    const onHome = $('sGame').hidden;
+    const onHome = !$('soloHome').hidden;
     // kleiner Hinweis im Duelle-Tab
     const hint = $('sHint');
     hint.hidden = !(s && !$('aHome').hidden);
@@ -2715,11 +2764,24 @@
   const nextIdx = s => { const w = s.words.find(w => !w.my); return w ? w.idx : null; };
   function showSoloHome(){
     stopPlay();
-    $('sGame').hidden = true; $('zGame').hidden = true; $('soloFree').hidden = false;
+    $('sGame').hidden = true; $('zGame').hidden = true; $('soloFree').hidden = true; $('soloHome').hidden = false;
     renderSeasonCard();
   }
+  function openFree(){
+    stopPlay(); $('soloHome').hidden = true; $('sGame').hidden = true; $('zGame').hidden = true; $('soloFree').hidden = false;
+    window.scrollTo(0, 0);
+    requestAnimationFrame(() => ['A','B'].forEach(k => draw(k, slots[k].buf)));
+    enter($('cardA').hidden ? $('cardB') : $('cardA'));
+  }
+  $('tFree').onclick = openFree;
+  $('fBack').onclick = () => { showSoloHome(); window.scrollTo(0, 0); };
+  const histSheet = (open) => { $('histSheet').hidden = !open; if (!open) stopPlay(); };
+  $('tHist').onclick = () => histSheet(true);
+  $('histClose').onclick = () => histSheet(false);
+  $('histScrim').onclick = () => histSheet(false);
+  document.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('histSheet').hidden) histSheet(false); });
   function openSeason(){
-    stopPlay(); $('soloFree').hidden = true; $('sCard').hidden = true; $('sGame').hidden = false;
+    stopPlay(); $('soloHome').hidden = true; $('soloFree').hidden = true; $('sGame').hidden = false;
     SZ.result = null; SZ.stage = 'say'; SZ.orig = SZ.origRev = null; window.scrollTo(0, 0);
     renderSeason();
   }
@@ -2946,12 +3008,11 @@
     $('zPick').hidden = stage !== 'pick'; $('zPlay').hidden = !(stage === 'say' || stage === 'try'); $('zFinal').hidden = stage !== 'final';
   }
   function openSentence(){
-    stopPlay(); $('soloFree').hidden = true; $('sCard').hidden = true; $('sGame').hidden = true; $('zGame').hidden = false;
+    stopPlay(); $('soloHome').hidden = true; $('soloFree').hidden = true; $('sGame').hidden = true; $('zGame').hidden = false;
     dealSentences(); $('zCustom').value = ''; zShow('pick'); renderPick(); window.scrollTo(0, 0);
   }
   function closeSentence(){
-    stopPlay(); $('zGame').hidden = true; $('soloFree').hidden = false;
-    if (typeof renderSeasonCard === 'function') renderSeasonCard();
+    showSoloHome();
   }
   $('zStart').onclick = openSentence;
   $('zBack').onclick = () => { if (Z.stage === 'say' || Z.stage === 'try'){ zShow('pick'); renderPick(); } else closeSentence(); };
@@ -3081,6 +3142,7 @@
   function endTour(){ showTour(-1); store.set('rw-tour', 'done'); }
   function startTour(){
     showMode('solo');
+    openFree();
     $('reset').click();
     setTimeout(() => showTour(0), 250);
   }
