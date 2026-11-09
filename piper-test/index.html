@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Piper-Hörproben</title>
+<style>
+  :root{--bg:#1d1238;--card:#2a1a52;--ink:#fff;--mute:#b9a9e0;--acc:#ffd23f;--acc2:#3ee6c1;--line:#0e0722}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.4 system-ui,-apple-system,sans-serif;padding:16px;max-width:720px;margin:0 auto}
+  h1{font-size:26px;margin:8px 0 4px}
+  p.lead{color:var(--mute);margin:0 0 16px}
+  .voice{background:var(--card);border:3px solid var(--line);border-radius:18px;padding:14px;margin:0 0 14px}
+  .voice h2{margin:0;font-size:18px}
+  .voice small{color:var(--mute)}
+  .row{display:flex;align-items:center;gap:8px;padding:8px 0;border-top:1px solid rgba(255,255,255,.08)}
+  .row:first-of-type{border-top:0}
+  .row b{flex:1;min-width:0;font-weight:700}
+  button{border:3px solid var(--line);border-radius:12px;padding:8px 12px;font:700 15px system-ui,sans-serif;cursor:pointer;background:var(--acc2);color:var(--line)}
+  button.rev{background:var(--acc)}
+  button.on{outline:3px solid #fff}
+  .empty{color:var(--mute)}
+</style>
+</head>
+<body>
+<h1>Piper-Hörproben</h1>
+<p class="lead">Deutsche Stimmen der freien Sprachsynthese Piper. „▶“ normal, „🔁“ rückwärts – so würde die Vorgabe im Spiel klingen.</p>
+<div id="list"><p class="empty">Lade …</p></div>
+<script>
+let ctx = null, src = null, cur = null;
+const cache = new Map();
+async function buf(url){
+  if (!cache.has(url)) cache.set(url, fetch(url).then(r => { if (!r.ok) throw new Error(r.status); return r.arrayBuffer(); })
+    .then(ab => new Promise((ok, no) => ctx.decodeAudioData(ab, ok, no))));
+  return cache.get(url);
+}
+async function play(url, reversed, btn){
+  ctx = ctx || new (window.AudioContext || window.webkitAudioContext)();
+  if (ctx.state !== 'running') await ctx.resume();
+  if (src){ try { src.stop(); } catch(e){} }
+  if (cur) cur.classList.remove('on');
+  let b = await buf(url);
+  if (reversed){
+    const r = ctx.createBuffer(1, b.length, b.sampleRate), s = b.getChannelData(0), d = r.getChannelData(0);
+    for (let i = 0; i < s.length; i++) d[i] = s[s.length - 1 - i];
+    b = r;
+  }
+  src = ctx.createBufferSource(); src.buffer = b; src.connect(ctx.destination); src.start();
+  cur = btn; btn.classList.add('on'); src.onended = () => btn.classList.remove('on');
+}
+fetch('manifest.json', { cache:'no-store' }).then(r => r.json()).then(m => {
+  const list = document.getElementById('list'); list.innerHTML = '';
+  if (!m.voices.length){ list.innerHTML = '<p class="empty">Noch keine Stimmen erzeugt.</p>'; return; }
+  m.voices.forEach(v => {
+    const box = document.createElement('section'); box.className = 'voice';
+    box.innerHTML = '<h2>' + v.name + '</h2><small>' + v.desc + ' · Qualität ' + v.quality + '</small>';
+    m.words.forEach(w => {
+      if (!v.files[w]) return;
+      const row = document.createElement('div'); row.className = 'row';
+      const b = document.createElement('b'); b.textContent = w;
+      const p1 = document.createElement('button'); p1.textContent = '▶'; p1.setAttribute('aria-label', w + ' normal');
+      const p2 = document.createElement('button'); p2.textContent = '🔁'; p2.className = 'rev'; p2.setAttribute('aria-label', w + ' rückwärts');
+      p1.onclick = () => play(v.files[w], false, p1);
+      p2.onclick = () => play(v.files[w], true, p2);
+      row.append(b, p1, p2); box.appendChild(row);
+    });
+    list.appendChild(box);
+  });
+}).catch(() => { document.getElementById('list').innerHTML = '<p class="empty">Die Hörproben werden gerade erzeugt – in ein paar Minuten nochmal laden.</p>'; });
+</script>
+</body>
+</html>
