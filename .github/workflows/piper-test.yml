@@ -20,7 +20,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898283+github-actions[bot]@users.noreply.github.com"
-          git add piper-test/audio piper-test/manifest.json
+          git add -A piper-test/audio piper-test/manifest.json
           git commit -m "Piper-Hörproben erzeugt" || echo "nichts zu committen"
           git pull --rebase origin main
           git push

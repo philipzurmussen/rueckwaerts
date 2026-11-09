@@ -59,7 +59,7 @@ fetch('manifest.json', { cache:'no-store' }).then(r => r.json()).then(m => {
   if (!m.voices.length){ list.innerHTML = '<p class="empty">Noch keine Stimmen erzeugt.</p>'; return; }
   m.voices.forEach(v => {
     const box = document.createElement('section'); box.className = 'voice';
-    box.innerHTML = '<h2>' + v.name + '</h2><small>' + v.desc + ' · Qualität ' + v.quality + '</small>';
+    box.innerHTML = '<h2>' + v.name + '</h2><small>' + v.desc + '</small>';
     m.words.forEach(w => {
       if (!v.files[w]) return;
       const row = document.createElement('div'); row.className = 'row';
