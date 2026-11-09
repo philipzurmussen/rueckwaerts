@@ -3,7 +3,8 @@ on:
   workflow_dispatch:
   push:
     branches: [main]
-    paths: ['piper-test/generate.py', '.github/workflows/piper-test.yml']
+    paths: ['piper-test/generate.py']
+concurrency: piper-test
 permissions:
   contents: write
 jobs:
