@@ -536,6 +536,19 @@
       <div id="histList"><p class="empty">Noch keine Runde gespielt.</p></div>
     </section>
   </div>
+  <div class="sheetwrap" id="profSheet" hidden role="dialog" aria-modal="true" aria-label="Dein Profil">
+    <div class="scrim" id="profScrim"></div>
+    <section class="card">
+      <div class="sgrip" aria-hidden="true"></div>
+      <div class="shead"><h2>Dein Profil</h2><button class="backbtn" id="profClose" aria-label="Schließen">✕</button></div>
+      <div id="sProfSlot"></div>
+      <div class="lvl" id="aLevel">
+        <div class="lvtop"><b id="aLvName">Level 1 · Anfänger</b><span id="aLvXp">0 Punkte</span></div>
+        <div class="bar"><span id="aLvBar"></span></div>
+        <p class="tiny" id="aLvNext"></p>
+      </div>
+    </section>
+  </div>
   <div class="sheetwrap" id="boardSheet" hidden role="dialog" aria-modal="true" aria-label="Wochen-Rangliste">
     <div class="scrim" id="boardScrim"></div>
     <section class="card">
@@ -705,12 +718,6 @@
     <section class="card" id="aHome">
       <div class="head"><div class="num">⚔️</div><div><h2>Duelle</h2><p>Spiel, wann du Zeit hast · 6 Runden · 48 Std. pro Zug</p></div></div>
       <div class="firsthint" data-hint="duelle" hidden>👋 <b>So funktionieren Duelle:</b> Fordere Freunde oder einen Zufallsgegner heraus. Jeder spielt, wann er Zeit hat: das Wort des Gegners nachsprechen, dann selbst eins vorgeben. 6 Runden, wer mehr Sterne hat, gewinnt.<button class="reset" aria-label="Hinweis schließen">✕</button></div>
-      <div id="aProfSlot"></div>
-      <div class="lvl" id="aLevel">
-        <div class="lvtop"><b id="aLvName">Level 1 · Anfänger</b><span id="aLvXp">0 Punkte</span></div>
-        <div class="bar"><span id="aLvBar"></span></div>
-        <p class="tiny" id="aLvNext"></p>
-      </div>
       <p class="msg" id="aInviteHint" hidden></p>
       <button class="play main" id="aAccept" hidden>Herausforderung annehmen ⚔️</button>
       <div class="btns">
@@ -1517,7 +1524,6 @@
     $('tabSolo').classList.toggle('on', m === 'solo'); $('tabDuel').classList.toggle('on', m === 'duel');
     $('tabAsync').classList.toggle('on', m === 'async');
     // Profil-Kasten dorthin hängen, wo er gebraucht wird
-    if (m === 'async') $('aProfSlot').appendChild($('profBox'));
     if (m === 'duel') $('lProfSlot').appendChild($('profBox'));
     if (m === 'async' && window.asyncEnter) window.asyncEnter();
     if (m === 'solo' && window.soloEnter) window.soloEnter();
@@ -1550,10 +1556,16 @@
   }
   $('pRank').onclick = () => { showMode('ranks'); window.scrollTo(0, 0); };
   $('pTurns').onclick = () => { showMode('async'); window.scrollTo(0, 0); };
-  $('pAva').onclick = () => {
-    showMode('async');
-    requestAnimationFrame(() => { $('avaPick').hidden = false; $('profBox').scrollIntoView({ behavior:'smooth', block:'center' }); });
+  // Profil-Fenster: Name, Avatar, Farbe, Konto, Level
+  const profSheet = (open) => {
+    if (open){ $('sProfSlot').appendChild($('profBox')); $('avaPick').hidden = false; }
+    $('profSheet').hidden = !open;
+    if (!open && document.activeElement === $('myName')) $('myName').blur();
   };
+  $('pAva').onclick = () => profSheet(true);
+  $('profClose').onclick = () => profSheet(false);
+  $('profScrim').onclick = () => profSheet(false);
+  document.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('profSheet').hidden) profSheet(false); });
 
   // ---------- Profil ----------
   const AVATARS = ['🦊','🐸','🐼','🐙','🦄','🐯','🐨','🐵','🦉','🐧','🐢','🦖','🐳','🦔','🐝','👾'];
@@ -2371,7 +2383,8 @@
   function showInvite(){
     $('aInviteHint').hidden = false; $('aAccept').hidden = false;
     $('aNewFriend').parentElement.hidden = true;
-    $('aInviteHint').innerHTML = 'Du wurdest zu einem Duell herausgefordert! ⚔️<br><span style="font-size:14px;font-weight:500;color:var(--mute)">Avatar und Nickname wählen, dann annehmen.</span>';
+    $('aInviteHint').innerHTML = 'Du wurdest zu einem Duell herausgefordert! ⚔️<br><span style="font-size:14px;font-weight:500;color:var(--mute)">Oben auf deinen Avatar tippen, Nickname und Bild wählen, dann annehmen.</span>';
+    if (!profile.name) setTimeout(() => profSheet(true), 400);   // neue Spieler: Profil gleich öffnen
   }
   $('aAccept').onclick = async () => {
     if (A.busy || !A.pendingInvite) return; A.busy = true;
