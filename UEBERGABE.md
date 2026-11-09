@@ -67,6 +67,7 @@ Samstags läuft eine geplante Aufgabe, die Ereignisse und Gedenktage der kommend
 
 - KI-/TTS-generierte Vorgabewörter gegen Schummeln (API-Key nur auf dem Admin-Gerät, nie in der App).
 - Season als Pop-up bzw. im Hauptmenü (App-Store-Version).
+- Push-Mitteilung „Du bist dran“ bei Duellen: erst mit der richtigen App (App-Store-Version) bauen. Web-Push wäre möglich (Service Worker + VAPID + Supabase-Funktion), auf dem iPhone aber nur als installierte Web-App.
 - App-Store-Build: Capacitor, Push-Benachrichtigungen, Login mit Apple/Google.
 
 ## Reward-System (Plan für später, nach ersten Tester-Erfahrungen)
