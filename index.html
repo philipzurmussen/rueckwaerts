@@ -2108,7 +2108,7 @@
   const A = {
     sb:null, uid:null, ready:null, list:[], game:null, gid:null,
     stage:'idle', busy:false, wordNet:null, draft:null, draftRev:null,
-    choices:[], chosen:null, pendingInvite:null, myTurnIds:new Set(), knownIds:new Set(), firstList:true
+    choices:[], chosen:null, pendingInvite:null, myTurnIds:new Set(), knownIds:new Set(), firstList:true, heard:new Set()
   };
   const audioCache = new Map();
 
@@ -2573,7 +2573,15 @@
     $('aReveal').hidden = st !== 'reveal';
 
     let msg = '';
-    if (st === 'answer') msg = 'Runde ' + g.cur_round + ': Hör dir ' + opName + 's Wort rückwärts an und sprich es nach. Du hast einen Versuch!';
+    if (st === 'answer'){
+      // Erst in Ruhe anhören, dann erscheint der Aufnahmeknopf (es gibt nur einen Versuch)
+      const heard = !!(cr && A.heard.has(cr.word_path));
+      $('xRec').hidden = !heard;
+      $('xWord').textContent = heard ? '🔁 Rückwärts nochmal' : '▶ Wort rückwärts anhören';
+      $('xWord').classList.toggle('alt', !heard);
+      msg = heard ? 'Runde ' + g.cur_round + ': Jetzt sprich es nach – du hast einen Versuch!'
+                  : 'Runde ' + g.cur_round + ': Hör dir ' + opName + 's Wort rückwärts an – so oft du willst.';
+    }
     else if (st === 'reveal'){
       const r = g.rounds.find(x => x.round_no === A.revealRound) || cr;
       const a = r && r.my ? r.my.stars : 0, b = r && r.their && !r.their.hidden ? r.their.stars : 0;
@@ -2597,7 +2605,7 @@
     $('yRev').disabled = !A.draft;
     renderRounds();
     requestAnimationFrame(() => {
-      if (st === 'answer') draw('X', null);
+      if (st === 'answer'){ draw('X', null); loadWord().then(w => { if (A.stage === 'answer' && !(playing && playing.slot === 'X')) draw('X', w.rev); }).catch(() => {}); }
       if (st === 'set') draw('Y', A.draftRev);
       if (st === 'own') draw('Z', A.draftRev);
     });
@@ -2760,7 +2768,12 @@
     return A.wordNet;
   }
   $('xWord').onclick = async () => {
-    try { const w = await loadWord(); draw('X', w.rev); play('X', w.rev); }
+    try {
+      const w = await loadWord(), path = w.path;
+      draw('X', w.rev);
+      // nach dem ersten kompletten Anhören darf aufgenommen werden
+      play('X', w.rev, () => { if (!A.heard.has(path)){ A.heard.add(path); if (A.stage === 'answer') renderGame(); } });
+    }
     catch(e){ toast('Wort konnte nicht geladen werden'); }
   };
 
