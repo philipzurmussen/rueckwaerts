@@ -206,6 +206,8 @@
   .tour-hi{position:relative;z-index:61 !important;box-shadow:0 0 0 4px var(--acc),0 0 0 9999px rgba(10,5,25,.74) !important;border-radius:20px}
   .recbtn.tour-hi{border-radius:50%}
   .words.guess{margin-top:12px}
+  .words.lbl{grid-template-columns:repeat(4,1fr);gap:6px;margin-top:8px}
+  .words.lbl button{font-size:12px;padding:8px 4px}
   /* Startseite */
   .bigplay{width:100%;max-width:440px;border:4px solid #0e0722;border-radius:24px;padding:20px 16px;background:var(--acc);color:#0e0722;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px;font-family:inherit;box-shadow:0 7px 0 #0e0722}
   .bigplay:active{transform:translateY(5px);box-shadow:0 2px 0 #0e0722}
@@ -1283,7 +1285,7 @@
   // Eichung: mittlere DTW-Distanz → Prozent. SCORE_LO und besser = 100 %, SCORE_HI und schlechter = 0 %.
   // Strenger: SCORE_HI senken. Gnädiger: SCORE_HI anheben.
   // (Admins sehen die Rohdistanz „d“ unter „Letzte Runden“ – damit lässt sich das hier nachjustieren.)
-  const SCORE_LO = 0.70, SCORE_HI = 1.35;
+  const SCORE_LO = 0.70, SCORE_HI = 1.25;
   // Gnädiger gegen die Kunststimme (Piper): Eine fremde, künstliche Stimme trifft man nie ganz
   const TTS_LO = 0.75, TTS_HI = 1.45;
   const SPEECH_GATE_DB = 30, DTW_BAND = 0.3;
@@ -1446,7 +1448,8 @@
   }
 
   // ---------- Speicher: letzte 5 Runden ----------
-  const MAX_ROUNDS = 5;
+  const isAdminDev = () => { try { return localStorage.getItem('ollahAdmin') === '1'; } catch(e){ return false; } };
+  const maxRounds = () => isAdminDev() ? 40 : 5;   // Admins sammeln mehr Runden zum Eichen der Bewertung
   let dbp = null, memRounds = [];
   function db(){
     if (dbp) return dbp;
@@ -1474,7 +1477,7 @@
   async function saveRound(round){
     const d = await db();
     if (!d){
-      round.id = Date.now(); memRounds.unshift(round); memRounds = memRounds.slice(0, MAX_ROUNDS);
+      round.id = Date.now(); memRounds.unshift(round); memRounds = memRounds.slice(0, maxRounds());
     } else {
       await new Promise(res => {
         try {
@@ -1483,9 +1486,35 @@
         } catch(e){ res(); }
       });
       const all = await loadRounds();
-      for (const old of all.slice(MAX_ROUNDS)) await deleteRound(old.id, true);
+      for (const old of all.slice(maxRounds())) await deleteRound(old.id, true);
     }
     renderHistory();
+  }
+  async function putRound(round){
+    const d = await db(); if (!d) return;
+    await new Promise(res => { try { const tx = d.transaction('rounds','readwrite'); tx.objectStore('rounds').put(round); tx.oncomplete = res; tx.onerror = res; } catch(e){ res(); } });
+  }
+  // Admin: Runden mit eigenem Urteil als Datei teilen (zum Eichen der Bewertung)
+  const LABELS = [['gut','👍 gut'],['okay','👌 okay'],['genuschelt','🙉 genuschelt'],['falsch','❌ falsch']];
+  function wavB64(data, sr){
+    const n = data.length, b = new ArrayBuffer(44 + n*2), v = new DataView(b);
+    const w = (o, t) => { for (let i = 0; i < t.length; i++) v.setUint8(o+i, t.charCodeAt(i)); };
+    w(0,'RIFF'); v.setUint32(4,36+n*2,true); w(8,'WAVE'); w(12,'fmt '); v.setUint32(16,16,true); v.setUint16(20,1,true); v.setUint16(22,1,true);
+    v.setUint32(24,sr,true); v.setUint32(28,sr*2,true); v.setUint16(32,2,true); v.setUint16(34,16,true); w(36,'data'); v.setUint32(40,n*2,true);
+    for (let i = 0; i < n; i++){ const x = Math.max(-1, Math.min(1, data[i])); v.setInt16(44+i*2, x < 0 ? x*0x8000 : x*0x7fff, true); }
+    let bin = ''; const u = new Uint8Array(b); for (let i = 0; i < u.length; i += 0x8000) bin += String.fromCharCode.apply(null, u.subarray(i, i + 0x8000));
+    return btoa(bin);
+  }
+  async function exportRounds(){
+    const rounds = await loadRounds();
+    const out = { app: 'Ollah!', exported: new Date().toISOString(), rounds: rounds.map(r => {
+      let d = null; try { d = scoreDetail(r.a, Float32Array.from(r.b).reverse(), r.sr, r.tts).dist; } catch(e){}
+      return { time: new Date(r.time).toISOString(), sr: r.sr, sim: r.sim, stars: r.stars, tts: !!r.tts, word: r.word || null, label: r.label || null, d,
+               a: wavB64(r.a, r.sr), b: wavB64(r.b, r.sr) };
+    }) };
+    const file = new File([JSON.stringify(out)], 'ollah-runden-' + new Date().toISOString().slice(0, 16).replace(/[:T]/g, '-') + '.json', { type: 'application/json' });
+    try { if (navigator.canShare && navigator.canShare({ files: [file] })){ await navigator.share({ files: [file], title: 'Ollah! Runden' }); return; } } catch(e){ if (e && e.name === 'AbortError') return; }
+    const a = document.createElement('a'); a.href = URL.createObjectURL(file); a.download = file.name; document.body.appendChild(a); a.click(); a.remove();
   }
   async function deleteRound(id, silent){
     const d = await db();
@@ -1503,7 +1532,13 @@
     list.innerHTML = '';
     $('tHistInfo').textContent = rounds.length ? 'Bestwert ' + Math.round(Math.max(...rounds.map(r => r.sim)) * 100) + ' %' : 'noch keine';
     if (!rounds.length){ list.innerHTML = '<p class="empty">Noch keine Runde gespielt.</p>'; return; }
-    let admin = false; try { admin = localStorage.getItem('ollahAdmin') === '1'; } catch(e){}
+    const admin = isAdminDev();
+    if (admin){
+      const ex = document.createElement('div'); ex.className = 'btns';
+      ex.innerHTML = '<button class="play main alt" style="flex-basis:100%">📦 Runden mit Urteil teilen (' + rounds.length + ')</button>';
+      ex.querySelector('button').onclick = () => exportRounds();
+      list.appendChild(ex);
+    }
     rounds.forEach(r => {
       const el = document.createElement('div'); el.className = 'item';
       const t = new Date(r.time);
@@ -1511,8 +1546,8 @@
       let diag = '';
       if (admin && r.a && r.b){
         try {
-          const back = Float32Array.from(r.b).reverse(), sd = scoreDetail(r.a, back, r.sr);
-          diag = ' · jetzt ' + Math.round(sd.sim*100) + ' % · d ' + (sd.dist == null ? '–' : sd.dist.toFixed(2));
+          const back = Float32Array.from(r.b).reverse(), sd = scoreDetail(r.a, back, r.sr, r.tts);
+          diag = ' · jetzt ' + Math.round(sd.sim*100) + ' % · d ' + (sd.dist == null ? '–' : sd.dist.toFixed(2)) + (r.tts ? ' · 🤖' : '') + (r.word ? ' · ' + esc(r.word) : '');
         } catch(e){}
       }
       const when = t.toLocaleDateString('de-DE',{day:'2-digit',month:'2-digit'}) + ', ' + t.toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'});
@@ -1522,6 +1557,15 @@
         '<button class="del" aria-label="Löschen">✕</button></div>' +
         '<div class="btns"><button class="play" data-k="a">▶ Original</button><button class="play" data-k="ar">🔁 Rückwärts</button><button class="play main alt" data-k="br">🤯 Ergebnis</button></div>';
       el.querySelector('.del').onclick = () => { stopPlay(); deleteRound(r.id); };
+      if (admin){   // eigenes Urteil zum Eichen
+        const lb = document.createElement('div'); lb.className = 'words lbl';
+        LABELS.forEach(([k, t]) => {
+          const b = document.createElement('button'); b.textContent = t; if (r.label === k) b.className = 'on';
+          b.onclick = async () => { r.label = r.label === k ? null : k; await putRound(r); lb.querySelectorAll('button').forEach((x, i) => x.classList.toggle('on', LABELS[i][0] === r.label)); };
+          lb.appendChild(b);
+        });
+        el.appendChild(lb);
+      }
       el.querySelectorAll('.play').forEach(b => b.onclick = () => {
         const k = b.dataset.k;
         const src = k === 'br' ? r.b : r.a;
@@ -3757,7 +3801,7 @@
     const sim = similarity(QZ.buf.getChannelData(0), rev.getChannelData(0), NET_SR, true), stars = starsFor(sim);
     QZ.res = { sim, stars, rev };
     logPlay('frei', stars);
-    saveRound({ time: Date.now(), sr: NET_SR, a: new Float32Array(QZ.buf.getChannelData(0)), b: new Float32Array(net.getChannelData(0)), sim, stars });
+    saveRound({ time: Date.now(), sr: NET_SR, a: new Float32Array(QZ.buf.getChannelData(0)), b: new Float32Array(net.getChannelData(0)), sim, stars, tts: true, word: QZ.word });
     if (QZ.guess){ quickReveal(); return; }   // „Nochmal“ nach dem Raten: direkt Ergebnis
     renderQuick();
     play(null, rev);   // erst nur das Ergebnis – raten, dann Auflösung
