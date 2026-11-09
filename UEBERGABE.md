@@ -69,6 +69,7 @@ Samstags läuft eine geplante Aufgabe, die Ereignisse und Gedenktage der kommend
 - KI-/TTS-generierte Vorgabewörter gegen Schummeln (API-Key nur auf dem Admin-Gerät, nie in der App).
 - Season als Pop-up bzw. im Hauptmenü (App-Store-Version).
 - Push-Mitteilung „Du bist dran“ bei Duellen: erst mit der richtigen App (App-Store-Version) bauen. Web-Push wäre möglich (Service Worker + VAPID + Supabase-Funktion), auf dem iPhone aber nur als installierte Web-App.
+- Neutrale Kunststimme (Stand Nov. 2026): Piper `de_DE-thorsten-medium` mit `length_scale` 1.5 („langsam“) ist Philips Wahl – am besten nachzuahmen. Frauenstimmen von Piper klangen unnatürlich (Akzent), thorsten-high verschluckt Endsilben. Hörproben: `/piper-test/` (erzeugt per GitHub Action `piper-test.yml`). Geplant: Duell-Option „🤖 Kunststimme“ (beide kennen das Wort nicht, beide raten) und Level-Pfad.
 - App-Store-Build: Capacitor, Push-Benachrichtigungen, Login mit Apple/Google.
 
 ## Reward-System (Plan für später, nach ersten Tester-Erfahrungen)
