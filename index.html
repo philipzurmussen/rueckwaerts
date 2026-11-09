@@ -461,6 +461,15 @@
   .dstage .recbtn.on .rl::before{content:"Stopp"}
   .dstage .btns .play{min-height:56px;font-size:16px}
   #roundsSheet #aLeave{align-self:center}
+
+  /* ---------- Season + Satz-Modus als Spiel-Ansicht ---------- */
+  .ghtxt{min-width:0}
+  .ghtxt h2{margin:0;font-size:20px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .ghtxt p{margin:2px 0 0;font-size:13px;font-weight:800;color:var(--mute)}
+  .dstage .dots{justify-content:center}
+  #zGame .dstage,#sGame .dstage{min-height:calc(100dvh - env(safe-area-inset-top) - 190px)}
+  #zFinal .row canvas{height:90px}
+  .recbtn[hidden]{display:none !important}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -510,6 +519,14 @@
       <div id="histList"><p class="empty">Noch keine Runde gespielt.</p></div>
     </section>
   </div>
+  <div class="sheetwrap" id="boardSheet" hidden role="dialog" aria-modal="true" aria-label="Wochen-Rangliste">
+    <div class="scrim" id="boardScrim"></div>
+    <section class="card">
+      <div class="sgrip" aria-hidden="true"></div>
+      <div class="shead"><h2>🏆 Wochen-Rangliste</h2><button class="backbtn" id="boardClose" aria-label="Schließen">✕</button></div>
+      <div id="sBoard" class="stack"></div>
+    </section>
+  </div>
   <div class="sheetwrap" id="roundsSheet" hidden role="dialog" aria-modal="true" aria-label="Rundenverlauf">
     <div class="scrim" id="roundsScrim"></div>
     <section class="card">
@@ -542,14 +559,13 @@
     <button class="histbar" id="tHist" aria-haspopup="dialog"><span>Letzte Runden</span><span class="hi" id="tHistInfo">noch keine</span></button>
    </div>
     <div class="view" id="sGame" hidden>
-      <button class="reset" id="sBack" style="align-self:flex-start">← Zurück</button>
-      <section class="card">
-        <div class="head"><div class="num">🗓️</div><div><h2 id="sTitle2"></h2><p id="sSub2"></p></div></div>
+      <div class="gamehead"><button class="backbtn" id="sBack" aria-label="Zurück">‹</button><div class="ghtxt"><h2 id="sTitle2"></h2><p id="sSub2"></p></div></div>
+      <section class="card dstage">
         <div class="dots" id="sDots2"></div>
         <p class="msg" id="sMsg"></p>
         <div id="sStep" class="stack" hidden>
           <div class="row">
-            <button class="recbtn" id="sRec" aria-label="Versuch aufnehmen"><span class="dot"></span></button>
+            <button class="recbtn" id="sRec" aria-label="Versuch aufnehmen"><span class="dot"></span><span class="rl"></span></button>
             <canvas id="cvS"></canvas>
           </div>
           <div class="btns">
@@ -561,16 +577,12 @@
         <div id="sResult" class="stack" hidden></div>
         <button class="play main" id="sNext" hidden>Nächster Begriff ➜</button>
       </section>
-      <section class="card">
-        <h2 style="margin:0;font-size:18px;font-weight:800">🏆 Wochen-Rangliste</h2>
-        <div id="sBoard" class="stack"></div>
-      </section>
+      <button class="histbar" id="sBoardBtn" aria-haspopup="dialog"><span>🏆 Wochen-Rangliste</span><span class="hi">ansehen</span></button>
     </div>
 
   <div class="view" id="zGame" hidden>
-    <button class="reset" id="zBack" style="align-self:flex-start">← Zurück</button>
-    <section class="card">
-      <div class="head"><div class="num">🧩</div><div><h2>Satz-Modus</h2><p>Wort für Wort rückwärts – am Ende hörst du den ganzen Satz</p></div></div>
+    <div class="gamehead"><button class="backbtn" id="zBack" aria-label="Zurück">‹</button><div class="ghtxt"><h2>Satz-Modus</h2><p>Wort für Wort rückwärts</p></div></div>
+    <section class="card dstage">
       <div id="zPick" class="stack">
         <div class="words" id="zList"></div>
         <button class="reset" id="zShuffle" style="padding:2px">🔄 Andere Sätze</button>
@@ -582,7 +594,7 @@
         <div class="dots" id="zDots"></div>
         <p class="msg" id="zMsg"></p>
         <div class="row">
-          <button class="recbtn" id="qRec" aria-label="Aufnehmen"><span class="dot"></span></button>
+          <button class="recbtn" id="qRec" aria-label="Aufnehmen"><span class="dot"></span><span class="rl"></span></button>
           <canvas id="cvQ"></canvas>
         </div>
         <div class="btns">
@@ -2860,6 +2872,11 @@
   $('tHist').onclick = () => histSheet(true);
   const roundsSheet = (open) => { $('roundsSheet').hidden = !open; if (!open) stopPlay(); };
   $('aRoundsBtn').onclick = () => roundsSheet(true);
+  const boardSheet = (open) => { $('boardSheet').hidden = !open; };
+  $('sBoardBtn').onclick = () => boardSheet(true);
+  $('boardClose').onclick = () => boardSheet(false);
+  $('boardScrim').onclick = () => boardSheet(false);
+  document.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('boardSheet').hidden) boardSheet(false); });
   $('roundsClose').onclick = () => roundsSheet(false);
   $('roundsScrim').onclick = () => roundsSheet(false);
   document.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('roundsSheet').hidden) roundsSheet(false); });
