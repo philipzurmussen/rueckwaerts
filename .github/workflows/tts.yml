@@ -1,0 +1,35 @@
+name: Kunststimme
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['supabase/setup.sql', 'tts/generate.py', '.github/workflows/tts.yml']
+concurrency: tts
+permissions:
+  contents: write
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fehlen Wörter?
+        id: check
+        run: python3 tts/generate.py --check && echo "todo=no" >> "$GITHUB_OUTPUT" || echo "todo=yes" >> "$GITHUB_OUTPUT"
+      - uses: actions/setup-python@v5
+        if: steps.check.outputs.todo == 'yes'
+        with: { python-version: '3.11' }
+      - name: Erzeugen
+        if: steps.check.outputs.todo == 'yes'
+        run: |
+          which ffmpeg || (sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg)
+          pip install piper-tts
+          python tts/generate.py
+      - name: Einchecken
+        if: steps.check.outputs.todo == 'yes'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898283+github-actions[bot]@users.noreply.github.com"
+          git add tts/*.mp3
+          git commit -m "Kunststimme: fehlende Wörter erzeugt" || exit 0
+          git pull --rebase origin main
+          git push

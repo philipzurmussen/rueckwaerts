@@ -32,6 +32,11 @@ create table if not exists public.games (
   created_at    timestamptz not null default now()
 );
 alter table public.games add column if not exists rematch_of uuid;
+-- 'own' = Wörter mit eigener Stimme vorgeben, 'tts' = Kunststimme gibt vor (keiner kennt das Wort)
+alter table public.games add column if not exists voice text not null default 'own';
+do $$ begin
+  alter table public.games add constraint games_voice_chk check (voice in ('own','tts'));
+exception when duplicate_object then null; end $$;
 create index if not exists games_a_idx on public.games(player_a);
 create index if not exists games_b_idx on public.games(player_b);
 create index if not exists games_open_idx on public.games(status, is_random);
@@ -265,6 +270,195 @@ insert into public.words(word) values
   ('Zahnbürste')
 on conflict do nothing;
 
+-- Thema je Listen-Wort (für passende falsche Antworten beim Raten mit Kunststimme)
+alter table public.words add column if not exists topic text;
+update public.words w set topic = v.t from (values
+  ('Giraffe', 'Tiere'),
+  ('Krokodil', 'Tiere'),
+  ('Elefant', 'Tiere'),
+  ('Schmetterling', 'Tiere'),
+  ('Känguru', 'Tiere'),
+  ('Nilpferd', 'Tiere'),
+  ('Pinguin', 'Tiere'),
+  ('Erdmännchen', 'Tiere'),
+  ('Eichhörnchen', 'Tiere'),
+  ('Schildkröte', 'Tiere'),
+  ('Flamingo', 'Tiere'),
+  ('Papagei', 'Tiere'),
+  ('Wildschwein', 'Tiere'),
+  ('Seepferdchen', 'Tiere'),
+  ('Gorilla', 'Tiere'),
+  ('Faultier', 'Tiere'),
+  ('Marienkäfer', 'Tiere'),
+  ('Waschbär', 'Tiere'),
+  ('Tintenfisch', 'Tiere'),
+  ('Chamäleon', 'Tiere'),
+  ('Dromedar', 'Tiere'),
+  ('Igel', 'Tiere'),
+  ('Spaghetti', 'Essen'),
+  ('Pfannkuchen', 'Essen'),
+  ('Gummibärchen', 'Essen'),
+  ('Brokkoli', 'Essen'),
+  ('Ananas', 'Essen'),
+  ('Kartoffelsalat', 'Essen'),
+  ('Pommes', 'Essen'),
+  ('Lasagne', 'Essen'),
+  ('Schokolade', 'Essen'),
+  ('Erdbeere', 'Essen'),
+  ('Pizza', 'Essen'),
+  ('Joghurt', 'Essen'),
+  ('Avocado', 'Essen'),
+  ('Fischstäbchen', 'Essen'),
+  ('Zimtschnecke', 'Essen'),
+  ('Banane', 'Essen'),
+  ('Mandarine', 'Essen'),
+  ('Spinat', 'Essen'),
+  ('Döner', 'Essen'),
+  ('Wassermelone', 'Essen'),
+  ('Brezel', 'Essen'),
+  ('Pfefferminz', 'Essen'),
+  ('Kölner Dom', 'Köln'),
+  ('Rhein', 'Köln'),
+  ('Karneval', 'Köln'),
+  ('Alaaf', 'Köln'),
+  ('Kamelle', 'Köln'),
+  ('Veedel', 'Köln'),
+  ('Ehrenfeld', 'Köln'),
+  ('Nippes', 'Köln'),
+  ('Deutz', 'Köln'),
+  ('Hohenzollernbrücke', 'Köln'),
+  ('Heinzelmännchen', 'Köln'),
+  ('Funkenmariechen', 'Köln'),
+  ('Büdchen', 'Köln'),
+  ('Tünnes', 'Köln'),
+  ('Schäl', 'Köln'),
+  ('Domplatte', 'Köln'),
+  ('Rheinseilbahn', 'Köln'),
+  ('Mülheim', 'Köln'),
+  ('Rodenkirchen', 'Köln'),
+  ('Halve Hahn', 'Köln'),
+  ('Flora', 'Köln'),
+  ('Severin', 'Köln'),
+  ('Australien', 'Länder & Städte'),
+  ('Mexiko', 'Länder & Städte'),
+  ('Kanada', 'Länder & Städte'),
+  ('Ghana', 'Länder & Städte'),
+  ('Norwegen', 'Länder & Städte'),
+  ('Portugal', 'Länder & Städte'),
+  ('Japan', 'Länder & Städte'),
+  ('Argentinien', 'Länder & Städte'),
+  ('Madagaskar', 'Länder & Städte'),
+  ('Island', 'Länder & Städte'),
+  ('Paris', 'Länder & Städte'),
+  ('Barcelona', 'Länder & Städte'),
+  ('Amsterdam', 'Länder & Städte'),
+  ('Istanbul', 'Länder & Städte'),
+  ('Hamburg', 'Länder & Städte'),
+  ('München', 'Länder & Städte'),
+  ('New York', 'Länder & Städte'),
+  ('Kopenhagen', 'Länder & Städte'),
+  ('Marokko', 'Länder & Städte'),
+  ('Neuseeland', 'Länder & Städte'),
+  ('Accra', 'Länder & Städte'),
+  ('Rio de Janeiro', 'Länder & Städte'),
+  ('Zahnarzt', 'Berufe'),
+  ('Lokführerin', 'Berufe'),
+  ('Bäcker', 'Berufe'),
+  ('Polizistin', 'Berufe'),
+  ('Astronaut', 'Berufe'),
+  ('Tierärztin', 'Berufe'),
+  ('Schornsteinfeger', 'Berufe'),
+  ('Pilotin', 'Berufe'),
+  ('Gärtner', 'Berufe'),
+  ('Friseurin', 'Berufe'),
+  ('Kapitän', 'Berufe'),
+  ('Erzieherin', 'Berufe'),
+  ('Schreiner', 'Berufe'),
+  ('Cutterin', 'Berufe'),
+  ('Tontechniker', 'Berufe'),
+  ('Zauberer', 'Berufe'),
+  ('Detektivin', 'Berufe'),
+  ('Bauarbeiter', 'Berufe'),
+  ('Postbote', 'Berufe'),
+  ('Köchin', 'Berufe'),
+  ('Feuerwehrfrau', 'Berufe'),
+  ('Bademeister', 'Berufe'),
+  ('Albert Einstein', 'Promis'),
+  ('Mozart', 'Promis'),
+  ('Beethoven', 'Promis'),
+  ('Kleopatra', 'Promis'),
+  ('Napoleon', 'Promis'),
+  ('Goethe', 'Promis'),
+  ('Marilyn Monroe', 'Promis'),
+  ('Elvis Presley', 'Promis'),
+  ('Helene Fischer', 'Promis'),
+  ('Thomas Gottschalk', 'Promis'),
+  ('Heidi Klum', 'Promis'),
+  ('Michael Schumacher', 'Promis'),
+  ('Lionel Messi', 'Promis'),
+  ('Taylor Swift', 'Promis'),
+  ('Beyoncé', 'Promis'),
+  ('Leonardo DiCaprio', 'Promis'),
+  ('Shakira', 'Promis'),
+  ('Lukas Podolski', 'Promis'),
+  ('Udo Lindenberg', 'Promis'),
+  ('Usain Bolt', 'Promis'),
+  ('Serena Williams', 'Promis'),
+  ('Harry Potter', 'Promis'),
+  ('Ich verstehe nur Bahnhof', 'Redewendungen'),
+  ('Da liegt der Hund begraben', 'Redewendungen'),
+  ('Den Nagel auf den Kopf treffen', 'Redewendungen'),
+  ('Um den heißen Brei reden', 'Redewendungen'),
+  ('Auf dem Holzweg sein', 'Redewendungen'),
+  ('Die Kuh vom Eis holen', 'Redewendungen'),
+  ('Ins Fettnäpfchen treten', 'Redewendungen'),
+  ('Mit dem falschen Fuß aufstehen', 'Redewendungen'),
+  ('Jemandem einen Bären aufbinden', 'Redewendungen'),
+  ('Das ist nicht mein Bier', 'Redewendungen'),
+  ('Alles in Butter', 'Redewendungen'),
+  ('Da steppt der Bär', 'Redewendungen'),
+  ('Tomaten auf den Augen', 'Redewendungen'),
+  ('Ich glaub, mein Schwein pfeift', 'Redewendungen'),
+  ('Hals- und Beinbruch', 'Redewendungen'),
+  ('Jetzt geht’s los', 'Redewendungen'),
+  ('Guten Appetit', 'Redewendungen'),
+  ('Schönen Feierabend', 'Redewendungen'),
+  ('Kölle Alaaf', 'Redewendungen'),
+  ('Et hätt noch immer jot jejange', 'Redewendungen'),
+  ('Wer zuletzt lacht', 'Redewendungen'),
+  ('Ich hab Hunger', 'Redewendungen'),
+  ('Was geht ab', 'Redewendungen'),
+  ('Zack, die Bohne', 'Redewendungen'),
+  ('Mach mal Pause', 'Redewendungen'),
+  ('Ollah, wie geht’s', 'Redewendungen'),
+  ('Butter bei die Fische', 'Redewendungen'),
+  ('Ab durch die Mitte', 'Redewendungen'),
+  ('Schwein gehabt', 'Redewendungen'),
+  ('Liebe geht durch den Magen', 'Redewendungen'),
+  ('Donaudampfschiff', 'Lange Wörter'),
+  ('Streichholzschächtelchen', 'Lange Wörter'),
+  ('Quietscheentchen', 'Lange Wörter'),
+  ('Purzelbaum', 'Lange Wörter'),
+  ('Regenschirm', 'Lange Wörter'),
+  ('Kuddelmuddel', 'Lange Wörter'),
+  ('Schnickschnack', 'Lange Wörter'),
+  ('Hokuspokus', 'Lange Wörter'),
+  ('Wackelpudding', 'Lange Wörter'),
+  ('Trampolin', 'Lange Wörter'),
+  ('Zauberstab', 'Lange Wörter'),
+  ('Schneemann', 'Lange Wörter'),
+  ('Achterbahn', 'Lange Wörter'),
+  ('Luftballon', 'Lange Wörter'),
+  ('Kaugummi', 'Lange Wörter'),
+  ('Plappermaul', 'Lange Wörter'),
+  ('Schlafanzug', 'Lange Wörter'),
+  ('Kirschkernspucken', 'Lange Wörter'),
+  ('Ringelnatter', 'Lange Wörter'),
+  ('Fahrradklingel', 'Lange Wörter'),
+  ('Butterblume', 'Lange Wörter'),
+  ('Zahnbürste', 'Lange Wörter')
+) v(w, t) where w.word = v.w and w.topic is distinct from v.t;
+
 -- ---------- Hilfsfunktionen ------------------------------------------
 
 create or replace function public.is_player(g uuid) returns boolean
@@ -336,7 +530,8 @@ language sql stable security definer set search_path = public as $$
 $$;
 
 -- Neues Duell (Freund) oder Zufallsgegner suchen
-create or replace function public.start_game(p_random boolean default false) returns json
+drop function if exists public.start_game(boolean);
+create or replace function public.start_game(p_random boolean default false, p_tts boolean default false) returns json
 language plpgsql security definer set search_path = public as $$
 declare me uuid := auth.uid(); g public.games;
 begin
@@ -361,8 +556,9 @@ begin
       where player_a = me and is_random and status = 'open' and cur_round = 0 limit 1;
     if found then return json_build_object('id', g.id, 'code', g.code, 'joined', false); end if;
   end if;
-  insert into public.games(code, player_a, is_random, turn)
-    values (public.new_code(), me, p_random, me) returning * into g;
+  -- Zufallsgegner spielen immer mit Kunststimme
+  insert into public.games(code, player_a, is_random, turn, voice)
+    values (public.new_code(), me, p_random, me, case when p_random or p_tts then 'tts' else 'own' end) returning * into g;
   return json_build_object('id', g.id, 'code', g.code, 'joined', false);
 end $$;
 
@@ -427,6 +623,7 @@ begin
   if g.status = 'done' then raise exception 'Dieses Duell ist schon vorbei'; end if;
   if g.turn is distinct from me then raise exception 'Du bist gerade nicht dran'; end if;
   if g.cur_round >= g.total_rounds then raise exception 'Alle Runden sind schon vergeben'; end if;
+  if g.voice = 'tts' then raise exception 'In diesem Duell gibt die Kunststimme die Wörter vor'; end if;
   if g.cur_round > 0 and not exists (select 1 from public.attempts where game_id = p_game and round_no = g.cur_round and player = me) then
     raise exception 'Erst das Wort deines Gegners spielen';
   end if;
@@ -474,8 +671,8 @@ begin
   if opp is null then raise exception 'Kein Gegner für eine Revanche'; end if;
   select id into nid from public.games where rematch_of = p_game limit 1;
   if nid is not null then return json_build_object('id', nid, 'existing', true); end if;
-  insert into public.games(code, player_a, player_b, status, turn, rematch_of)
-    values (public.new_code(), me, opp, 'active', me, p_game) returning id into nid;
+  insert into public.games(code, player_a, player_b, status, turn, rematch_of, voice)
+    values (public.new_code(), me, opp, 'active', me, p_game, g.voice) returning id into nid;
   return json_build_object('id', nid, 'existing', false);
 end $$;
 
@@ -526,7 +723,7 @@ begin
   delete from public.games where player_a = me and player_b is null and created_at < now() - interval '14 days';
 
   select coalesce(json_agg(x order by x.sort1, x.last_move_at desc), '[]'::json) into res from (
-    select g.id, g.code, g.status, g.is_random, g.cur_round, g.total_rounds, g.last_move_at,
+    select g.id, g.code, g.status, g.is_random, g.cur_round, g.total_rounds, g.last_move_at, g.voice,
            g.forfeit_by = me as i_forfeited,
            (select x.id from public.games x where x.rematch_of = g.id limit 1) as rematch_id,
            g.forfeit_by is not null and g.forfeit_by <> me as opp_forfeited,
@@ -545,6 +742,64 @@ begin
   return res;
 end $$;
 
+-- Kunststimme: nächstes Wort auslosen (für den, der dran ist). Das Wort bleibt geheim,
+-- der Client bekommt nur den Pfad der Audiodatei (tts/<md5>.mp3, erzeugt von tts/generate.py).
+create or replace function public.tts_round(p_game uuid) returns json
+language plpgsql security definer set search_path = public as $$
+declare me uuid := auth.uid(); g public.games; r public.rounds; nr int; v_word text; v_topic text; v_decoys text[]; v_path text;
+begin
+  select * into g from public.games where id = p_game for update;
+  if not found or me not in (g.player_a, coalesce(g.player_b, g.player_a)) then raise exception 'Nicht dein Duell'; end if;
+  if g.voice <> 'tts' then raise exception 'Dieses Duell spielt mit eigener Stimme'; end if;
+  if g.status = 'done' then raise exception 'Dieses Duell ist schon vorbei'; end if;
+  if g.turn is distinct from me then raise exception 'Du bist gerade nicht dran'; end if;
+  if g.cur_round >= g.total_rounds then raise exception 'Alle Runden sind schon gespielt'; end if;
+  if g.cur_round > 0 and not exists (select 1 from public.attempts where game_id = p_game and round_no = g.cur_round and player = me) then
+    raise exception 'Erst das Wort deines Gegners spielen';
+  end if;
+  nr := g.cur_round + 1;
+  select * into r from public.rounds where game_id = p_game and round_no = nr;
+  if found then return json_build_object('round_no', nr, 'word_path', r.word_path); end if;   -- schon ausgelost
+  select word, topic into v_word, v_topic from public.words
+    where word not in (select word_text from public.rounds where game_id = p_game and word_text is not null)
+    order by random() limit 1;
+  if v_word is null then raise exception 'Keine Wörter mehr übrig'; end if;
+  select array_agg(word) into v_decoys from (
+    select word from public.words where topic is not distinct from v_topic and word <> v_word order by random() limit 3) t;
+  if coalesce(array_length(v_decoys, 1), 0) < 3 then
+    select array_agg(word) into v_decoys from (select word from public.words where word <> v_word order by random() limit 3) t;
+  end if;
+  v_path := 'tts/' || left(md5(v_word), 12) || '.mp3';
+  insert into public.rounds(game_id, round_no, setter, word_text, word_path, decoys)
+    values (p_game, nr, me, v_word, v_path, v_decoys);
+  return json_build_object('round_no', nr, 'word_path', v_path);
+end $$;
+
+-- Kunststimme: eigenen Versuch für das neu ausgeloste Wort abgeben – danach ist der Gegner dran
+create or replace function public.tts_play(p_game uuid, p_path text, p_sim real, p_stars int) returns json
+language plpgsql security definer set search_path = public as $$
+declare me uuid := auth.uid(); g public.games; opp uuid; nr int;
+begin
+  select * into g from public.games where id = p_game for update;
+  if not found or me not in (g.player_a, coalesce(g.player_b, g.player_a)) then raise exception 'Nicht dein Duell'; end if;
+  if g.voice <> 'tts' then raise exception 'Dieses Duell spielt mit eigener Stimme'; end if;
+  if g.status = 'done' then raise exception 'Dieses Duell ist schon vorbei'; end if;
+  if g.turn is distinct from me then raise exception 'Du bist gerade nicht dran'; end if;
+  nr := g.cur_round + 1;
+  if not exists (select 1 from public.rounds where game_id = p_game and round_no = nr and setter = me) then
+    raise exception 'Erst ein Wort auslosen';
+  end if;
+  if exists (select 1 from public.attempts where game_id = p_game and round_no = nr and player = me) then
+    raise exception 'Diese Runde hast du schon gespielt';
+  end if;
+  if p_path is null or left(p_path, 37) <> p_game::text || '/' then raise exception 'Aufnahme fehlt'; end if;
+  insert into public.attempts(game_id, round_no, player, audio_path, sim, stars)
+    values (p_game, nr, me, p_path, greatest(0, least(1, p_sim)), greatest(0, least(3, p_stars)));
+  opp := case when me = g.player_a then g.player_b else g.player_a end;
+  update public.games set cur_round = nr, turn = opp, last_move_at = now(), updated_at = now() where id = p_game;
+  return json_build_object('ok', true);
+end $$;
+
 -- Ein Duell im Detail. Wörter und gegnerische Aufnahmen werden erst
 -- freigegeben, wenn man die Runde selbst gespielt hat.
 create or replace function public.game_detail(p_game uuid) returns json
@@ -556,7 +811,7 @@ begin
   opp := case when me = g.player_a then g.player_b else g.player_a end;
   select json_build_object(
     'id', g.id, 'code', g.code, 'status', g.status, 'is_random', g.is_random,
-    'cur_round', g.cur_round, 'total_rounds', g.total_rounds, 'my_turn', g.turn = me,
+    'cur_round', g.cur_round, 'total_rounds', g.total_rounds, 'my_turn', g.turn = me, 'voice', g.voice,
     'i_forfeited', g.forfeit_by = me, 'opp_forfeited', g.forfeit_by is not null and g.forfeit_by <> me,
     'last_move_at', g.last_move_at,
     'rematch_id', (select x.id from public.games x where x.rematch_of = g.id limit 1),
@@ -566,10 +821,10 @@ begin
         'round_no', r.round_no,
         'mine', r.setter = me,
         'word_path', r.word_path,
-        'word_text', case when r.setter = me
+        'word_text', case when (r.setter = me and g.voice <> 'tts')
                             or (mine.player is not null and (r.decoys is null or mine.guess_ok is not null)) then r.word_text end,
-        -- noch zu raten: 4 Antworten in fester, gemischter Reihenfolge
-        'options', case when r.setter <> me and mine.player is not null and r.decoys is not null and mine.guess_ok is null
+        -- noch zu raten: 4 Antworten in fester, gemischter Reihenfolge (bei Kunststimme raten beide)
+        'options', case when (r.setter <> me or g.voice = 'tts') and mine.player is not null and r.decoys is not null and mine.guess_ok is null
                         then (select json_agg(o order by md5(o || r.game_id::text)) from unnest(r.decoys || r.word_text) o) end,
         'my', case when mine.player is null then null else json_build_object('path', mine.audio_path, 'sim', mine.sim, 'stars', mine.stars, 'guess', mine.guess_ok) end,
         'their', case when theirs.player is null then null
@@ -585,7 +840,7 @@ begin
       from public.rounds r
       left join public.attempts mine   on mine.game_id = r.game_id and mine.round_no = r.round_no and mine.player = me
       left join public.attempts theirs on theirs.game_id = r.game_id and theirs.round_no = r.round_no and theirs.player = opp
-      where r.game_id = g.id
+      where r.game_id = g.id and (r.round_no <= g.cur_round or r.setter = me)   -- frisch ausgeloste Runde nur für den, der dran ist
     ), '[]'::json)
   ) into res;
   return res;
@@ -594,11 +849,12 @@ end $$;
 -- Raten nach dem eigenen Versuch: einmal pro Runde, +1 Punkt bei richtig
 create or replace function public.guess_word(p_game uuid, p_round int, p_guess text) returns json
 language plpgsql security definer set search_path = public as $$
-declare me uuid := auth.uid(); r public.rounds; a public.attempts; ok boolean;
+declare me uuid := auth.uid(); r public.rounds; a public.attempts; ok boolean; v_voice text;
 begin
   if not public.is_player(p_game) then raise exception 'Nicht dein Duell'; end if;
+  select voice into v_voice from public.games where id = p_game;
   select * into r from public.rounds where game_id = p_game and round_no = p_round;
-  if not found or r.setter = me or r.decoys is null then raise exception 'Hier gibt es nichts zu raten'; end if;
+  if not found or (r.setter = me and v_voice <> 'tts') or r.decoys is null then raise exception 'Hier gibt es nichts zu raten'; end if;
   select * into a from public.attempts where game_id = p_game and round_no = p_round and player = me for update;
   if not found then raise exception 'Erst selbst spielen'; end if;
   if a.guess_ok is not null then return json_build_object('ok', a.guess_ok, 'word', r.word_text, 'again', true); end if;
@@ -613,10 +869,12 @@ revoke all on function public.rematch(uuid) from public, anon;
 grant execute on function public.rematch(uuid) to authenticated;
 revoke all on function public.my_profile() from public, anon;
 grant execute on function public.my_profile() to authenticated;
-revoke all on function public.save_profile(text,text,text), public.start_game(boolean), public.join_game(text),
+revoke all on function public.save_profile(text,text,text), public.start_game(boolean,boolean), public.join_game(text),
+  public.tts_round(uuid), public.tts_play(uuid,text,real,int),
   public.answer_round(uuid,text,real,int), public.set_word(uuid,text,text,text,real,int,text[]), public.react(uuid,int,uuid,text),
   public.guess_word(uuid,int,text), public.leave_game(uuid), public.my_games(), public.game_detail(uuid) from public, anon;
-grant execute on function public.save_profile(text,text,text), public.start_game(boolean), public.join_game(text),
+grant execute on function public.save_profile(text,text,text), public.start_game(boolean,boolean), public.join_game(text),
+  public.tts_round(uuid), public.tts_play(uuid,text,real,int),
   public.answer_round(uuid,text,real,int), public.set_word(uuid,text,text,text,real,int,text[]), public.react(uuid,int,uuid,text),
   public.guess_word(uuid,int,text), public.leave_game(uuid), public.my_games(), public.game_detail(uuid) to authenticated;
 grant select on public.profiles, public.games, public.attempts, public.reactions to authenticated;
