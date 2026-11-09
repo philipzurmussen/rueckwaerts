@@ -438,6 +438,29 @@
   #cardB.scored .reveal{order:-2}
   #cardB.scored .score{order:-1;margin-bottom:6px}
   #soloFree > #reset{display:none}
+
+  /* ---------- Duell als Spiel-Ansicht ---------- */
+  .dhead{width:100%;max-width:440px;display:flex;align-items:center;gap:10px}
+  .card.dboard{flex:1;min-width:0;padding:8px 12px;gap:6px;border-radius:18px;box-shadow:0 4px 0 #0e0722}
+  .dboard .board .pl{display:flex;align-items:center;justify-content:center;gap:8px}
+  .dboard .board .nm{display:none}
+  .dboard .board .ava{width:36px;height:36px;font-size:19px;margin:0}
+  .dboard .board .pt{font-size:28px;color:#fff;-webkit-text-stroke:5px #0e0722;paint-order:stroke fill}
+  .dboard .board .vs{font-size:12px;font-weight:800;line-height:1.15}
+  .dboard .dots{justify-content:center}
+  .card.dstage{background:none;border:0;box-shadow:none;padding:6px 0 0;min-height:calc(100dvh - env(safe-area-inset-top) - 200px);justify-content:center;gap:20px}
+  .dstage .msg{font-size:24px;line-height:1.2}
+  .dstage .row{flex-direction:column;gap:22px}
+  .dstage .row canvas{order:0;width:100%;flex:none;height:100px;border-radius:20px;background:#0e0722}
+  .dstage .row .recbtn{order:1;width:132px;height:132px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;border-width:5px;box-shadow:0 8px 0 #0e0722,inset 0 -6px 0 rgba(0,0,0,.18)}
+  .dstage .row .recbtn:active{transform:translateY(5px);box-shadow:0 3px 0 #0e0722,inset 0 -6px 0 rgba(0,0,0,.18)}
+  .dstage .recbtn .dot{width:36px;height:36px;border-width:4px}
+  .dstage .recbtn.on .dot{width:32px;height:32px;border-radius:10px}
+  .dstage .recbtn .rl{display:block;color:#fff;font:800 14px "Bricolage Grotesque",system-ui,sans-serif}
+  .dstage .recbtn .rl::before{content:"Aufnehmen"}
+  .dstage .recbtn.on .rl::before{content:"Stopp"}
+  .dstage .btns .play{min-height:56px;font-size:16px}
+  #roundsSheet #aLeave{align-self:center}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -485,6 +508,15 @@
       <div class="sgrip" aria-hidden="true"></div>
       <div class="shead"><h2>Letzte Runden</h2><button class="backbtn" id="histClose" aria-label="Schließen">✕</button></div>
       <div id="histList"><p class="empty">Noch keine Runde gespielt.</p></div>
+    </section>
+  </div>
+  <div class="sheetwrap" id="roundsSheet" hidden role="dialog" aria-modal="true" aria-label="Rundenverlauf">
+    <div class="scrim" id="roundsScrim"></div>
+    <section class="card">
+      <div class="sgrip" aria-hidden="true"></div>
+      <div class="shead"><h2>Rundenverlauf</h2><button class="backbtn" id="roundsClose" aria-label="Schließen">✕</button></div>
+      <div id="aRounds" class="stack"><p class="empty">Noch keine Runde gespielt.</p></div>
+      <button class="reset" id="aLeave">Duell aufgeben</button>
     </section>
   </div>
 
@@ -705,8 +737,9 @@
     </div>
 
     <div class="view" id="aGame" hidden>
-      <button class="reset" id="aBack" style="align-self:flex-start">← Alle Duelle</button>
-      <section class="card">
+      <div class="dhead">
+      <button class="backbtn" id="aBack" aria-label="Alle Duelle">‹</button>
+      <section class="card dboard">
         <div class="board">
           <div class="pl"><div class="ava" id="aMeAva"></div><div class="nm" id="aMeName"></div><div class="pt" id="aMeScore">0</div></div>
           <div class="vs" id="aRoundInfo"></div>
@@ -714,12 +747,13 @@
         </div>
         <div class="dots" id="aDots"></div>
       </section>
+      </div>
 
-      <section class="card">
+      <section class="card dstage">
         <p class="msg" id="aMsg"></p>
         <div id="aStepAnswer" class="stack" hidden>
           <div class="row">
-            <button class="recbtn" id="xRec" aria-label="Versuch aufnehmen"><span class="dot"></span></button>
+            <button class="recbtn" id="xRec" aria-label="Versuch aufnehmen"><span class="dot"></span><span class="rl"></span></button>
             <canvas id="cvX"></canvas>
           </div>
           <div class="btns"><button class="play main" id="xWord">▶ Wort rückwärts</button></div>
@@ -732,7 +766,7 @@
           <button class="reset" id="aShuffle" style="padding:2px">🔄 Andere Wörter</button>
           <input class="field" id="aCustom" maxlength="40" placeholder="✏️ Oder eigenes Wort / eigener Satz …" autocomplete="off" hidden>
           <div class="row">
-            <button class="recbtn" id="yRec" aria-label="Wort aufnehmen"><span class="dot"></span></button>
+            <button class="recbtn" id="yRec" aria-label="Wort aufnehmen"><span class="dot"></span><span class="rl"></span></button>
             <canvas id="cvY"></canvas>
           </div>
           <div class="btns">
@@ -743,7 +777,7 @@
         </div>
         <div id="aStepOwn" class="stack" hidden>
           <div class="row">
-            <button class="recbtn" id="zRec" aria-label="Eigenen Versuch aufnehmen"><span class="dot"></span></button>
+            <button class="recbtn" id="zRec" aria-label="Eigenen Versuch aufnehmen"><span class="dot"></span><span class="rl"></span></button>
             <canvas id="cvZ"></canvas>
           </div>
           <div class="btns"><button class="play main" id="zWord">▶ Dein Wort rückwärts</button></div>
@@ -755,11 +789,7 @@
         <p class="tiny" id="aShareHint" hidden style="text-align:center">Der Link gilt für eine Person: Wer ihn zuerst öffnet, spielt gegen dich. Für weitere Gegner tipp in der Übersicht nochmal auf „Freund herausfordern“.</p>
       </section>
 
-      <section class="card">
-        <h2 style="margin:0;font-size:18px;font-weight:800">Runden</h2>
-        <div id="aRounds" class="stack"><p class="empty">Noch keine Runde gespielt.</p></div>
-      </section>
-      <button class="reset" id="aLeave">Duell aufgeben</button>
+      <button class="histbar" id="aRoundsBtn" aria-haspopup="dialog"><span>Rundenverlauf</span><span class="hi" id="aRoundsInfo">noch keine</span></button>
     </div>
   </div>
 
@@ -1442,7 +1472,7 @@
 
   // Tabs
   function showMode(m){
-    document.body.classList.toggle('ingame', m === 'solo' && $('soloHome').hidden);
+    document.body.classList.toggle('ingame', (m === 'solo' && $('soloHome').hidden) || (m === 'async' && !$('aGame').hidden));
     $('solo').hidden = m !== 'solo'; $('duel').hidden = m !== 'duel'; $('async').hidden = m !== 'async'; $('ranks').hidden = m !== 'ranks';
     $('tabRanks').classList.toggle('on', m === 'ranks');
     if (m === 'ranks' && window.ranksEnter) window.ranksEnter();
@@ -2322,7 +2352,7 @@
   async function openGame(id){
     stopPlay();
     A.gid = id; A.stage = 'load'; A.draft = A.draftRev = A.wordNet = null; A.chosen = null; A.choices = [];
-    hideAsyncViews(); $('aGame').hidden = false;
+    hideAsyncViews(); $('aGame').hidden = false; document.body.classList.add('ingame');
     $('aMsg').textContent = 'Lade …';
     ['aStepAnswer','aStepSet','aStepOwn','aReveal','aNext','aShare'].forEach(k => $(k).hidden = true);
     window.scrollTo(0, 0);
@@ -2553,6 +2583,8 @@
   function renderRounds(){
     const g = A.game, box = $('aRounds'); box.innerHTML = '';
     const rs = g.rounds.slice().reverse();
+    const doneN = g.rounds.filter(r => r.my && r.their && !r.their.hidden).length;
+    $('aRoundsInfo').textContent = doneN ? doneN + (doneN === 1 ? ' Runde' : ' Runden') + ' gespielt' : 'noch keine';
     if (!rs.length){ box.innerHTML = '<p class="empty">Noch keine Runde gespielt.</p>'; return; }
     rs.forEach(r => {
       const el = document.createElement('div'); el.className = 'rnd';
@@ -2721,6 +2753,7 @@
   const fmtDate = iso => new Date(iso).toLocaleString('de-DE', { weekday:'short', day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' });
   function hideAsyncViews(){
     ['aHome','aListCard','aRankCard','sHint','studio','aGame'].forEach(k => $(k).hidden = true);
+    document.body.classList.remove('ingame'); $('roundsSheet').hidden = true;
   }
   function goHome(){
     stopPlay(); A.gid = null; A.game = null;
@@ -2825,6 +2858,11 @@
   $('fBack').onclick = () => { showSoloHome(); window.scrollTo(0, 0); };
   const histSheet = (open) => { $('histSheet').hidden = !open; if (!open) stopPlay(); };
   $('tHist').onclick = () => histSheet(true);
+  const roundsSheet = (open) => { $('roundsSheet').hidden = !open; if (!open) stopPlay(); };
+  $('aRoundsBtn').onclick = () => roundsSheet(true);
+  $('roundsClose').onclick = () => roundsSheet(false);
+  $('roundsScrim').onclick = () => roundsSheet(false);
+  document.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('roundsSheet').hidden) roundsSheet(false); });
   $('histClose').onclick = () => histSheet(false);
   $('histScrim').onclick = () => histSheet(false);
   document.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('histSheet').hidden) histSheet(false); });
