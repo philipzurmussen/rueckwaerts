@@ -1155,6 +1155,10 @@
   // ---------- Bewertung (Klangvergleich per MFCC + DTW) ----------
   // Schwellen für 1 / 2 / 3 Sterne (Ähnlichkeit 0…1) – bei Bedarf anpassen
   const STAR_STEPS = [0.35, 0.5, 0.65];
+  // Eichung: mittlere DTW-Distanz → Prozent. SCORE_LO und besser = 100 %, SCORE_HI und schlechter = 0 %.
+  // Strenger: SCORE_HI senken. Gnädiger: SCORE_HI anheben.
+  const SCORE_LO = 0.40, SCORE_HI = 1.10;
+  const SPEECH_GATE_DB = 30, DTW_BAND = 0.3;
 
   function fft(re, im){
     const n = re.length;
@@ -1183,9 +1187,11 @@
     const lo = mel(80), hi = mel(Math.min(6000, sr/2-100));
     const edges = []; for (let i=0;i<nb+2;i++) edges.push(imel(lo + (hi-lo)*i/(nb+1)) * N / sr);
     const win = new Float32Array(N); for (let i=0;i<N;i++) win[i] = 0.5-0.5*Math.cos(2*Math.PI*i/(N-1));
-    const re = new Float32Array(N), im = new Float32Array(N), frames = [];
+    const re = new Float32Array(N), im = new Float32Array(N), frames = [], en = [];
     for (let s=0; s+N<=data.length; s+=hop){
-      for (let i=0;i<N;i++){ re[i] = data[s+i]*win[i]; im[i] = 0; }
+      let E = 0;
+      for (let i=0;i<N;i++){ re[i] = data[s+i]*win[i]; im[i] = 0; E += re[i]*re[i]; }
+      en.push(10*Math.log10(E/N + 1e-12));
       fft(re, im);
       const e = new Float32Array(nb);
       for (let b=0;b<nb;b++){
@@ -1201,40 +1207,42 @@
       for (let q=1;q<=nc;q++){ let v=0; for (let b=0;b<nb;b++) v += e[b]*Math.cos(Math.PI*q*(b+0.5)/nb); cc[q-1] = v; }
       frames.push(cc);
     }
-    // Mittelwert pro Koeffizient abziehen (unabhängig von Mikro/Raum)
-    if (frames.length){
-      const mean = new Float32Array(nc);
-      frames.forEach(f => f.forEach((v,i) => mean[i] += v/frames.length));
-      frames.forEach(f => { for (let i=0;i<nc;i++) f[i] -= mean[i]; });
-    }
-    return frames;
+    // Nur Sprach-Frames vergleichen: Stille/Raumrauschen (mehr als SPEECH_GATE_DB unter dem lautesten
+    // Frame) fliegt raus – sonst passen die Pausen beider Aufnahmen immer zusammen und schönen das Ergebnis.
+    if (!frames.length) return frames;
+    const top = Math.max(...en), sp = frames.filter((f,i) => en[i] > top - SPEECH_GATE_DB);
+    // Mittelwert und Streuung pro Koeffizient normalisieren (unabhängig von Mikro/Raum/Stimme)
+    const mean = new Float32Array(nc), sd = new Float32Array(nc);
+    sp.forEach(f => f.forEach((v,i) => mean[i] += v/sp.length));
+    sp.forEach(f => f.forEach((v,i) => sd[i] += (v-mean[i])*(v-mean[i])/sp.length));
+    sp.forEach(f => { for (let i=0;i<nc;i++) f[i] = (f[i]-mean[i]) / Math.sqrt(sd[i] + 1e-6); });
+    return sp;
   }
-  function cosSim(a, b){
-    let d=0, na=0, nb=0;
-    for (let i=0;i<a.length;i++){ d += a[i]*b[i]; na += a[i]*a[i]; nb += b[i]*b[i]; }
-    return na && nb ? d/Math.sqrt(na*nb) : 0;
+  function frameDist(a, b){
+    let d = 0;
+    for (let i=0;i<a.length;i++){ const x = a[i]-b[i]; d += x*x; }
+    return Math.sqrt(d/a.length);
   }
   function similarity(dataA, dataB, sr){
     const A = features(dataA, sr), B = features(dataB, sr), n = A.length, m = B.length;
     if (n < 3 || m < 3) return 0;
-    // DTW: kleinste mittlere Distanz entlang des besten Pfads
-    let pc = new Float64Array(m+1).fill(Infinity), pl = new Float64Array(m+1);
-    pc[0] = 0;
+    // Symmetrische DTW mit Band: Der Pfad darf nur begrenzt von der Diagonale abweichen,
+    // damit beliebige Laute nicht „passend gezerrt“ werden können. Diagonale zählt doppelt, normiert auf n+m.
+    const w = Math.max(2, Math.ceil(DTW_BAND * Math.max(n, m)));
+    let pr = new Float64Array(m+1).fill(Infinity); pr[0] = 0;
     for (let i=1;i<=n;i++){
-      const cc = new Float64Array(m+1).fill(Infinity), cl = new Float64Array(m+1);
-      for (let j=1;j<=m;j++){
-        const d = 1 - cosSim(A[i-1], B[j-1]);
-        let best = pc[j-1], len = pl[j-1];
-        if (pc[j] < best){ best = pc[j]; len = pl[j]; }
-        if (cc[j-1] < best){ best = cc[j-1]; len = cl[j-1]; }
-        cc[j] = best + d; cl[j] = len + 1;
+      const cu = new Float64Array(m+1).fill(Infinity), c = Math.round(i*m/n);
+      for (let j=Math.max(1, c-w); j<=Math.min(m, c+w); j++){
+        const d = frameDist(A[i-1], B[j-1]);
+        cu[j] = Math.min(pr[j-1] + 2*d, pr[j] + d, cu[j-1] + d);
       }
-      pc = cc; pl = cl;
+      pr = cu;
     }
-    let sim = 1 - pc[m]/pl[m];
+    const dist = pr[m] / (n + m);
+    let sim = (SCORE_HI - dist) / (SCORE_HI - SCORE_LO);
     // Strafe, wenn die Länge stark abweicht
     const ratio = Math.min(n,m)/Math.max(n,m);
-    if (ratio < 0.5) sim *= ratio/0.5;
+    if (ratio < 0.6) sim *= ratio/0.6;
     return Math.max(0, Math.min(1, sim));
   }
   const starsFor = sim => STAR_STEPS.filter(t => sim >= t).length;
