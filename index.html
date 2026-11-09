@@ -506,6 +506,9 @@
   /* Datum/Uhrzeit-Felder (iOS Safari): nicht über den Kartenrand hinaus */
   input.field[type="datetime-local"]{display:block;box-sizing:border-box;width:100%;min-width:0;max-width:100%;-webkit-appearance:none;appearance:none;min-height:50px;text-align:left}
   input.field[type="datetime-local"]::-webkit-date-and-time-value{text-align:left;margin:0}
+
+  .dtwrap{width:100%;max-width:100%;overflow:hidden;border-radius:14px}
+  .dtwrap input.field{border-radius:0}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -769,9 +772,9 @@
           <input class="field" id="stTitle" maxlength="40" placeholder="Titel, z. B. Köln-Woche">
           <div class="topics" id="stTopics"></div>
           <label class="tiny">Start</label>
-          <input class="field" id="stStart" type="datetime-local">
+          <div class="dtwrap"><input class="field" id="stStart" type="datetime-local"></div>
           <label class="tiny">Ende</label>
-          <input class="field" id="stEnd" type="datetime-local">
+          <div class="dtwrap"><input class="field" id="stEnd" type="datetime-local"></div>
           <p class="tiny">Begriffe auswählen oder eintippen. Alle Spieler bekommen dieselben Begriffe und sprechen sie mit ihrer eigenen Stimme.</p>
           <div id="stWords" class="stack"></div>
           <div class="btns">
