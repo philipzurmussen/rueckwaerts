@@ -206,6 +206,13 @@
   .tour-hi{position:relative;z-index:61 !important;box-shadow:0 0 0 4px var(--acc),0 0 0 9999px rgba(10,5,25,.74) !important;border-radius:20px}
   .recbtn.tour-hi{border-radius:50%}
   .words.guess{margin-top:12px}
+  /* Duell mit eigener Stimme: 8 Wörter zweispaltig, eigenes Wort deutlich sichtbar */
+  #aWordRow{grid-template-columns:1fr 1fr}
+  #aStepSet .row{gap:14px}
+  #aStepSet .row canvas{height:64px}
+  #aWordRow button{font-size:15px;padding:10px 8px;line-height:1.2;min-height:48px}
+  #aCustom{font-size:18px;font-weight:700;padding:16px;border:3px dashed var(--acc);background:rgba(255,210,63,.08)}
+  #aCustom::placeholder{color:var(--ink);opacity:.85}
   .voicepick{display:grid;grid-template-columns:1fr 1fr;gap:8px}
   .voicepick button{border:3px solid #0e0722;border-radius:16px;padding:10px 8px;font-weight:800;font-size:15px;font-family:inherit;background:rgba(255,255,255,.08);color:var(--ink);cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:2px}
   .voicepick button small{font-size:12px;font-weight:600;color:var(--mute)}
@@ -2990,7 +2997,7 @@
     if (!isUnlocked(topic)) topic = MIX;
     const pool = (topic === MIX ? unlockedWords() : TOPICS[topic]).filter(w => !A.choices.includes(w));
     const out = [];
-    while (out.length < 3 && pool.length) out.push(pool.splice(Math.floor(Math.random()*pool.length), 1)[0]);
+    while (out.length < 8 && pool.length) out.push(pool.splice(Math.floor(Math.random()*pool.length), 1)[0]);   // 8 zur Auswahl, zweispaltig
     A.choices = out; A.chosen = null;
   }
   function renderAsyncTopic(){
