@@ -2840,8 +2840,10 @@
     try {
       const w = await loadWord(), path = w.path;
       draw('X', w.rev);
-      // nach dem ersten kompletten Anhören darf aufgenommen werden
-      play('X', w.rev, () => { if (!A.heard.has(path)){ A.heard.add(path); if (A.stage === 'answer') renderGame(); } });
+      play('X', w.rev);
+      // Aufnahmeknopf freischalten, sobald einmal abgespielt wurde – nicht erst am Ende:
+      // Auf dem iPhone kommt das Ende-Signal nicht immer an, dann wäre man sonst festgesteckt.
+      if (!A.heard.has(path)){ A.heard.add(path); if (A.stage === 'answer') renderGame(); }
     }
     catch(e){ toast('Wort konnte nicht geladen werden'); }
   };
