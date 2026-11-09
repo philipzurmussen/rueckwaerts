@@ -566,6 +566,15 @@
       <div id="histList"><p class="empty">Noch keine Runde gespielt.</p></div>
     </section>
   </div>
+  <div class="sheetwrap" id="duelHistSheet" hidden role="dialog" aria-modal="true" aria-label="Letzte Duelle">
+    <div class="scrim" id="duelHistScrim"></div>
+    <section class="card">
+      <div class="sgrip" aria-hidden="true"></div>
+      <div class="shead"><h2>Letzte Duelle</h2><button class="backbtn" id="duelHistClose" aria-label="Schließen">✕</button></div>
+      <p class="tiny" style="margin:0">Beendete Duelle der letzten 30 Tage – antippen für alle Runden zum Nachhören.</p>
+      <div id="aHistList" class="stack"></div>
+    </section>
+  </div>
   <div class="sheetwrap" id="profSheet" hidden role="dialog" aria-modal="true" aria-label="Dein Profil">
     <div class="scrim" id="profScrim"></div>
     <section class="card">
@@ -770,6 +779,7 @@
     <section class="card" id="aListCard">
       <div id="aList" class="stack"><p class="empty">Noch keine Duelle.</p></div>
     </section>
+    <button class="histbar" id="aHist" aria-haspopup="dialog" hidden><span>Letzte Duelle</span><span class="hi" id="aHistInfo"></span></button>
 
     <div class="view" id="studio" hidden>
       <button class="reset" id="stBack" style="align-self:flex-start">← Zurück</button>
@@ -2419,12 +2429,22 @@
   }
   function renderList(){
     const el = $('aList'); el.innerHTML = '';
-    if (!A.list.length){ el.innerHTML = '<p class="empty">Noch keine Duelle. Fordere jemanden heraus!</p>'; return; }
-    const groups = [['Du bist dran', g => g.status !== 'done' && g.my_turn], ['Warten', g => g.status !== 'done' && !g.my_turn], ['Beendet · letzte 30 Tage', g => g.status === 'done']];
+    // Beendete Duelle wandern in „Letzte Duelle“ (wie „Letzte Runden“ im Solo-Modus)
+    const done = A.list.filter(g => g.status === 'done'), hl = $('aHistList'); hl.innerHTML = '';
+    const wins = done.filter(g => !g.i_forfeited && (g.opp_forfeited || g.my_score > g.opp_score)).length;
+    $('aHistInfo').textContent = done.length ? done.length + ' beendet · ' + wins + (wins === 1 ? ' Sieg' : ' Siege') : '';
+    if (!$('aListCard').hidden) $('aHist').hidden = !done.length;
+    done.forEach(g => hl.appendChild(gameItem(g, true)));
+    if (!done.length) hl.innerHTML = '<p class="empty">Noch kein Duell beendet.</p>';
+    if (A.list.length === done.length){ el.innerHTML = '<p class="empty">' + (done.length ? 'Gerade läuft kein Duell.' : 'Noch keine Duelle.') + ' Fordere jemanden heraus!</p>'; return; }
+    const groups = [['Du bist dran', g => g.status !== 'done' && g.my_turn], ['Warten', g => g.status !== 'done' && !g.my_turn]];
     groups.forEach(([title, f]) => {
       const gs = A.list.filter(f); if (!gs.length) return;
       const h = document.createElement('p'); h.className = 'ghead'; h.textContent = title; el.appendChild(h);
-      gs.forEach(g => {
+      gs.forEach(g => el.appendChild(gameItem(g)));
+    });
+  }
+  function gameItem(g, fromHist){
         const b = document.createElement('div');
         b.setAttribute('role', 'button'); b.tabIndex = 0;
         b.className = 'gitem' + (g.status !== 'done' && g.my_turn ? ' turn' : '');
@@ -2433,6 +2453,7 @@
           '<div class="gi"><b>' + (opp ? esc(opp.nickname) : (g.is_random ? 'Zufälliger Gegner' : 'Offene Einladung')) + '</b><small>' + gameLine(g) + '</small></div>' +
           '<div class="sc">' + g.my_score + ' : ' + g.opp_score + '</div>';
         b.onclick = () => {
+          if (fromHist) $('duelHistSheet').hidden = true;
           if (g.my_turn && g.status !== 'done' && opp) interstitial('Du bist dran!', 'Duell gegen ' + opp.nickname).then(() => enter($('aMsg').closest('.card')));
           openGame(g.id);
         };
@@ -2453,10 +2474,12 @@
           };
           b.appendChild(x);
         }
-        el.appendChild(b);
-      });
-    });
+        return b;
   }
+  const duelHist = open => { $('duelHistSheet').hidden = !open; if (!open) stopPlay(); };
+  $('aHist').onclick = () => duelHist(true);
+  $('duelHistClose').onclick = () => duelHist(false);
+  $('duelHistScrim').onclick = () => duelHist(false);
 
   async function newGame(random){
     if (A.busy) return; A.busy = true;
@@ -2940,13 +2963,14 @@
   const curS = () => activeList().find(c => c.id === SZ.cur) || null;
   const fmtDate = iso => new Date(iso).toLocaleString('de-DE', { weekday:'short', day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' });
   function hideAsyncViews(){
-    ['aHome','aListCard','aRankCard','sHint','studio','aGame'].forEach(k => $(k).hidden = true);
-    document.body.classList.remove('ingame'); $('roundsSheet').hidden = true;
+    ['aHome','aListCard','aHist','aRankCard','sHint','studio','aGame'].forEach(k => $(k).hidden = true);
+    document.body.classList.remove('ingame'); $('roundsSheet').hidden = true; $('duelHistSheet').hidden = true;
   }
   function goHome(){
     stopPlay(); A.gid = null; A.game = null;
     hideAsyncViews();
     $('aHome').hidden = false; $('aListCard').hidden = false;
+    $('aHist').hidden = !A.list.some(g => g.status === 'done');
     renderSeasonCard();
     refreshList();
   }
