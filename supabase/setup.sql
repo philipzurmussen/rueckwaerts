@@ -958,12 +958,51 @@ begin
                       left join (select (created_at at time zone 'Europe/Berlin')::date dd, count(*) n, count(distinct player) u from p group by 1) x on x.dd = d::date),
     'profiles_total',(select count(*) from public.profiles where id not in (select uid from public.admins)),
     'profiles_7',    (select count(*) from public.profiles where id not in (select uid from public.admins) and created_at > now() - interval '7 days'),
+    'profiles_named',(select count(*) from public.profiles where id not in (select uid from public.admins) and nickname <> 'Spieler'),
+    'profiles_played',(select count(*) from public.profiles where id not in (select uid from public.admins)
+                        and id in (select player from public.attempts union select player from public.season_attempts
+                                   union select player from public.plays where player is not null)),
     'duel_attempts', (select count(*) from public.attempts where player not in (select uid from public.admins)),
     'season_attempts',(select count(*) from public.season_attempts where player not in (select uid from public.admins)),
     'own_plays',     (select count(*) from public.plays where player in (select uid from public.admins))
   ) into res;
   return res;
 end $$;
+
+-- Wort des Tages im Studio: heutiges Wort ansehen und – solange noch niemand gespielt hat – neu würfeln
+create or replace function public.admin_daily() returns json
+language plpgsql security definer set search_path = public as $$
+declare sid uuid;
+begin
+  if not public.is_admin() then raise exception 'Nur für Admins'; end if;
+  sid := public.ensure_daily();
+  return json_build_object(
+    'id', sid,
+    'word', (select word_text from public.season_words where season_id = sid and idx = 1),
+    'players', (select count(*) from public.season_attempts where season_id = sid),
+    'others', (select count(*) from public.season_attempts where season_id = sid and player not in (select uid from public.admins)),
+    'ends_at', (select ends_at from public.seasons where id = sid));
+end $$;
+
+create or replace function public.reroll_daily() returns json
+language plpgsql security definer set search_path = public as $$
+declare sid uuid; cur text; w text;
+begin
+  if not public.is_admin() then raise exception 'Nur für Admins'; end if;
+  sid := public.ensure_daily();
+  if exists (select 1 from public.season_attempts where season_id = sid and player not in (select uid from public.admins)) then
+    raise exception 'Heute hat schon jemand gespielt – das Wort bleibt';
+  end if;
+  select word_text into cur from public.season_words where season_id = sid and idx = 1;
+  select word into w from public.words where word <> coalesce(cur, '') order by random() limit 1;
+  if w is null then raise exception 'Keine Wörter in der Liste'; end if;
+  delete from public.season_attempts where season_id = sid;   -- nur eigene Test-Versuche
+  update public.season_words set word_text = w where season_id = sid and idx = 1;
+  return public.admin_daily();
+end $$;
+
+revoke all on function public.admin_daily(), public.reroll_daily() from public, anon;
+grant execute on function public.admin_daily(), public.reroll_daily() to authenticated;
 
 revoke all on function public.log_play(text,int), public.admin_stats() from public, anon;
 grant execute on function public.log_play(text,int), public.admin_stats() to authenticated;

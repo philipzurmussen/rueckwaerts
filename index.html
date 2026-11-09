@@ -778,6 +778,12 @@
           <p class="status" id="stStatus"></p>
         </div>
       </section>
+      <section class="card" id="stDailyCard" hidden>
+        <h2 style="margin:0;font-size:18px;font-weight:800">☀️ Wort des Tages</h2>
+        <p class="msg" id="stDailyWord" style="margin:0"></p>
+        <p class="tiny" id="stDailyInfo" style="margin:0"></p>
+        <button class="play" id="stDailyReroll">🎲 Anderes Wort</button>
+      </section>
       <section class="card" id="stStatsCard" hidden>
         <h2 style="margin:0;font-size:18px;font-weight:800">📊 Statistik <span class="tiny" style="font-weight:500">ohne dich</span></h2>
         <div id="stStats" class="stack"></div>
@@ -3093,7 +3099,7 @@
   }
   async function openStudio(){
     hideAsyncViews(); $('studio').hidden = false; stopPlay();
-    $('stNoAdmin').hidden = $('stForm').hidden = true; $('stPlannedCard').hidden = true; $('stFbCard').hidden = true;
+    $('stNoAdmin').hidden = $('stForm').hidden = true; $('stPlannedCard').hidden = true; $('stFbCard').hidden = true; $('stDailyCard').hidden = true;
     let w;
     try { await asyncInit(); w = await rpc('whoami'); }
     catch(e){ $('stNoAdmin').hidden = false; $('stNoAdmin').innerHTML = '<p class="status">' + esc(errText(e)) + '</p>'; return; }
@@ -3114,6 +3120,7 @@
     await loadPlanned();
     loadFeedback();
     loadStats();
+    loadDaily();
     if (!$('stStart').value) suggestDates();
     if (!ST.rows.length){ ST.theme = 'Herbst'; fillRows(true); if (!$('stTitle').value){ $('stTitle').value = 'Herbst-Woche'; $('stTitle').dataset.auto = '1'; } }
     renderStudio();
@@ -3447,11 +3454,26 @@
         '<div><b>' + n(d.players_7) + '</b><span>Spieler 7 Tage</span></div>' +
         '<div><b>' + n(d.plays_total) + '</b><span>Runden gesamt</span></div>' +
         '<div><b>' + n(d.players_total) + '</b><span>Spieler gesamt</span></div>' +
-        '<div><b>' + n(d.profiles_total) + '</b><span>Profile (' + n(d.profiles_7) + ' neu)</span></div>' +
+        '<div><b>' + n(d.profiles_played) + '</b><span>haben je gespielt</span></div>' +
       '</div>' +
+      '<p class="tiny" style="margin:2px 0 0">App geöffnet auf ' + n(d.profiles_total) + ' Geräten (' + n(d.profiles_7) + ' neu diese Woche) · davon ' + n(d.profiles_named) + ' mit eigenem Namen · ' + n(d.profiles_played) + ' haben wirklich gespielt</p>' +
       (days.length ? '<p class="tiny" style="margin:4px 0 0">Runden pro Tag (14 Tage)</p><div class="sbars">' + bars + '</div>' : '') +
       '<p class="tiny">Modi: Freies Spiel ' + n(m.frei) + ' · Satz ' + n(m.satz) + ' · Challenge ' + n(m.season) + ' · Wort des Tages ' + n(m.tag) + ' · Duell ' + n(m.duell) + '</p>' +
       '<p class="tiny">Schon vor dem Zähler gespeichert: ' + n(d.duel_attempts) + ' Duell-Versuche · ' + n(d.season_attempts) + ' Challenge-Versuche. Deine eigenen Runden: ' + n(d.own_plays) + '.</p>';
+  }
+  async function loadDaily(){
+    let d; try { d = await rpc('admin_daily'); } catch(e){ return; }
+    if (!d || !d.id) return;
+    $('stDailyCard').hidden = false;
+    $('stDailyWord').textContent = '„' + d.word + '“';
+    $('stDailyInfo').textContent = timeLeft(d.ends_at) + ' · ' + (d.others ? d.others + ' haben es schon gespielt' : 'noch niemand gespielt');
+    $('stDailyReroll').hidden = d.others > 0;
+    $('stDailyReroll').onclick = async () => {
+      $('stDailyReroll').disabled = true;
+      try { await rpc('reroll_daily'); toast('Neues Wort des Tages 🎲'); await loadDaily(); refreshSeason(); }
+      catch(e){ toast(errText(e)); }
+      finally { $('stDailyReroll').disabled = false; }
+    };
   }
   async function loadFeedback(){
     let d; try { d = await rpc('list_feedback'); } catch(e){ return; }
