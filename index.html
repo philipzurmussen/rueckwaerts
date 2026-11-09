@@ -470,6 +470,14 @@
   #zGame .dstage,#sGame .dstage{min-height:calc(100dvh - env(safe-area-inset-top) - 190px)}
   #zFinal .row canvas{height:90px}
   .recbtn[hidden]{display:none !important}
+
+  /* Aufnahmeknopf: ohne Beschriftung, großer mittiger Punkt */
+  .recbtn .rl,#soloFree .recbtn .rl,.dstage .recbtn .rl{display:none}
+  #soloFree .row .recbtn,.dstage .row .recbtn{gap:0}
+  #soloFree .recbtn .dot{width:58px;height:58px;border-width:5px}
+  #soloFree .recbtn.on .dot{width:48px;height:48px;border-radius:12px}
+  .dstage .recbtn .dot{width:52px;height:52px;border-width:5px}
+  .dstage .recbtn.on .dot{width:44px;height:44px;border-radius:12px}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
