@@ -205,6 +205,7 @@
   .firsthint .reset{position:absolute;top:4px;right:6px;padding:6px;text-decoration:none;font-size:15px}
   .tour-hi{position:relative;z-index:61 !important;box-shadow:0 0 0 4px var(--acc),0 0 0 9999px rgba(10,5,25,.74) !important;border-radius:20px}
   .recbtn.tour-hi{border-radius:50%}
+  .tour-also{position:relative;z-index:61 !important;box-shadow:0 0 0 4px var(--acc) !important}
   .tourbub{position:fixed;left:16px;right:16px;z-index:62;max-width:420px;margin:0 auto;background:var(--ink);color:var(--bg);border-radius:18px;padding:14px 16px;box-shadow:0 10px 30px rgba(0,0,0,.4);animation:toastin .3s cubic-bezier(.3,1.6,.5,1)}
   .tourbub[hidden]{display:none !important}
   .tourbub p{margin:0 0 10px;font-size:16px;font-weight:800;line-height:1.35}
@@ -3404,24 +3405,31 @@
   const store = { get: k => { try { return localStorage.getItem(k); } catch(e){ return null; } }, set: (k, v) => { try { localStorage.setItem(k, v); } catch(e){} } };
   const TOUR = [
     { el:'recA', text:'Halt den Knopf gedrückt und sag ein Wort – zum Beispiel deinen Namen. Loslassen, wenn du fertig bist.' },
-    { el:'okA',  text:'Das bist du – rückwärts! 😄 Hör es dir ruhig nochmal an. Dann tipp auf „Passt so“.' },
-    { el:'recB', text:'Jetzt sprich genau das nach, was du rückwärts gehört hast. „Rückwärts nochmal“ spielt es dir nochmal vor.' },
+    { el:'revA', also:['okA'], text:'Das bist du – rückwärts! 😄 Hör es dir ruhig nochmal an. Dann tipp auf „Passt so“.' },
+    { el:'recB', also:['refB'], text:'Jetzt sprich genau das nach, was du rückwärts gehört hast. „Rückwärts nochmal“ spielt es dir nochmal vor.' },
     { el:'score', text:'Und jetzt der Trick: Dein Versuch wurde umgedreht 🤯 Klingt er wie dein Wort? Je ähnlicher, desto mehr Sterne!', last:true }
   ];
   let tourStep = -1;
   function tourEl(){ return tourStep >= 0 && TOUR[tourStep] ? $(TOUR[tourStep].el) : null; }
+  // Alle hervorgehobenen Elemente eines Schritts (Hauptelement + „also“)
+  function tourEls(){ const st = tourStep >= 0 && TOUR[tourStep]; return st ? [st.el, ...(st.also || [])].map($).filter(Boolean) : []; }
   function placeBubble(){
     const el = tourEl(), bub = $('tourBub'); if (!el || bub.hidden) return;
-    const r = el.getBoundingClientRect(), h = bub.offsetHeight, vh = window.innerHeight;
+    // Sprechblase über/unter allen hervorgehobenen Knöpfen, nicht darauf
+    const rs = tourEls().map(e => e.getBoundingClientRect()).filter(q => q.width || q.height);
+    const r = rs.length ? { top: Math.min(...rs.map(q => q.top)), bottom: Math.max(...rs.map(q => q.bottom)) } : el.getBoundingClientRect();
+    const h = bub.offsetHeight, vh = window.innerHeight;
     const below = r.bottom + 14, above = r.top - h - 14;
     bub.style.top = (below + h < vh - 8 || above < 8 ? Math.min(below, vh - h - 8) : above) + 'px';
   }
   function showTour(i){
-    document.querySelectorAll('.tour-hi').forEach(e => e.classList.remove('tour-hi'));
+    document.querySelectorAll('.tour-hi,.tour-also').forEach(e => e.classList.remove('tour-hi', 'tour-also'));
     tourStep = i;
     if (i < 0 || i >= TOUR.length){ $('tourBub').hidden = true; return; }
     const st = TOUR[i], el = $(st.el);
     el.classList.add('tour-hi');
+    // weitere Knöpfe mit hervorheben (liegen im DOM nach dem Hauptelement, also über dessen Abdunklung)
+    (st.also || []).forEach(id => $(id) && $(id).classList.add('tour-also'));
     $('tourTxt').textContent = st.text;
     $('tourNext').hidden = !st.last;
     $('tourBub').hidden = false;
