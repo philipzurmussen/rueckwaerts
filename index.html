@@ -478,6 +478,15 @@
   #soloFree .recbtn.on .dot{width:48px;height:48px;border-radius:12px}
   .dstage .recbtn .dot{width:52px;height:52px;border-width:5px}
   .dstage .recbtn.on .dot{width:44px;height:44px;border-radius:12px}
+
+  .sgrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+  .sgrid div{background:var(--bg);border-radius:14px;padding:10px 8px;display:flex;flex-direction:column;align-items:center;text-align:center;gap:2px}
+  .sgrid b{font-size:22px;color:var(--acc)}
+  .sgrid span{font-size:11px;font-weight:800;color:var(--mute)}
+  .sbars{display:flex;align-items:flex-end;gap:4px;height:90px;padding-top:4px}
+  .sbar{flex:1;height:100%;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;gap:3px}
+  .sbar i{display:block;width:100%;min-height:2px;border-radius:4px 4px 0 0;background:var(--acc)}
+  .sbar span{font-size:10px;color:var(--mute)}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -745,6 +754,10 @@
           <button class="play main alt" id="stPublish">Season einplanen 🚀</button>
           <p class="status" id="stStatus"></p>
         </div>
+      </section>
+      <section class="card" id="stStatsCard" hidden>
+        <h2 style="margin:0;font-size:18px;font-weight:800">📊 Statistik <span class="tiny" style="font-weight:500">ohne dich</span></h2>
+        <div id="stStats" class="stack"></div>
       </section>
       <section class="card" id="stFbCard" hidden>
         <h2 style="margin:0;font-size:18px;font-weight:800">💬 Feedback</h2>
@@ -1222,11 +1235,16 @@
     });
   }
   function enter(card){ if (!card) return; card.classList.remove('enter'); void card.offsetWidth; card.classList.add('enter'); }
+  // Anonymer Rundenzähler (Modus + Sterne, ohne Audio/Namen); still, wenn offline oder noch nicht eingerichtet
+  function logPlay(mode, stars){
+    (async () => { try { await asyncInit(); await rpc('log_play', { p_mode: mode, p_stars: stars }); } catch(e){} })();
+  }
   let scoreRun = 0;
   function showScore(stars, sim, quiet){
     const sc = $('score'), num = $('bigNum'), sp = $('stars').children, goal = Math.round(sim*100), run = ++scoreRun;
     const rv = $('reveal');
     if (quiet && sc.classList.contains('show')) return;   // nur nochmal angehört: keine neue Show
+    if (!quiet) logPlay('frei', stars);
     rv.classList.add('ribbon');
     rv.textContent = ['Nochmal probieren! 🙈','Da ist was dran! 🙂','Richtig gut! 😄','Perfekt rückwärts! 🤯'][stars];
     sc.classList.remove('show'); void sc.offsetWidth; sc.classList.add('show');
@@ -2642,6 +2660,7 @@
         const sim = similarity(w.buf.getChannelData(0), rev.getChannelData(0), NET_SR), stars = starsFor(sim);
         const path = await upload(g.id, g.cur_round, 't', net);
         await rpc('answer_round', { p_game: g.id, p_path: path, p_sim: sim, p_stars: stars });
+        logPlay('duell', stars);
         audioCache.set(path, Promise.resolve(net));
         A.revealRound = g.cur_round;
         A.stage = 'reveal';
@@ -2664,6 +2683,7 @@
         const nr = g.cur_round + 1;
         const [wp, op] = await Promise.all([upload(g.id, nr, 'w', A.draft), upload(g.id, nr, 't', net)]);
         await rpc('set_word', { p_game: g.id, p_word_text: A.chosen, p_word_path: wp, p_own_path: op, p_own_sim: sim, p_own_stars: stars });
+        logPlay('duell', stars);
         audioCache.set(wp, Promise.resolve(A.draft)); audioCache.set(op, Promise.resolve(net));
         play(null, rev, () => {});
         toast('Zug gesendet! Du hast ' + '★'.repeat(stars) + '☆'.repeat(3 - stars) + ' bei deinem eigenen Wort.');
@@ -2956,6 +2976,7 @@
       const rev = reverse(net);
       const sim = similarity(SZ.orig.getChannelData(0), rev.getChannelData(0), NET_SR), stars = starsFor(sim);
       const r = await rpc('season_attempt', { p_season: s.id, p_idx: idx, p_sim: sim, p_stars: stars });
+      logPlay('season', stars);
       SZ.result = { idx, sim, stars, word: (r && r.word_text) || '', rev, orig: SZ.orig };
       play(null, rev);
       await refreshSeason();
@@ -3019,6 +3040,7 @@
     $('stForm').hidden = false;
     await loadPlanned();
     loadFeedback();
+    loadStats();
     if (!$('stStart').value) suggestDates();
     if (!ST.rows.length){ ST.theme = 'Herbst'; fillRows(true); if (!$('stTitle').value){ $('stTitle').value = 'Herbst-Woche'; $('stTitle').dataset.auto = '1'; } }
     renderStudio();
@@ -3197,6 +3219,7 @@
     zShow('final');
     $('zFinMsg').innerHTML = '🎉 Dein Satz ist fertig!<span class="wordwas">„' + esc(Z.sentence) + '“</span>';
     $('zStars').innerHTML = [0,1,2].map(i => '<span class="' + (i < stars ? 'lit' : '') + '">★</span>').join('');
+    logPlay('satz', stars);
     $('zPct').textContent = 'Ähnlichkeit ' + Math.round(avg * 100) + ' %';
     if (stars >= 2) confetti(stars === 3 ? 90 : 50);
     $('zWords').innerHTML = '<p class="tiny">Wort für Wort:</p>' + Z.res.map(r =>
@@ -3333,6 +3356,30 @@
     } catch(e){ $('fbStatus').textContent = errText(e); }
     finally { $('fbSend').disabled = false; }
   };
+  async function loadStats(){
+    let d; try { d = await rpc('admin_stats'); } catch(e){
+      $('stStatsCard').hidden = false;
+      $('stStats').innerHTML = '<p class="tiny">Noch nicht eingerichtet – bitte das aktuelle <b>setup.sql</b> einmal im Supabase SQL Editor ausführen.</p>';
+      return;
+    }
+    $('stStatsCard').hidden = false;
+    const n = v => (v || 0).toLocaleString('de-DE');
+    const m = d.by_mode || {}, days = d.days || [];
+    const max = Math.max(1, ...days.map(x => x.plays));
+    const bars = days.map(x => '<div class="sbar" title="' + esc(x.day) + ': ' + x.plays + ' Runden, ' + x.players + ' Spieler"><i style="height:' + Math.round(100 * x.plays / max) + '%"></i><span>' + esc(x.day.slice(8, 10)) + '</span></div>').join('');
+    $('stStats').innerHTML =
+      '<div class="sgrid">' +
+        '<div><b>' + n(d.plays_today) + '</b><span>Runden heute</span></div>' +
+        '<div><b>' + n(d.plays_7) + '</b><span>Runden 7 Tage</span></div>' +
+        '<div><b>' + n(d.players_7) + '</b><span>Spieler 7 Tage</span></div>' +
+        '<div><b>' + n(d.plays_total) + '</b><span>Runden gesamt</span></div>' +
+        '<div><b>' + n(d.players_total) + '</b><span>Spieler gesamt</span></div>' +
+        '<div><b>' + n(d.profiles_total) + '</b><span>Profile (' + n(d.profiles_7) + ' neu)</span></div>' +
+      '</div>' +
+      (days.length ? '<p class="tiny" style="margin:4px 0 0">Runden pro Tag (14 Tage)</p><div class="sbars">' + bars + '</div>' : '') +
+      '<p class="tiny">Modi: Freies Spiel ' + n(m.frei) + ' · Satz ' + n(m.satz) + ' · Season ' + n(m.season) + ' · Duell ' + n(m.duell) + '</p>' +
+      '<p class="tiny">Schon vor dem Zähler gespeichert: ' + n(d.duel_attempts) + ' Duell-Versuche · ' + n(d.season_attempts) + ' Season-Versuche. Deine eigenen Runden: ' + n(d.own_plays) + '.</p>';
+  }
   async function loadFeedback(){
     let d; try { d = await rpc('list_feedback'); } catch(e){ return; }
     $('stFbCard').hidden = false;

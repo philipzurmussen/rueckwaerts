@@ -853,6 +853,57 @@ end $$;
 revoke all on function public.send_feedback(int,text,text[],text,text), public.list_feedback() from public, anon;
 grant execute on function public.send_feedback(int,text,text[],text,text), public.list_feedback() to authenticated;
 
+-- ---------- Rundenzähler (anonym: nur Modus, Sterne, Zeit) ------------
+
+create table if not exists public.plays (
+  id          bigint generated always as identity primary key,
+  player      uuid,
+  mode        text not null check (mode in ('frei','satz','season','duell')),
+  stars       int  check (stars between 0 and 3),
+  created_at  timestamptz not null default now()
+);
+create index if not exists plays_time_idx on public.plays(created_at);
+create index if not exists plays_player_idx on public.plays(player, created_at);
+alter table public.plays enable row level security;   -- kein direkter Zugriff, nur über die Funktionen
+
+create or replace function public.log_play(p_mode text, p_stars int) returns void
+language plpgsql security definer set search_path = public as $$
+declare me uuid := auth.uid();
+begin
+  if me is null or p_mode not in ('frei','satz','season','duell') then return; end if;
+  if (select count(*) from public.plays where player = me and created_at > now() - interval '1 hour') >= 300 then return; end if;
+  insert into public.plays(player, mode, stars) values (me, p_mode, case when p_stars between 0 and 3 then p_stars end);
+end $$;
+
+-- Statistik fürs Studio (nur Admin); Admin-Konten werden herausgerechnet
+create or replace function public.admin_stats() returns json
+language plpgsql stable security definer set search_path = public as $$
+declare res json;
+begin
+  if not public.is_admin() then raise exception 'Nur für Admins'; end if;
+  with p as (select * from public.plays where player is null or player not in (select uid from public.admins))
+  select json_build_object(
+    'plays_total',   (select count(*) from p),
+    'plays_today',   (select count(*) from p where created_at >= date_trunc('day', now() at time zone 'Europe/Berlin') at time zone 'Europe/Berlin'),
+    'plays_7',       (select count(*) from p where created_at > now() - interval '7 days'),
+    'players_total', (select count(distinct player) from p),
+    'players_7',     (select count(distinct player) from p where created_at > now() - interval '7 days'),
+    'by_mode',       (select coalesce(json_object_agg(mode, n), '{}'::json) from (select mode, count(*) n from p group by mode) t),
+    'days',          (select coalesce(json_agg(json_build_object('day', d::date::text, 'plays', coalesce(x.n, 0), 'players', coalesce(x.u, 0)) order by d), '[]'::json)
+                      from generate_series((now() at time zone 'Europe/Berlin')::date - 13, (now() at time zone 'Europe/Berlin')::date, interval '1 day') d
+                      left join (select (created_at at time zone 'Europe/Berlin')::date dd, count(*) n, count(distinct player) u from p group by 1) x on x.dd = d::date),
+    'profiles_total',(select count(*) from public.profiles where id not in (select uid from public.admins)),
+    'profiles_7',    (select count(*) from public.profiles where id not in (select uid from public.admins) and created_at > now() - interval '7 days'),
+    'duel_attempts', (select count(*) from public.attempts where player not in (select uid from public.admins)),
+    'season_attempts',(select count(*) from public.season_attempts where player not in (select uid from public.admins)),
+    'own_plays',     (select count(*) from public.plays where player in (select uid from public.admins))
+  ) into res;
+  return res;
+end $$;
+
+revoke all on function public.log_play(text,int), public.admin_stats() from public, anon;
+grant execute on function public.log_play(text,int), public.admin_stats() to authenticated;
+
 -- ---------- Audio-Speicher -------------------------------------------
 
 insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
