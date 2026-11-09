@@ -3261,7 +3261,7 @@
   new MutationObserver(() => { if (tourStep === 0 && !$('okA').hidden) showTour(1); }).observe($('okA'), { attributes:true });
   $('okA').addEventListener('click', () => { if (tourStep === 1){ $('tourBub').hidden = true; setTimeout(() => showTour(2), RM ? 300 : 1700); } });   // nach dem Zwischen-Slide
   new MutationObserver(() => { if (tourStep === 2 && $('score').classList.contains('show')) showTour(3); }).observe($('score'), { attributes:true });
-  $('tourSkip').onclick = endTour;
+  $('tourSkip').onclick = () => { endTour(); if (!$('soloFree').hidden){ showSoloHome(); window.scrollTo(0, 0); } };   // Überspringen = zurück zum Start
   $('tourNext').onclick = endTour;
   $('reset').addEventListener('click', () => { if (tourStep > 0) showTour(0); });
   window.addEventListener('resize', placeBubble);
