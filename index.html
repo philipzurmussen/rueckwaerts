@@ -1194,6 +1194,8 @@
   // Strenger: SCORE_HI senken. Gnädiger: SCORE_HI anheben.
   // (Admins sehen die Rohdistanz „d“ unter „Letzte Runden“ – damit lässt sich das hier nachjustieren.)
   const SCORE_LO = 0.65, SCORE_HI = 1.25;
+  // Gnädiger gegen die Kunststimme (Piper): Eine fremde, künstliche Stimme trifft man nie ganz
+  const TTS_LO = 0.75, TTS_HI = 1.45;
   const SPEECH_GATE_DB = 30, DTW_BAND = 0.3;
 
   function fft(re, im){
@@ -1259,9 +1261,9 @@
     for (let i=0;i<a.length;i++){ const x = a[i]-b[i]; d += x*x; }
     return Math.sqrt(d/a.length);
   }
-  function similarity(dataA, dataB, sr){ return scoreDetail(dataA, dataB, sr).sim; }
+  function similarity(dataA, dataB, sr, tts){ return scoreDetail(dataA, dataB, sr, tts).sim; }
   // Liefert { sim, dist }: dist = rohe mittlere DTW-Distanz (null, wenn zu kurz)
-  function scoreDetail(dataA, dataB, sr){
+  function scoreDetail(dataA, dataB, sr, tts){
     const A = features(dataA, sr), B = features(dataB, sr), n = A.length, m = B.length;
     if (n < 3 || m < 3) return { sim: 0, dist: null };
     // Symmetrische DTW mit Band: Der Pfad darf nur begrenzt von der Diagonale abweichen,
@@ -1277,7 +1279,8 @@
       pr = cu;
     }
     const dist = pr[m] / (n + m);
-    let sim = (SCORE_HI - dist) / (SCORE_HI - SCORE_LO);
+    const lo = tts ? TTS_LO : SCORE_LO, hi = tts ? TTS_HI : SCORE_HI;
+    let sim = (hi - dist) / (hi - lo);
     // Strafe, wenn die Länge stark abweicht
     const ratio = Math.min(n,m)/Math.max(n,m);
     if (ratio < 0.6) sim *= ratio/0.6;
@@ -2917,7 +2920,7 @@
       try {
         const w = await loadWord();
         const rev = reverse(net);
-        const sim = similarity(w.buf.getChannelData(0), rev.getChannelData(0), NET_SR), stars = starsFor(sim);
+        const sim = similarity(w.buf.getChannelData(0), rev.getChannelData(0), NET_SR, w.path.startsWith('tts/')), stars = starsFor(sim);
         const ar = ansRound(g), own = g.voice === 'tts' && ar.mine;
         const path = await upload(g.id, ar.round_no, 't', net);
         await rpc(own ? 'tts_play' : 'answer_round', { p_game: g.id, p_path: path, p_sim: sim, p_stars: stars });
