@@ -172,7 +172,7 @@
   .acct .reset{padding:2px 0;font-size:13px}
   .acctBtns{display:flex;gap:12px}
   .acctForm{padding:12px;border-radius:16px;background:rgba(0,0,0,.2)}
-  .overlay{position:fixed;inset:0;z-index:40;background:rgba(10,5,25,.75);display:flex;align-items:center;justify-content:center;padding:calc(env(safe-area-inset-top) + 16px) 16px calc(env(safe-area-inset-bottom) + 16px)}
+  .overlay{position:fixed;inset:0;z-index:55;background:rgba(10,5,25,.75);display:flex;align-items:center;justify-content:center;padding:calc(env(safe-area-inset-top) + 16px) 16px calc(env(safe-area-inset-bottom) + 16px)}
   .overlay[hidden]{display:none !important}
   .fbstars{display:flex;gap:8px;justify-content:center}
   .fbstars button{border:0;background:none;font-size:38px;color:rgba(255,255,255,.18);cursor:pointer;padding:0 2px}
@@ -903,10 +903,6 @@
     </div>
   </div>
 
-  <div style="display:flex;gap:18px;justify-content:center;margin-top:8px">
-    <button class="reset" id="fbOpen">💬 Feedback geben</button>
-    <button class="reset" id="handBtn">🤚 Knopf links</button>
-  </div>
   <div class="overlay" id="helpBox" hidden>
     <section class="card stack" style="max-height:90vh;overflow:auto">
       <div class="head"><div class="num">❓</div><div><h2>So geht Ollah!</h2><p>Hallo, nur rückwärts.</p></div></div>
@@ -916,6 +912,10 @@
       <div class="helpstep"><b>🤯 4. Umdrehen!</b><span>Dein Versuch wird umgedreht – und klingt plötzlich wie dein Wort. Je ähnlicher, desto mehr ⭐.</span></div>
       <p class="tiny"><b>Solo</b> zum Üben und für die Season der Woche · <b>Duelle</b> gegen Freunde oder Zufallsgegner, jeder spielt, wann er Zeit hat · <b>Rangliste</b>: Sterne sammeln, Level aufsteigen, neue Themen freischalten.</p>
       <button class="play main" id="helpTour">Geführte Runde starten</button>
+      <div class="btns">
+        <button class="play" id="fbOpen">💬 Feedback geben</button>
+        <button class="play" id="handBtn">🤚 Knopf links</button>
+      </div>
       <button class="reset" id="helpClose">Schließen</button>
     </section>
   </div>
@@ -3263,6 +3263,7 @@
   $('helpClose').onclick = () => { $('helpBox').hidden = true; };
   $('helpBox').addEventListener('click', e => { if (e.target === $('helpBox')) $('helpBox').hidden = true; });
   $('helpTour').onclick = () => { $('helpBox').hidden = true; startTour(); };
+  $('fbOpen').addEventListener('click', () => { $('helpBox').hidden = true; });
 
   document.querySelectorAll('.firsthint').forEach(h => {
     const k = 'rw-hint-' + h.dataset.hint;
