@@ -487,6 +487,16 @@
   .sbar{flex:1;height:100%;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;gap:3px}
   .sbar i{display:block;width:100%;min-height:2px;border-radius:4px 4px 0 0;background:var(--acc)}
   .sbar span{font-size:10px;color:var(--mute)}
+
+  /* ---------- Mehrere Challenges: seitlich wischbare Karten ---------- */
+  .chlist{width:100%;max-width:440px;display:flex;gap:12px;overflow-x:auto;scroll-snap-type:x mandatory;padding:2px 2px 10px;margin:-2px -2px -10px;scrollbar-width:none}
+  .chlist:empty{display:none}
+  .chlist::-webkit-scrollbar{display:none}
+  .chlist .card{flex:0 0 100%;scroll-snap-align:center;margin:0}
+  .chlist.multi .card{flex-basis:86%}
+  .chlist .chnav{display:none}
+
+  .chhead{margin:8px 0 0;font-size:16px;font-weight:800}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -549,11 +559,11 @@
       </div>
     </section>
   </div>
-  <div class="sheetwrap" id="boardSheet" hidden role="dialog" aria-modal="true" aria-label="Wochen-Rangliste">
+  <div class="sheetwrap" id="boardSheet" hidden role="dialog" aria-modal="true" aria-label="Rangliste der Challenge">
     <div class="scrim" id="boardScrim"></div>
     <section class="card">
       <div class="sgrip" aria-hidden="true"></div>
-      <div class="shead"><h2>🏆 Wochen-Rangliste</h2><button class="backbtn" id="boardClose" aria-label="Schließen">✕</button></div>
+      <div class="shead"><h2>🏆 Rangliste</h2><button class="backbtn" id="boardClose" aria-label="Schließen">✕</button></div>
       <div id="sBoard" class="stack"></div>
     </section>
   </div>
@@ -573,6 +583,7 @@
 
   <div class="view" id="solo">
    <div class="view" id="soloHome">
+    <div class="chlist" id="chList" aria-label="Laufende Challenges"></div>
     <section class="card season" id="sCard" hidden>
       <div class="srow">
         <div class="num">🗓️</div>
@@ -607,7 +618,7 @@
         <div id="sResult" class="stack" hidden></div>
         <button class="play main" id="sNext" hidden>Nächster Begriff ➜</button>
       </section>
-      <button class="histbar" id="sBoardBtn" aria-haspopup="dialog"><span>🏆 Wochen-Rangliste</span><span class="hi">ansehen</span></button>
+      <button class="histbar" id="sBoardBtn" aria-haspopup="dialog"><span>🏆 Rangliste dieser Challenge</span><span class="hi">ansehen</span></button>
     </div>
 
   <div class="view" id="zGame" hidden>
@@ -696,8 +707,8 @@
 
   <div class="view" id="ranks" hidden>
     <section class="card">
-      <div class="firsthint" data-hint="rangliste" hidden>👋 Jeder Stern aus Duellen und Seasons zählt – mit mehr Punkten steigst du im Level auf und schaltest neue Themen frei.<button class="reset" aria-label="Hinweis schließen">✕</button></div>
-      <div class="head"><div class="num">🏅</div><div><h2>Dein Stand</h2><p>Sterne aus Duellen und Seasons · +5 je gewonnenem Duell</p></div></div>
+      <div class="firsthint" data-hint="rangliste" hidden>👋 Jeder Stern aus Duellen und Challenges zählt – mit mehr Punkten steigst du im Level auf und schaltest neue Themen frei.<button class="reset" aria-label="Hinweis schließen">✕</button></div>
+      <div class="head"><div class="num">🏅</div><div><h2>Dein Stand</h2><p>Sterne aus Duellen und Challenges · +5 je gewonnenem Duell</p></div></div>
       <div class="lvl">
         <div class="lvtop"><b id="rkLvName">Level 1 · Anfänger</b><span id="rkLvXp">0 Punkte</span></div>
         <div class="bar"><span id="rkLvBar"></span></div>
@@ -705,7 +716,7 @@
       </div>
     </section>
     <section class="card" id="rkSeasonCard" hidden>
-      <h2 style="margin:0;font-size:18px;font-weight:800" id="rkSeasonTitle">🗓️ Diese Woche</h2>
+      <h2 style="margin:0;font-size:18px;font-weight:800" id="rkSeasonTitle">🗓️ Laufende Challenges</h2>
       <div id="rkSeason" class="stack"></div>
     </section>
     <section class="card">
@@ -743,7 +754,7 @@
     <div class="view" id="studio" hidden>
       <button class="reset" id="stBack" style="align-self:flex-start">← Zurück</button>
       <section class="card">
-        <div class="head"><div class="num">🎛️</div><div><h2>Season-Studio</h2><p>Wochen-Challenges planen</p></div></div>
+        <div class="head"><div class="num">🎛️</div><div><h2>Challenge-Studio</h2><p>Challenges planen – auch mehrere gleichzeitig</p></div></div>
         <div id="stNoAdmin" class="stack" hidden></div>
         <div id="stForm" class="stack" hidden>
           <input class="field" id="stTitle" maxlength="40" placeholder="Titel, z. B. Köln-Woche">
@@ -758,7 +769,7 @@
             <button class="play" id="stAdd">+ Begriff</button>
             <button class="play" id="stFill">🎲 Vorschläge</button>
           </div>
-          <button class="play main alt" id="stPublish">Season einplanen 🚀</button>
+          <button class="play main alt" id="stPublish">Challenge einplanen 🚀</button>
           <p class="status" id="stStatus"></p>
         </div>
       </section>
@@ -938,7 +949,7 @@
       <div class="helpstep"><b>🔁 2. Hör es rückwärts</b><span>Klingt wie eine fremde Sprache.</span></div>
       <div class="helpstep"><b>🦜 3. Mach es nach</b><span>Sprich genau diese Rückwärts-Version nach – so gut du kannst.</span></div>
       <div class="helpstep"><b>🤯 4. Umdrehen!</b><span>Dein Versuch wird umgedreht – und klingt plötzlich wie dein Wort. Je ähnlicher, desto mehr ⭐.</span></div>
-      <p class="tiny"><b>Solo</b> zum Üben und für die Season der Woche · <b>Duelle</b> gegen Freunde oder Zufallsgegner, jeder spielt, wann er Zeit hat · <b>Rangliste</b>: Sterne sammeln, Level aufsteigen, neue Themen freischalten.</p>
+      <p class="tiny"><b>Solo</b> zum Üben und für die laufenden Challenges · <b>Duelle</b> gegen Freunde oder Zufallsgegner, jeder spielt, wann er Zeit hat · <b>Rangliste</b>: Sterne sammeln, Level aufsteigen, neue Themen freischalten.</p>
       <button class="play main" id="helpTour">Geführte Runde starten</button>
       <div class="btns">
         <button class="play" id="fbOpen">💬 Feedback geben</button>
@@ -2292,12 +2303,17 @@
     $('rkLvBar').style.width = (nx ? Math.round(100 * (myXP - cur.xp) / (nx.xp - cur.xp)) : 100) + '%';
     $('rkLvNext').textContent = $('aLvNext').textContent;
     if (A.lb) renderRank($('rkAll'));
-    const s = SZ.data && SZ.data.active;
-    $('rkSeasonCard').hidden = !s;
-    if (s){
-      $('rkSeasonTitle').innerHTML = '🗓️ ' + esc(s.title) + '<span class="tiny" style="display:block;font-weight:500;margin-top:2px">' + timeLeft(s.ends_at) + ' · ' + s.players + (s.players === 1 ? ' Spieler' : ' Spieler') + '</span>';
-      boardRows($('rkSeason'), s.board, 'Noch niemand hat diese Woche gespielt – sei der Erste im Solo-Tab!');
-    }
+    const list = activeList();
+    $('rkSeasonCard').hidden = !list.length;
+    $('rkSeasonTitle').textContent = list.length > 1 ? '🗓️ Laufende Challenges' : '🗓️ ' + (list[0] ? list[0].title : '');
+    const box = $('rkSeason'); box.innerHTML = '';
+    list.forEach(s => {
+      if (list.length > 1){ const h = document.createElement('h3'); h.className = 'chhead'; h.textContent = s.title; box.appendChild(h); }
+      const sub = document.createElement('p'); sub.className = 'tiny'; sub.style.margin = '0';
+      sub.textContent = timeLeft(s.ends_at) + ' · ' + s.players + ' Spieler'; box.appendChild(sub);
+      const rows = document.createElement('div'); rows.className = 'stack'; box.appendChild(rows);
+      boardRows(rows, s.board, 'Noch niemand hat gespielt – sei der Erste im Solo-Tab!');
+    });
   }
   window.ranksEnter = async () => {
     try { await asyncInit(); await Promise.all([refreshStats(), refreshSeason()]); renderRanksTab(); }
@@ -2802,7 +2818,10 @@
   // =====================================================================
   // SEASONS – Wochen-Challenges mit Philips eingesprochenen Begriffen
   // =====================================================================
-  const SZ = { data:null, busy:false, result:null, stage:'say', orig:null, origRev:null };
+  const SZ = { data:null, cur:null, busy:false, result:null, stage:'say', orig:null, origRev:null };
+  // Alle laufenden Challenges (alte Server-Version liefert nur eine)
+  const activeList = () => { const d = SZ.data; return !d ? [] : d.actives || (d.active ? [d.active] : []); };
+  const curS = () => activeList().find(c => c.id === SZ.cur) || null;
   const fmtDate = iso => new Date(iso).toLocaleString('de-DE', { weekday:'short', day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' });
   function hideAsyncViews(){
     ['aHome','aListCard','aRankCard','sHint','studio','aGame'].forEach(k => $(k).hidden = true);
@@ -2849,37 +2868,49 @@
     });
   }
   function renderSeasonCard(){
-    const d = SZ.data, s = d && d.active, card = $('sCard');
+    const d = SZ.data, list = activeList(), s = list[0], card = $('sCard');
     const onHome = !$('soloHome').hidden;
     // kleiner Hinweis im Duelle-Tab
     const hint = $('sHint');
     hint.hidden = !(s && !$('aHome').hidden);
     if (s){
-      const left = s.words.filter(w => !w.my).length;
-      hint.innerHTML = '<div class="gi" style="text-align:center"><b>🗓️ ' + esc(s.title) + ' läuft</b><small>' +
-        (left ? 'Im Solo-Tab mitmachen ➜' : 'Alles gespielt · Platz ' + (s.me.rank || '–') + ' ➜') + '</small></div>';
+      const open = list.filter(c => c.words.some(w => !w.my)).length;
+      hint.innerHTML = '<div class="gi" style="text-align:center"><b>🗓️ ' + (list.length > 1 ? list.length + ' Challenges laufen' : esc(s.title) + ' läuft') + '</b><small>' +
+        (open ? 'Im Solo-Tab mitmachen ➜' : 'Alles gespielt ➜') + '</small></div>';
       hint.onclick = () => { showMode('solo'); window.scrollTo(0, 0); };
     }
+    renderChallenges(onHome);
     if (!s){
       if (d && d.last && d.last.top && d.last.top.length){
         card.hidden = !onHome;
-        $('sTitle').textContent = 'Letzte Season: ' + d.last.title;
-        $('sSub').textContent = d.next ? 'Nächste: ' + d.next.title + ' ab ' + fmtDate(d.next.starts_at) : 'Die nächste Wochen-Challenge kommt bald.';
+        $('sTitle').textContent = 'Letzte Challenge: ' + d.last.title;
+        $('sSub').textContent = d.next ? 'Nächste: ' + d.next.title + ' ab ' + fmtDate(d.next.starts_at) : 'Die nächste Challenge kommt bald.';
         $('sDots').innerHTML = ''; $('sPlay').hidden = true;
         boardRows($('sMini'), d.last.top.slice(0, 3), '');
       } else card.hidden = true;
       return;
     }
-    card.hidden = !onHome;
-    const n = s.words.length, played = s.words.filter(w => w.my).length;
-    $('sTitle').textContent = 'Season: ' + s.title;
-    const tl = timeLeft(s.ends_at).replace(/^(noch \d+ Tag(e)?) .*/, '$1');
-    $('sSub').textContent = tl + ' · ' +
-      (s.me && s.me.rank ? 'Platz ' + s.me.rank + ' · ' + s.me.stars + ' ★' : (s.players ? s.players + ' dabei' : 'neu!'));
-    seasonDots($('sDots'), s, null);
-    $('sPlay').hidden = false;
-    $('sPlay').textContent = played === 0 ? 'Los 🎙️' : played < n ? 'Weiter' : 'Ergebnis';
-    $('sMini').innerHTML = '';
+    card.hidden = true;   // laufende Challenges stehen als Karten in #chList
+  }
+  // Eine Karte je laufender Challenge, seitlich wischbar
+  function renderChallenges(onHome){
+    const box = $('chList'), list = activeList();
+    box.innerHTML = '';
+    box.hidden = !onHome || !list.length;
+    box.classList.toggle('multi', list.length > 1);
+    list.forEach(s => {
+      const n = s.words.length, played = s.words.filter(w => w.my).length;
+      const tl = timeLeft(s.ends_at).replace(/^(noch \d+ Tag(e)?) .*/, '$1');
+      const el = document.createElement('section'); el.className = 'card season';
+      el.innerHTML = '<div class="srow"><div class="num">🗓️</div><div class="sinfo"><h2></h2><p></p><div class="dots"></div></div><button class="splay"></button></div>';
+      el.querySelector('h2').textContent = s.title;
+      el.querySelector('p').textContent = tl + ' · ' + (s.me && s.me.rank ? 'Platz ' + s.me.rank + ' · ' + s.me.stars + ' ★' : (s.players ? s.players + ' dabei' : 'neu!'));
+      seasonDots(el.querySelector('.dots'), s, null);
+      const b = el.querySelector('.splay');
+      b.textContent = played === 0 ? 'Los 🎙️' : played < n ? 'Weiter' : 'Ergebnis';
+      b.onclick = () => openSeason(s.id);
+      box.appendChild(el);
+    });
   }
   const nextIdx = s => { const w = s.words.find(w => !w.my); return w ? w.idx : null; };
   function showSoloHome(){
@@ -2924,7 +2955,9 @@
   $('histClose').onclick = () => histSheet(false);
   $('histScrim').onclick = () => histSheet(false);
   document.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('histSheet').hidden) histSheet(false); });
-  function openSeason(){
+  function openSeason(id){
+    const list = activeList();
+    SZ.cur = (typeof id === 'string' ? id : null) || (list.find(c => c.words.some(w => !w.my)) || list[0] || {}).id || null;
     stopPlay(); $('soloHome').hidden = true; $('soloFree').hidden = true; $('sGame').hidden = false; document.body.classList.add('ingame');
     SZ.result = null; SZ.stage = 'say'; SZ.orig = SZ.origRev = null; window.scrollTo(0, 0);
     renderSeason();
@@ -2932,8 +2965,8 @@
   $('sPlay').onclick = openSeason;
   $('sBack').onclick = showSoloHome;
   function renderSeason(){
-    const s = SZ.data && SZ.data.active;
-    if (!s){ toast('Diese Season ist vorbei'); showSoloHome(); return; }
+    const s = curS();
+    if (!s){ toast('Diese Challenge ist vorbei'); showSoloHome(); return; }
     const n = s.words.length, idx = SZ.result ? SZ.result.idx : nextIdx(s);
     const word = idx ? s.words.find(w => w.idx === idx).word_text : null;
     $('sTitle2').textContent = s.title;
@@ -2975,7 +3008,7 @@
   $('sRef').onclick = () => { if (SZ.origRev){ draw('S', SZ.origRev); play('S', SZ.origRev); } };
   $('sOk').onclick = () => { if (!SZ.orig) return; SZ.stage = 'try'; renderSeason(); play('S', SZ.origRev); };
   async function seasonRecorded(buf){
-    const s = SZ.data && SZ.data.active;
+    const s = curS();
     if (!s || SZ.busy || SZ.result) return;
     const idx = nextIdx(s); if (!idx) return;
     const net = await toNet(buf);
@@ -3000,9 +3033,9 @@
     finally { SZ.busy = false; }
   }
   $('sNext').onclick = () => {
-    const s = SZ.data && SZ.data.active, nx = s && nextIdx(s);
+    const s = curS(), nx = s && nextIdx(s);
     SZ.result = null; SZ.stage = 'say'; SZ.orig = SZ.origRev = null; renderSeason(); window.scrollTo(0, 0);
-    if (nx) interstitial('Begriff ' + nx, 'von ' + s.words.length + ' in dieser Season');
+    if (nx) interstitial('Begriff ' + nx, 'von ' + s.words.length + ' · ' + s.title);
   };
   $('sRec').addEventListener('click', () => onRec('S'));
   $('fileS').addEventListener('change', () => { const f = $('fileS').files && $('fileS').files[0]; if (f) handleAudio('S', f); $('fileS').value = ''; });
@@ -3026,8 +3059,7 @@
     return e;
   }
   function suggestDates(){
-    const lastEnd = ST.planned.length ? new Date(ST.planned[ST.planned.length - 1].ends_at) : null;
-    const start = lastEnd && lastEnd > new Date() ? new Date(lastEnd.getTime() + 60000) : new Date();
+    const start = new Date();   // Challenges dürfen parallel laufen
     $('stStart').value = toLocalInput(start);
     $('stEnd').value = toLocalInput(sundayAfter(start));
   }
@@ -3070,7 +3102,7 @@
       const x = el.querySelector('.gdel'); let armed = 0;
       x.onclick = async () => {
         if (Date.now() - armed > 3000){ armed = Date.now(); x.textContent = p.running ? 'Wirklich beenden?' : 'Löschen?'; x.classList.add('armed'); return; }
-        try { await rpc('end_season', { p_id: p.id }); toast(p.running ? 'Season beendet' : 'Season gelöscht'); await loadPlanned(); suggestDates(); refreshSeason(); }
+        try { await rpc('end_season', { p_id: p.id }); toast(p.running ? 'Challenge beendet' : 'Challenge gelöscht'); await loadPlanned(); suggestDates(); refreshSeason(); }
         catch(e){ toast(errText(e)); }
       };
       box.appendChild(el);
@@ -3120,7 +3152,7 @@
     $('stPublish').disabled = true; st('Wird eingeplant …');
     try {
       await rpc('create_season', { p_title: title, p_topic: ST.theme, p_starts: start.toISOString(), p_ends: end.toISOString(), p_words: words });
-      st(''); toast(start <= new Date() ? 'Season „' + title + '“ ist live! 🚀' : 'Season „' + title + '“ ist eingeplant 📅');
+      st(''); toast(start <= new Date() ? 'Challenge „' + title + '“ ist live! 🚀' : 'Challenge „' + title + '“ ist eingeplant 📅');
       ST.rows = []; $('stTitle').value = ''; $('stTitle').dataset.auto = '1';
       await loadPlanned(); suggestDates();
       const keys = Object.keys(STUDIO_THEMES), nxt = keys[(keys.indexOf(ST.theme) + 1) % keys.length];
@@ -3332,7 +3364,7 @@
   // ---------- Feedback ----------
   const FB = { rating:0, turn:'', fun:new Set() };
   const FB_TURN = [['kurz','zu kurz'], ['richtig','genau richtig'], ['lang','zu lang']];
-  const FB_FUN = ['Ergebnisse vergleichen', 'Reaktionen', 'Duelle', 'Season', 'Solo', 'Rangliste & Level'];
+  const FB_FUN = ['Ergebnisse vergleichen', 'Reaktionen', 'Duelle', 'Challenges', 'Solo', 'Rangliste & Level'];
   function renderFb(){
     if (FB.rating || FB.turn || FB.fun.size) $('fbStatus').textContent = '';
     const st = $('fbStars'); st.innerHTML = '';
@@ -3390,8 +3422,8 @@
         '<div><b>' + n(d.profiles_total) + '</b><span>Profile (' + n(d.profiles_7) + ' neu)</span></div>' +
       '</div>' +
       (days.length ? '<p class="tiny" style="margin:4px 0 0">Runden pro Tag (14 Tage)</p><div class="sbars">' + bars + '</div>' : '') +
-      '<p class="tiny">Modi: Freies Spiel ' + n(m.frei) + ' · Satz ' + n(m.satz) + ' · Season ' + n(m.season) + ' · Duell ' + n(m.duell) + '</p>' +
-      '<p class="tiny">Schon vor dem Zähler gespeichert: ' + n(d.duel_attempts) + ' Duell-Versuche · ' + n(d.season_attempts) + ' Season-Versuche. Deine eigenen Runden: ' + n(d.own_plays) + '.</p>';
+      '<p class="tiny">Modi: Freies Spiel ' + n(m.frei) + ' · Satz ' + n(m.satz) + ' · Challenge ' + n(m.season) + ' · Duell ' + n(m.duell) + '</p>' +
+      '<p class="tiny">Schon vor dem Zähler gespeichert: ' + n(d.duel_attempts) + ' Duell-Versuche · ' + n(d.season_attempts) + ' Challenge-Versuche. Deine eigenen Runden: ' + n(d.own_plays) + '.</p>';
   }
   async function loadFeedback(){
     let d; try { d = await rpc('list_feedback'); } catch(e){ return; }

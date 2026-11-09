@@ -647,8 +647,9 @@ begin
   if json_array_length(p_words) < 3 or json_array_length(p_words) > 20 then raise exception 'Bitte 3 bis 20 Begriffe'; end if;
   if p_ends <= st then raise exception 'Das Ende muss nach dem Start liegen'; end if;
   if p_ends <= now() then raise exception 'Das Ende liegt in der Vergangenheit'; end if;
-  if exists (select 1 from public.seasons where starts_at < p_ends and ends_at > st) then
-    raise exception 'In diesem Zeitraum gibt es schon eine Season';
+  -- Challenges dürfen sich überschneiden (mehrere gleichzeitig), aber nicht zu viele
+  if (select count(*) from public.seasons where starts_at < p_ends and ends_at > st) >= 8 then
+    raise exception 'In diesem Zeitraum laufen schon 8 Challenges';
   end if;
   insert into public.seasons(title, topic, starts_at, ends_at)
     values (trim(p_title), nullif(trim(coalesce(p_topic, '')), ''), st, p_ends) returning id into sid;
@@ -700,38 +701,46 @@ language sql stable security definer set search_path = public as $$
   from (select * from r order by rk limit p_limit) r join public.profiles p on p.id = r.player;
 $$;
 
--- Aktuelle Season mit meinem Stand, dazu letzte und nächste Season
-create or replace function public.current_season() returns json
+-- Eine Challenge mit meinem Stand (intern)
+create or replace function public.challenge_json(p_id uuid, me uuid) returns json
 language plpgsql stable security definer set search_path = public as $$
-declare me uuid := auth.uid(); s public.seasons; l public.seasons; n public.seasons; res json; last json; nxt json;
+declare s public.seasons; res json;
 begin
-  select * into l from public.seasons where ends_at <= now() order by ends_at desc limit 1;
-  if found then last := json_build_object('id', l.id, 'title', l.title, 'top', public.season_board(l.id, 3)); end if;
-  select * into n from public.seasons where starts_at > now() order by starts_at limit 1;
-  if found then nxt := json_build_object('title', n.title, 'starts_at', n.starts_at); end if;
-  select * into s from public.seasons where starts_at <= now() and ends_at > now() order by starts_at desc limit 1;
-  if not found then return json_build_object('active', null, 'last', last, 'next', nxt); end if;
+  select * into s from public.seasons where id = p_id;
+  if not found then return null; end if;
   with r as (
     select player, rank() over (order by sum(stars) desc, sum(sim) desc) as rk, sum(stars) as st
     from public.season_attempts where season_id = s.id group by player
   )
   select json_build_object(
-    'active', json_build_object(
-      'id', s.id, 'title', s.title, 'topic', s.topic, 'ends_at', s.ends_at,
-      'words', (select json_agg(json_build_object(
-                  'idx', w.idx, 'word_text', w.word_text,
-                  'my', case when a.player is null then null else json_build_object('sim', a.sim, 'stars', a.stars) end
-                ) order by w.idx)
-                from public.season_words w
-                left join public.season_attempts a on a.season_id = w.season_id and a.idx = w.idx and a.player = me
-                where w.season_id = s.id),
-      'board', public.season_board(s.id, 10),
-      'me', json_build_object('rank', (select rk from r where player = me), 'stars', coalesce((select st from r where player = me), 0)),
-      'players', (select count(*) from r)
-    ),
-    'last', last, 'next', nxt
+    'id', s.id, 'title', s.title, 'topic', s.topic, 'ends_at', s.ends_at,
+    'words', (select json_agg(json_build_object(
+                'idx', w.idx, 'word_text', w.word_text,
+                'my', case when a.player is null then null else json_build_object('sim', a.sim, 'stars', a.stars) end
+              ) order by w.idx)
+              from public.season_words w
+              left join public.season_attempts a on a.season_id = w.season_id and a.idx = w.idx and a.player = me
+              where w.season_id = s.id),
+    'board', public.season_board(s.id, 10),
+    'me', json_build_object('rank', (select rk from r where player = me), 'stars', coalesce((select st from r where player = me), 0)),
+    'players', (select count(*) from r)
   ) into res;
   return res;
+end $$;
+
+-- Laufende Challenges mit meinem Stand, dazu letzte und nächste
+-- 'active' = erste laufende (für ältere App-Versionen), 'actives' = alle laufenden
+create or replace function public.current_season() returns json
+language plpgsql stable security definer set search_path = public as $$
+declare me uuid := auth.uid(); l public.seasons; n public.seasons; last json; nxt json; acts json;
+begin
+  select * into l from public.seasons where ends_at <= now() order by ends_at desc limit 1;
+  if found then last := json_build_object('id', l.id, 'title', l.title, 'top', public.season_board(l.id, 3)); end if;
+  select * into n from public.seasons where starts_at > now() order by starts_at limit 1;
+  if found then nxt := json_build_object('title', n.title, 'starts_at', n.starts_at); end if;
+  select coalesce(json_agg(public.challenge_json(id, me) order by ends_at, starts_at), '[]'::json) into acts
+    from public.seasons where starts_at <= now() and ends_at > now();
+  return json_build_object('active', acts -> 0, 'actives', acts, 'last', last, 'next', nxt);
 end $$;
 
 -- Einen Begriff der Season spielen (ein Versuch)
@@ -741,7 +750,7 @@ declare me uuid := auth.uid(); t text;
 begin
   if me is null or not exists (select 1 from public.profiles where id = me) then raise exception 'Bitte zuerst ein Profil anlegen'; end if;
   if not exists (select 1 from public.seasons where id = p_season and starts_at <= now() and ends_at > now()) then
-    raise exception 'Diese Season ist vorbei';
+    raise exception 'Diese Challenge ist vorbei';
   end if;
   select word_text into t from public.season_words where season_id = p_season and idx = p_idx;
   if not found then raise exception 'Begriff nicht gefunden'; end if;
@@ -753,6 +762,7 @@ begin
   return json_build_object('ok', true, 'word_text', t);
 end $$;
 
+revoke all on function public.challenge_json(uuid,uuid) from public, anon, authenticated;
 revoke all on function public.whoami(), public.create_season(text,text,timestamptz,timestamptz,json),
   public.end_season(uuid), public.list_seasons(), public.season_board(uuid,int), public.current_season(),
   public.season_attempt(uuid,int,real,int) from public, anon;
