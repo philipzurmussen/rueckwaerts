@@ -1157,7 +1157,8 @@
   const STAR_STEPS = [0.35, 0.5, 0.65];
   // Eichung: mittlere DTW-Distanz → Prozent. SCORE_LO und besser = 100 %, SCORE_HI und schlechter = 0 %.
   // Strenger: SCORE_HI senken. Gnädiger: SCORE_HI anheben.
-  const SCORE_LO = 0.40, SCORE_HI = 1.10;
+  // (Admins sehen die Rohdistanz „d“ unter „Letzte Runden“ – damit lässt sich das hier nachjustieren.)
+  const SCORE_LO = 0.65, SCORE_HI = 1.25;
   const SPEECH_GATE_DB = 30, DTW_BAND = 0.3;
 
   function fft(re, im){
@@ -1223,9 +1224,11 @@
     for (let i=0;i<a.length;i++){ const x = a[i]-b[i]; d += x*x; }
     return Math.sqrt(d/a.length);
   }
-  function similarity(dataA, dataB, sr){
+  function similarity(dataA, dataB, sr){ return scoreDetail(dataA, dataB, sr).sim; }
+  // Liefert { sim, dist }: dist = rohe mittlere DTW-Distanz (null, wenn zu kurz)
+  function scoreDetail(dataA, dataB, sr){
     const A = features(dataA, sr), B = features(dataB, sr), n = A.length, m = B.length;
-    if (n < 3 || m < 3) return 0;
+    if (n < 3 || m < 3) return { sim: 0, dist: null };
     // Symmetrische DTW mit Band: Der Pfad darf nur begrenzt von der Diagonale abweichen,
     // damit beliebige Laute nicht „passend gezerrt“ werden können. Diagonale zählt doppelt, normiert auf n+m.
     const w = Math.max(2, Math.ceil(DTW_BAND * Math.max(n, m)));
@@ -1243,7 +1246,7 @@
     // Strafe, wenn die Länge stark abweicht
     const ratio = Math.min(n,m)/Math.max(n,m);
     if (ratio < 0.6) sim *= ratio/0.6;
-    return Math.max(0, Math.min(1, sim));
+    return { sim: Math.max(0, Math.min(1, sim)), dist };
   }
   const starsFor = sim => STAR_STEPS.filter(t => sim >= t).length;
 
@@ -1372,13 +1375,22 @@
     list.innerHTML = '';
     $('tHistInfo').textContent = rounds.length ? 'Bestwert ' + Math.round(Math.max(...rounds.map(r => r.sim)) * 100) + ' %' : 'noch keine';
     if (!rounds.length){ list.innerHTML = '<p class="empty">Noch keine Runde gespielt.</p>'; return; }
+    let admin = false; try { admin = localStorage.getItem('ollahAdmin') === '1'; } catch(e){}
     rounds.forEach(r => {
       const el = document.createElement('div'); el.className = 'item';
       const t = new Date(r.time);
+      // Admin-Diagnose: mit der aktuellen Bewertung neu rechnen und die Rohdistanz zeigen
+      let diag = '';
+      if (admin && r.a && r.b){
+        try {
+          const back = Float32Array.from(r.b).reverse(), sd = scoreDetail(r.a, back, r.sr);
+          diag = ' · jetzt ' + Math.round(sd.sim*100) + ' % · d ' + (sd.dist == null ? '–' : sd.dist.toFixed(2));
+        } catch(e){}
+      }
       const when = t.toLocaleDateString('de-DE',{day:'2-digit',month:'2-digit'}) + ', ' + t.toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'});
       el.innerHTML =
         '<div class="top"><div><div class="st">' + '★'.repeat(r.stars) + '<i>' + '★'.repeat(3-r.stars) + '</i></div>' +
-        '<div class="meta">' + when + ' · ' + Math.round(r.sim*100) + ' %</div></div>' +
+        '<div class="meta">' + when + ' · ' + Math.round(r.sim*100) + ' %' + diag + '</div></div>' +
         '<button class="del" aria-label="Löschen">✕</button></div>' +
         '<div class="btns"><button class="play" data-k="a">▶ Wort</button><button class="play" data-k="ar">▶ Rückwärts</button><button class="play main alt" data-k="br">▶ Ergebnis</button></div>';
       el.querySelector('.del').onclick = () => { stopPlay(); deleteRound(r.id); };
@@ -3118,6 +3130,7 @@
     let w;
     try { await asyncInit(); w = await rpc('whoami'); }
     catch(e){ $('stNoAdmin').hidden = false; $('stNoAdmin').innerHTML = '<p class="status">' + esc(errText(e)) + '</p>'; return; }
+    try { if (w.admin) localStorage.setItem('ollahAdmin', '1'); else localStorage.removeItem('ollahAdmin'); } catch(e){}
     if (!w.admin){
       const sql = "insert into public.admins values ('" + w.uid + "');";
       $('stNoAdmin').hidden = false;

@@ -39,7 +39,7 @@ Smartphone-Wortspiel: Wort aufnehmen → rückwärts anhören → rückwärts na
 ## Technik
 
 - Audio: MediaRecorder → Stille wegschneiden (RMS) → normalisieren → umdrehen; Wiedergabe über ein `<audio>`-Element (iOS).
-- Vergleich: MFCC (nur Sprach-Frames, Stille >30 dB unter dem Maximum fliegt raus, CMVN) + symmetrische DTW mit Band (30 %), Euklid-Distanz; Eichung Distanz→Prozent über `SCORE_LO = 0.40` (100 %) und `SCORE_HI = 1.10` (0 %). Sterne-Schwellen `STAR_STEPS = [0.35, 0.5, 0.65]`, unter 0.10 kein Abhören. Strenger/gnädiger: `SCORE_HI` senken/anheben.
+- Vergleich: MFCC (nur Sprach-Frames, Stille >30 dB unter dem Maximum fliegt raus, CMVN) + symmetrische DTW mit Band (30 %), Euklid-Distanz; Eichung Distanz→Prozent über `SCORE_LO = 0.65` (100 %) und `SCORE_HI = 1.25` (0 %); Admin-Geräte (einmal Studio geöffnet) sehen unter „Letzte Runden“ den Neuwert und die Rohdistanz „d“ zum Nachjustieren. Sterne-Schwellen `STAR_STEPS = [0.35, 0.5, 0.65]`, unter 0.10 kein Abhören. Strenger/gnädiger: `SCORE_HI` senken/anheben.
 - Backend: Supabase (Auth, Postgres mit RLS + RPC-Funktionen, Storage-Bucket `audio`, Realtime auf `games`). E-Mail-Versand über Brevo-SMTP.
 - `SB_URL` / `SB_KEY` (publishable key) stehen in `index.html`. **Nie** den service_role/secret key verwenden oder anfragen; DB-Passwort und Brevo-Key bleiben bei Philip.
 
