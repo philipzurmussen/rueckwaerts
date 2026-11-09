@@ -1285,9 +1285,9 @@
   // Eichung: mittlere DTW-Distanz → Prozent. SCORE_LO und besser = 100 %, SCORE_HI und schlechter = 0 %.
   // Strenger: SCORE_HI senken. Gnädiger: SCORE_HI anheben.
   // (Admins sehen die Rohdistanz „d“ unter „Letzte Runden“ – damit lässt sich das hier nachjustieren.)
-  const SCORE_LO = 0.70, SCORE_HI = 1.25;
+  const SCORE_LO = 0.88, SCORE_HI = 1.40;   // geeicht an echten, beurteilten Runden (Nov. 2026)
   // Gnädiger gegen die Kunststimme (Piper): Eine fremde, künstliche Stimme trifft man nie ganz
-  const TTS_LO = 0.75, TTS_HI = 1.45;
+  const TTS_LO = 0.88, TTS_HI = 1.40;   // mit dem neuen Maß liegen Kunststimme und eigene Stimme gleich
   const SPEECH_GATE_DB = 30, DTW_BAND = 0.3;
 
   function fft(re, im){
@@ -1346,7 +1346,12 @@
     sp.forEach(f => f.forEach((v,i) => mean[i] += v/sp.length));
     sp.forEach(f => f.forEach((v,i) => sd[i] += (v-mean[i])*(v-mean[i])/sp.length));
     sp.forEach(f => { for (let i=0;i<nc;i++) f[i] = (f[i]-mean[i]) / Math.sqrt(sd[i] + 1e-6); });
-    return sp;
+    // Deltas (Veränderung über ±2 Frames) anhängen: erfasst Lautübergänge, nicht nur Klangfarbe
+    return sp.map((f, t) => {
+      const p = sp[Math.max(0, t-2)], n = sp[Math.min(sp.length-1, t+2)], g = new Float32Array(nc*2);
+      for (let i=0;i<nc;i++){ g[i] = f[i]; g[nc+i] = (n[i]-p[i]) * 0.5; }
+      return g;
+    });
   }
   function frameDist(a, b){
     let d = 0;
@@ -1366,7 +1371,7 @@
       const cu = new Float64Array(m+1).fill(Infinity), c = Math.round(i*m/n);
       for (let j=Math.max(1, c-w); j<=Math.min(m, c+w); j++){
         const d = frameDist(A[i-1], B[j-1]);
-        cu[j] = Math.min(pr[j-1] + 2*d, pr[j] + d, cu[j-1] + d);
+        cu[j] = Math.min(pr[j-1] + 2*d, pr[j] + 2*d, cu[j-1] + 2*d);   // Dehnen/Stauchen kostet doppelt – falsche Wörter lassen sich so kaum „passend zerren“
       }
       pr = cu;
     }
