@@ -470,6 +470,13 @@
   #zGame .dstage,#sGame .dstage{min-height:calc(100dvh - env(safe-area-inset-top) - 190px)}
   #zFinal .row canvas{height:90px}
   .recbtn[hidden]{display:none !important}
+  .recbtn{touch-action:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+  .rechint{display:none}
+  #soloFree .rechint,.dstage .rechint{display:block;order:2;margin-top:-10px;text-align:center;font-size:15px;font-weight:800;color:var(--mute)}
+  .recbtn.on + .rechint{color:#fff}
+  .recbtn[hidden] + .rechint,.recbtn:disabled + .rechint{visibility:hidden}
+  /* Abspielknöpfe erst zeigen, wenn es etwas zum Abspielen gibt */
+  #cardA .btns .play:disabled,#cardB .btns .play:disabled,#sRef:disabled,#zRev:disabled,#yRev:disabled,#wRev:disabled{display:none}
 
   /* Aufnahmeknopf: ohne Beschriftung, großer mittiger Punkt */
   .recbtn .rl,#soloFree .recbtn .rl,.dstage .recbtn .rl{display:none}
@@ -622,7 +629,7 @@
             <canvas id="cvS"></canvas>
           </div>
           <div class="btns">
-            <button class="play main" id="sRef" disabled>▶ Rückwärts</button>
+            <button class="play main" id="sRef" disabled>🔁 Rückwärts anhören</button>
             <button class="play main alt" id="sOk" hidden>Passt so ➜ nachsprechen</button>
           </div>
           <input type="file" accept="audio/*" capture id="fileS">
@@ -651,7 +658,7 @@
           <canvas id="cvQ"></canvas>
         </div>
         <div class="btns">
-          <button class="play main" id="zRev" disabled>▶ Rückwärts</button>
+          <button class="play main" id="zRev" disabled>🔁 Rückwärts anhören</button>
           <button class="play main alt" id="zOk" hidden>Passt so ➜ nachsprechen</button>
         </div>
         <input type="file" accept="audio/*" capture id="fileQ">
@@ -661,7 +668,7 @@
         <div class="row"><button class="recbtn" id="zDummy" hidden></button><canvas id="cvF"></canvas></div>
         <div class="sres"><div class="stars" id="zStars"></div><div class="pct" id="zPct"></div></div>
         <div class="btns">
-          <button class="play main alt" id="zMine">▶ Dein Satz</button>
+          <button class="play main alt" id="zMine">🤯 Ergebnis anhören</button>
           <button class="play" id="zOrig">▶ Original</button>
         </div>
         <div id="zWords" class="stack"></div>
@@ -682,7 +689,7 @@
       <canvas id="cvA"></canvas>
     </div>
     <div class="btns">
-      <button class="play main" id="revA" disabled>▶ Rückwärts</button>
+      <button class="play main" id="revA" disabled>🔁 Rückwärts anhören</button>
       <button class="play" id="fwdA" disabled>▶ Original</button>
       <button class="play main alt" id="okA" hidden style="flex-basis:100%">Passt so ➜ nachsprechen</button>
     </div>
@@ -696,9 +703,9 @@
       <canvas id="cvB"></canvas>
     </div>
     <div class="btns">
-      <button class="play main alt" id="revB" disabled>▶ Ergebnis</button>
-      <button class="play" id="fwdB" disabled>▶ Dein Versuch</button>
-      <button class="play" id="refB" style="flex-basis:100%">▶ Vorlage rückwärts</button>
+      <button class="play main alt" id="revB" disabled>🤯 Ergebnis anhören</button>
+      <button class="play" id="fwdB" disabled>🦜 Dein Nachsprechen</button>
+      <button class="play" id="refB" style="flex-basis:100%">🔁 Rückwärts nochmal</button>
       <button class="play main" id="againB" style="flex-basis:100%">🎙️ Nochmal versuchen</button>
       <button class="reset" id="backA" style="flex-basis:100%;padding:4px">← Neues Wort aufnehmen</button>
     </div>
@@ -825,7 +832,7 @@
             <button class="recbtn" id="xRec" aria-label="Versuch aufnehmen"><span class="dot"></span><span class="rl"></span></button>
             <canvas id="cvX"></canvas>
           </div>
-          <div class="btns"><button class="play main" id="xWord">▶ Wort rückwärts</button></div>
+          <div class="btns"><button class="play main" id="xWord">🔁 Rückwärts nochmal</button></div>
           <input type="file" accept="audio/*" capture id="fileX">
         </div>
         <div id="aReveal" class="stack" hidden></div>
@@ -839,7 +846,7 @@
             <canvas id="cvY"></canvas>
           </div>
           <div class="btns">
-            <button class="play main" id="yRev" disabled>▶ Rückwärts</button>
+            <button class="play main" id="yRev" disabled>🔁 Rückwärts anhören</button>
             <button class="play main alt" id="yOk" hidden>Passt so ➜ weiter</button>
           </div>
           <input type="file" accept="audio/*" capture id="fileY">
@@ -849,7 +856,7 @@
             <button class="recbtn" id="zRec" aria-label="Eigenen Versuch aufnehmen"><span class="dot"></span><span class="rl"></span></button>
             <canvas id="cvZ"></canvas>
           </div>
-          <div class="btns"><button class="play main" id="zWord">▶ Dein Wort rückwärts</button></div>
+          <div class="btns"><button class="play main" id="zWord">🔁 Rückwärts nochmal</button></div>
           <input type="file" accept="audio/*" capture id="fileZ">
         </div>
         <button class="play main" id="aNext" hidden>Weiter: dein Wort ➜</button>
@@ -934,7 +941,7 @@
             <canvas id="cvW"></canvas>
           </div>
           <div class="btns" style="margin-top:12px">
-            <button class="play main" id="wRev" disabled>▶ Rückwärts</button>
+            <button class="play main" id="wRev" disabled>🔁 Rückwärts anhören</button>
             <button class="play" id="wFwd" hidden>▶ Original</button>
             <button class="play main alt" id="wSend" hidden>Senden ➜</button>
           </div>
@@ -1108,6 +1115,7 @@
   player.setAttribute('playsinline', '');
   let unlocked = false;
   const unlock = () => {
+    try { ac(); } catch(e){}   // AudioContext in einer echten Berührung starten (Aufnahme startet per pointerdown, das zählt auf iOS nicht)
     if (unlocked) return; unlocked = true;
     // einmal innerhalb einer Berührung starten, danach darf das Element frei abspielen
     try {
@@ -1392,7 +1400,7 @@
         '<div class="top"><div><div class="st">' + '★'.repeat(r.stars) + '<i>' + '★'.repeat(3-r.stars) + '</i></div>' +
         '<div class="meta">' + when + ' · ' + Math.round(r.sim*100) + ' %' + diag + '</div></div>' +
         '<button class="del" aria-label="Löschen">✕</button></div>' +
-        '<div class="btns"><button class="play" data-k="a">▶ Wort</button><button class="play" data-k="ar">▶ Rückwärts</button><button class="play main alt" data-k="br">▶ Ergebnis</button></div>';
+        '<div class="btns"><button class="play" data-k="a">▶ Original</button><button class="play" data-k="ar">🔁 Rückwärts</button><button class="play main alt" data-k="br">🤯 Ergebnis</button></div>';
       el.querySelector('.del').onclick = () => { stopPlay(); deleteRound(r.id); };
       el.querySelectorAll('.play').forEach(b => b.onclick = () => {
         const k = b.dataset.k;
@@ -1444,11 +1452,15 @@
     const c = ac(), srcNode = c.createMediaStreamSource(stream), an = c.createAnalyser();
     an.fftSize = 512; srcNode.connect(an);
     const data = new Uint8Array(an.fftSize), hist = [];
-    let last = 0;
+    let last = 0, pk = 0, loudAt = 0;
     (function loop(t){
       an.getByteTimeDomainData(data);
       let m = 0; for (let i=0;i<data.length;i++){ const v=Math.abs(data[i]-128)/128; if(v>m) m=v; }
       if (!last || t - last > 40){ hist.push(Math.min(1, m*1.6)); if (hist.length > 200) hist.shift(); last = t; }
+      // Auto-Stopp (nur wenn nicht gehalten wird): erst gesprochen, dann ~1,2 s Ruhe
+      if (m > pk) pk = m;
+      if (m > Math.max(0.03, pk*0.18)) loudAt = t;
+      if (pk > 0.1 && loudAt && t - loudAt > 1200 && !(press && press.key === key)) finishRec(100);
       draw(key, null, -1, hist);
       meterRaf = requestAnimationFrame(loop);
     })();
@@ -1465,6 +1477,41 @@
       else slots[k].rec.disabled = !!recLocks[k];
     });
     $('reset').disabled = on;
+    recHint(key, on ? (press && press.key === key ? 'Loslassen, wenn du fertig bist' : 'Tippen, wenn du fertig bist') : HINT_IDLE);
+  }
+
+  // ---------- Aufnahmeknopf: gedrückt halten ODER antippen ----------
+  // Halten: Aufnahme läuft, solange der Finger drauf ist. Kurz tippen: Aufnahme läuft, bis man nochmal tippt –
+  // oder bis nach dem Sprechen gut eine Sekunde Ruhe ist (Auto-Stopp).
+  const HOLD_MS = 350, HINT_IDLE = 'Gedrückt halten und sprechen';
+  let press = null;   // { key, t, wasRec }
+  function recHint(key, txt){ const h = slots[key] && slots[key].hint; if (h) h.textContent = txt; }
+  function bindRec(key){
+    const btn = slots[key].rec; if (!btn) return;
+    const hint = document.createElement('span'); hint.className = 'rechint'; hint.textContent = HINT_IDLE;
+    btn.insertAdjacentElement('afterend', hint); slots[key].hint = hint;
+    btn.addEventListener('contextmenu', e => e.preventDefault());
+    btn.addEventListener('pointerdown', e => {
+      if (!micMode || btn.disabled) return;          // ohne Mikro: normaler Klick öffnet die Datei-Auswahl
+      if (e.pointerType === 'mouse' && e.button !== 0) return;
+      e.preventDefault();
+      try { btn.setPointerCapture(e.pointerId); } catch(_){}
+      const wasRec = !!(rec && rec.state === 'recording' && recSlot === key);
+      press = { key, t: performance.now(), wasRec };
+      onRec(key);   // startet – oder stoppt, wenn schon aufgenommen wird
+    });
+    const up = () => {
+      if (!press || press.key !== key) return;
+      const p = press; press = null;
+      const live = rec && rec.state === 'recording' && recSlot === key;
+      if (p.wasRec || !live) return;
+      if (performance.now() - p.t >= HOLD_MS) finishRec(300);   // gehalten → Loslassen = fertig
+      else recHint(key, 'Tippen, wenn du fertig bist');           // nur angetippt → läuft weiter
+    };
+    btn.addEventListener('pointerup', up);
+    btn.addEventListener('pointercancel', up);
+    // Klick ohne Zeiger (Tastatur, Screenreader) oder ohne Mikro (Datei-Auswahl)
+    btn.addEventListener('click', e => { if (!micMode || e.detail === 0) onRec(key); });
   }
 
   // Mikrofon komplett freigeben (Aufnahme-Anzeige des Handys geht aus)
@@ -1520,7 +1567,7 @@
 
   ['A','B'].forEach(k => {
     const s = slots[k];
-    s.rec.addEventListener('click', () => onRec(k));
+    bindRec(k);
     s.r.addEventListener('click', () => play(k, s.rev, (k === 'B' && s.score) ? () => showScore(s.score.stars, s.score.sim, true) : null));
     s.f.addEventListener('click', () => play(k, s.buf));
     s.file.addEventListener('change', () => {
@@ -1935,7 +1982,7 @@
     let msg = '';
     if (ph === 'word'){
       if (iSet){
-        msg = duel.chosen ? 'Sag „' + esc(duel.chosen) + '“ – tipp auf den roten Knopf.' : 'Du gibst vor: Wähl ein Wort – oder denk dir eins aus.';
+        msg = duel.chosen ? 'Sag „' + esc(duel.chosen) + '“ – halt den roten Knopf gedrückt.' : 'Du gibst vor: Wähl ein Wort – oder denk dir eins aus.';
         show.word = show.wRec = true; show.wSend = !!duel.draft; show.topic = !duel.draft;
         if (duel.draft) msg = 'Gut so? Dann ab damit – sonst einfach neu aufnehmen.';
       } else msg = them + ' sucht gerade ein Wort aus …';
@@ -1978,7 +2025,7 @@
         const el = document.createElement('div'); el.className = 'res';
         const locked = !mine && t.sim < LOCK_BELOW;
         el.innerHTML = '<div class="line">' + avaHTML(av, col) + '<div class="who"><b>' + esc(n) + '</b><span class="st">' + starTxt(t.stars) + '</span> <span class="pct">' + Math.round(t.sim*100) + ' %</span></div>' +
-          '<button class="play main alt"' + (locked ? ' disabled' : '') + '>' + (locked ? '🔒 Zu weit weg' : '▶ Ergebnis') + '</button></div>';
+          '<button class="play main alt"' + (locked ? ' disabled' : '') + '>' + (locked ? '🔒 Zu weit weg' : '🤯 Ergebnis') + '</button></div>';
         if (!locked) el.querySelector('.play').onclick = () => play(null, t.rev);
         if (mine){
           // Reaktionen, die ich auf meine Aufnahme bekommen habe
@@ -2044,7 +2091,7 @@
 
   ['W','T'].forEach(k => {
     const s = slots[k];
-    s.rec.addEventListener('click', () => onRec(k));
+    bindRec(k);
     s.file.addEventListener('change', () => {
       const f = s.file.files && s.file.files[0];
       if (f) handleAudio(k, f);
@@ -2533,7 +2580,7 @@
       if (g.status === 'done') msg += '<br>' + finalLine(g, sMe, sOp, opName);
       renderReveal(r, a > b ? 'Runde an dich! 🎉' : a < b ? 'Runde an ' + opName + '!' : 'Unentschieden!', a, b);
     }
-    else if (st === 'set') msg = '<span class="tiny">Schritt 1 von 2</span><br>' + (A.chosen ? 'Sag „' + esc(A.chosen) + '“ – tipp auf den roten Knopf.' : 'Runde ' + (g.cur_round + 1) + ': Gib ein Wort vor – such dir eins aus oder denk dir eins aus.');
+    else if (st === 'set') msg = '<span class="tiny">Schritt 1 von 2</span><br>' + (A.chosen ? 'Sag „' + esc(A.chosen) + '“ – halt den roten Knopf gedrückt.' : 'Runde ' + (g.cur_round + 1) + ': Gib ein Wort vor – such dir eins aus oder denk dir eins aus.');
     else if (st === 'own') msg = '<span class="tiny">Schritt 2 von 2</span><br>Jetzt du selbst: Hör dir dein Wort rückwärts an und sprich es nach. Danach geht dein Zug raus' + (op ? '.' : ' und du kannst die Einladung schicken.');
     else if (st === 'sending') msg = 'Wird gesendet …';
     else if (g.status === 'done') msg = finalLine(g, sMe, sOp, opName);
@@ -2569,7 +2616,7 @@
     if (t.hidden){ el.innerHTML = who + '<span class="hid">🙈 Erst selbst spielen, dann siehst du das Ergebnis</span></div></div>'; return el; }
     const locked = !mine && !t.path;
     el.innerHTML = who + '<span class="st">' + starTxt(t.stars) + '</span> <span class="pct">' + Math.round(t.sim*100) + ' %</span></div>' +
-      '<button class="play main alt"' + (locked ? ' disabled' : '') + '>' + (locked ? '🔒 Zu weit weg' : '▶ Ergebnis') + '</button></div>';
+      '<button class="play main alt"' + (locked ? ' disabled' : '') + '>' + (locked ? '🔒 Zu weit weg' : '🤯 Ergebnis') + '</button></div>';
     if (!locked) el.querySelector('.play').onclick = () => playPath(t.path, true);
     if (inShow){ /* Reaktionen stehen schon in der Ergebnis-Show oben */ }
     else if (mine){
@@ -2807,7 +2854,7 @@
     A.chosen = v || null;
     // nur Text und Knöpfe aktualisieren, Fokus im Feld behalten
     [...$('aWordRow').children].forEach(b => b.classList.toggle('on', b.textContent === A.chosen));
-    $('aMsg').innerHTML = '<span class="tiny">Schritt 1 von 2</span><br>' + (A.chosen ? 'Sag „' + esc(A.chosen) + '“ – tipp auf den roten Knopf.' : 'Gib ein Wort vor – such dir eins aus oder denk dir eins aus.');
+    $('aMsg').innerHTML = '<span class="tiny">Schritt 1 von 2</span><br>' + (A.chosen ? 'Sag „' + esc(A.chosen) + '“ – halt den roten Knopf gedrückt.' : 'Gib ein Wort vor – such dir eins aus oder denk dir eins aus.');
   });
   $('yRev').onclick = () => { if (A.draftRev) play('Y', A.draftRev); };
   $('yOk').onclick = () => { if (!A.draft) return; A.stage = 'own'; renderGame(); play('Z', A.draftRev); };
@@ -2845,7 +2892,7 @@
 
   ['X','Y','Z'].forEach(k => {
     const s = slots[k];
-    s.rec.addEventListener('click', () => onRec(k));
+    bindRec(k);
     s.file.addEventListener('change', () => {
       const f = s.file.files && s.file.files[0];
       if (f) handleAudio(k, f);
@@ -3035,7 +3082,7 @@
       $('sMsg').innerHTML = ['Hmm… knapp daneben 🙈', 'Da ist was dran! 🙂', 'Richtig gut! 😄', 'Perfekt rückwärts! 🤯'][r.stars] +
         '<span class="wordwas">„' + esc(r.word) + '“</span>';
       $('sResult').innerHTML = '<div class="sres"><div class="stars">' + [0,1,2].map(i => '<span class="' + (i < r.stars ? 'lit' : '') + '">★</span>').join('') + '</div><div class="pct">Ähnlichkeit ' + Math.round(r.sim * 100) + ' %</div></div>' +
-        '<div class="btns"><button class="play main alt" id="sMine">▶ Dein Ergebnis</button><button class="play" id="sOrig">▶ Dein Original</button></div>';
+        '<div class="btns"><button class="play main alt" id="sMine">🤯 Ergebnis anhören</button><button class="play" id="sOrig">▶ Original</button></div>';
       $('sMine').onclick = () => play(null, r.rev);
       $('sOrig').onclick = () => play(null, r.orig);
       if (s.kind === 'daily') $('sMsg').innerHTML += '<br><span style="font-size:15px">' + (s.streak ? '🔥 Serie: ' + s.streak + (s.streak === 1 ? ' Tag' : ' Tage') + ' · ' : '') + 'Morgen gibt’s ein neues Wort!</span>';
@@ -3044,13 +3091,13 @@
     else if (idx){
       const pos = s.words.findIndex(w => w.idx === idx) + 1;
       if (SZ.stage === 'say'){
-        $('sMsg').innerHTML = '<span class="tiny">' + (s.kind === 'daily' ? 'Ein Versuch pro Tag' : 'Begriff ' + pos + ' von ' + n) + ' · Schritt 1 von 2</span><br>Sag „' + esc(word) + '“ – tipp auf den roten Knopf.' +
+        $('sMsg').innerHTML = '<span class="tiny">' + (s.kind === 'daily' ? 'Ein Versuch pro Tag' : 'Begriff ' + pos + ' von ' + n) + ' · Schritt 1 von 2</span><br>Sag „' + esc(word) + '“ – halt den roten Knopf gedrückt.' +
           (SZ.orig ? '<br><span style="font-size:15px;font-weight:500">Gut so? Sonst einfach neu aufnehmen.</span>' : '');
-        $('sRef').textContent = '▶ Rückwärts'; $('sRef').disabled = !SZ.orig;
+        $('sRef').textContent = '🔁 Rückwärts anhören'; $('sRef').disabled = !SZ.orig;
         $('sOk').hidden = !SZ.orig;
       } else {
         $('sMsg').innerHTML = '<span class="tiny">' + (s.kind === 'daily' ? 'Wort des Tages' : 'Begriff ' + pos + ' von ' + n) + ' · Schritt 2 von 2</span><br>Jetzt rückwärts nachsprechen – du hast einen Versuch!';
-        $('sRef').textContent = '▶ Deine Aufnahme rückwärts'; $('sRef').disabled = false;
+        $('sRef').textContent = '🔁 Rückwärts nochmal'; $('sRef').disabled = false;
         $('sOk').hidden = true;
       }
       requestAnimationFrame(() => draw('S', SZ.origRev));
@@ -3098,7 +3145,7 @@
     SZ.result = null; SZ.stage = 'say'; SZ.orig = SZ.origRev = null; renderSeason(); window.scrollTo(0, 0);
     if (nx) interstitial('Begriff ' + nx, 'von ' + s.words.length + ' · ' + s.title);
   };
-  $('sRec').addEventListener('click', () => onRec('S'));
+  bindRec('S');
   $('fileS').addEventListener('change', () => { const f = $('fileS').files && $('fileS').files[0]; if (f) handleAudio('S', f); $('fileS').value = ''; });
 
   // ---------- Studio (nur Admin): Seasons planen ----------
@@ -3286,10 +3333,10 @@
     if (Z.stage === 'say'){
       $('zMsg').innerHTML = '<span class="tiny">Wort ' + (Z.i + 1) + ' von ' + n + ' · Schritt 1 von 2</span><br>Sag „' + esc(w) + '“' +
         (Z.orig ? '<br><span style="font-size:15px;font-weight:500">Gut so? Sonst einfach neu aufnehmen.</span>' : '');
-      $('zRev').textContent = '▶ Rückwärts'; $('zRev').disabled = !Z.orig; $('zOk').hidden = !Z.orig;
+      $('zRev').textContent = '🔁 Rückwärts anhören'; $('zRev').disabled = !Z.orig; $('zOk').hidden = !Z.orig;
     } else {
       $('zMsg').innerHTML = '<span class="tiny">Wort ' + (Z.i + 1) + ' von ' + n + ' · Schritt 2 von 2</span><br>Jetzt rückwärts nachsprechen – das Ergebnis gibt\u2019s erst am Ende!';
-      $('zRev').textContent = '▶ Deine Aufnahme rückwärts'; $('zRev').disabled = false; $('zOk').hidden = true;
+      $('zRev').textContent = '🔁 Rückwärts nochmal'; $('zRev').disabled = false; $('zOk').hidden = true;
     }
     requestAnimationFrame(() => draw('Q', Z.origRev));
   }
@@ -3348,7 +3395,7 @@
     document.body.appendChild(a); a.click(); a.remove();
     toast('Gespeichert als ollah-satz.wav');
   };
-  $('qRec').addEventListener('click', () => onRec('Q'));
+  bindRec('Q');
   $('fileQ').addEventListener('change', () => { const f = $('fileQ').files && $('fileQ').files[0]; if (f) handleAudio('Q', f); $('fileQ').value = ''; });
 
   // =====================================================================
@@ -3356,9 +3403,9 @@
   // =====================================================================
   const store = { get: k => { try { return localStorage.getItem(k); } catch(e){ return null; } }, set: (k, v) => { try { localStorage.setItem(k, v); } catch(e){} } };
   const TOUR = [
-    { el:'recA', text:'Tipp hier und sag ein Wort – zum Beispiel deinen Namen. Nochmal tippen zum Stoppen.' },
+    { el:'recA', text:'Halt den Knopf gedrückt und sag ein Wort – zum Beispiel deinen Namen. Loslassen, wenn du fertig bist.' },
     { el:'okA',  text:'Das bist du – rückwärts! 😄 Hör es dir ruhig nochmal an. Dann tipp auf „Passt so“.' },
-    { el:'recB', text:'Jetzt sprich genau das nach, was du rückwärts gehört hast. „Vorlage rückwärts“ spielt es nochmal.' },
+    { el:'recB', text:'Jetzt sprich genau das nach, was du rückwärts gehört hast. „Rückwärts nochmal“ spielt es dir nochmal vor.' },
     { el:'score', text:'Und jetzt der Trick: Dein Versuch wurde umgedreht 🤯 Klingt er wie dein Wort? Je ähnlicher, desto mehr Sterne!', last:true }
   ];
   let tourStep = -1;
