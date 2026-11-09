@@ -860,6 +860,7 @@
           <div class="btns"><button class="play main" id="zWord">🔁 Rückwärts nochmal</button></div>
           <input type="file" accept="audio/*" capture id="fileZ">
         </div>
+        <div id="aFinal" class="stack" hidden></div>
         <button class="play main" id="aNext" hidden>Weiter: dein Wort ➜</button>
         <button class="play main" id="aRematch" hidden>Revanche 🔁</button>
         <button class="play main alt" id="aShare" hidden>Einladung schicken 📨</button>
@@ -2419,7 +2420,7 @@
   function renderList(){
     const el = $('aList'); el.innerHTML = '';
     if (!A.list.length){ el.innerHTML = '<p class="empty">Noch keine Duelle. Fordere jemanden heraus!</p>'; return; }
-    const groups = [['Du bist dran', g => g.status !== 'done' && g.my_turn], ['Warten', g => g.status !== 'done' && !g.my_turn], ['Beendet', g => g.status === 'done']];
+    const groups = [['Du bist dran', g => g.status !== 'done' && g.my_turn], ['Warten', g => g.status !== 'done' && !g.my_turn], ['Beendet · letzte 30 Tage', g => g.status === 'done']];
     groups.forEach(([title, f]) => {
       const gs = A.list.filter(f); if (!gs.length) return;
       const h = document.createElement('p'); h.className = 'ghead'; h.textContent = title; el.appendChild(h);
@@ -2571,6 +2572,14 @@
     $('aRematch').textContent = g.rematch_id ? 'Zur Revanche ➜' : 'Revanche 🔁';
     $('aLeave').textContent = op ? 'Duell aufgeben' : 'Einladung löschen';
     $('aReveal').hidden = st !== 'reveal';
+    // Beendetes Duell: Endstand und alle Runden direkt auf der Seite (statt nur im Ausklapp-Fenster)
+    const showFinal = g.status === 'done' && st === 'idle';
+    $('aFinal').hidden = !showFinal;
+    $('aRoundsBtn').hidden = showFinal;
+    if (showFinal){
+      $('aFinal').innerHTML = '<p class="ghead" style="margin:0">Alle Runden</p><div class="stack" id="aFinalRounds"></div>';
+      renderRounds($('aFinalRounds'));
+    }
 
     let msg = '';
     if (st === 'answer'){
@@ -2741,8 +2750,8 @@
       }, t);
     }
   }
-  function renderRounds(){
-    const g = A.game, box = $('aRounds'); box.innerHTML = '';
+  function renderRounds(box){
+    const g = A.game; box = box || $('aRounds'); box.innerHTML = '';
     const rs = g.rounds.slice().reverse();
     const doneN = g.rounds.filter(r => r.my && r.their && !r.their.hidden).length;
     $('aRoundsInfo').textContent = doneN ? doneN + (doneN === 1 ? ' Runde' : ' Runden') + ' gespielt' : 'noch keine';
@@ -2751,6 +2760,12 @@
       const el = document.createElement('div'); el.className = 'rnd';
       const title = 'Runde ' + r.round_no + ' · ' + (r.word_text ? '„' + esc(r.word_text) + '“' : (r.mine ? 'dein Wort' : 'Wort von ' + esc(g.opponent ? g.opponent.nickname : 'Gegner')));
       el.innerHTML = '<div class="rt"><b>' + title + '</b></div>';
+      // Das Wort selbst anhören – erst, wenn man die Runde gespielt hat (oder es selbst vorgegeben hat)
+      if (r.word_path && (r.mine || r.my)){
+        const wb = document.createElement('button'); wb.className = 'play'; wb.textContent = '▶ Original';
+        wb.onclick = () => playPath(r.word_path, false);
+        el.querySelector('.rt').appendChild(wb);
+      }
       const inShow = A.stage === 'reveal' && !$('aReveal').hidden && r.round_no === (A.revealRound || g.cur_round);
       el.appendChild(resultRow(g, r, true, inShow));
       el.appendChild(resultRow(g, r, false, inShow));
