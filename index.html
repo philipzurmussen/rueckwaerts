@@ -206,6 +206,8 @@
   .tour-hi{position:relative;z-index:61 !important;box-shadow:0 0 0 4px var(--acc),0 0 0 9999px rgba(10,5,25,.74) !important;border-radius:20px}
   .recbtn.tour-hi{border-radius:50%}
   .words.guess{margin-top:12px}
+  .anote{display:block;margin-top:10px;font-size:15px;font-weight:800;color:#ff8fab}
+  #aRetry{margin:12px auto 0}
   .words.guess button{font-size:16px;padding:10px 14px}
   .words.guess button.right{background:var(--acc2);color:#0e0722}
   .words.guess button.wrong{background:#ff4d6d;color:#fff}
@@ -1459,7 +1461,8 @@
       hint(key, 'Die Aufnahme konnte nicht gelesen werden.');
     }
   }
-  function hint(key, msg){ if (!['A','B','W','T'].includes(key)){ toast(msg); return; } if (key === 'A' || key === 'B') $('reveal').classList.remove('ribbon'); $(key === 'W' || key === 'T' ? 'lobbyStatus' : 'reveal').textContent = msg; if (key === 'W' || key === 'T') $('dMsg').textContent = msg; }
+  function hint(key, msg){ if (['X','Y','Z'].includes(key) && A.game){ A.note = msg; renderGame(); toast(msg); return; }
+    if (!['A','B','W','T'].includes(key)){ toast(msg); return; } if (key === 'A' || key === 'B') $('reveal').classList.remove('ribbon'); $(key === 'W' || key === 'T' ? 'lobbyStatus' : 'reveal').textContent = msg; if (key === 'W' || key === 'T') $('dMsg').textContent = msg; }
   const cheers = ['Und? Klingt’s wie das Original? 😄','Erkennst du dein Wort? 🎉','Gänsehaut oder Gelächter? 🤯','Nochmal? Es wird besser! 🔁'];
   const pick = () => cheers[Math.floor(Math.random()*cheers.length)];
 
@@ -2532,7 +2535,7 @@
   // ---------- Ein Duell ----------
   async function openGame(id){
     stopPlay();
-    A.gid = id; A.stage = 'load'; A.draft = A.draftRev = A.wordNet = null; A.chosen = null; A.choices = [];
+    A.gid = id; A.stage = 'load'; A.draft = A.draftRev = A.wordNet = null; A.chosen = null; A.choices = []; A.note = ''; A.retry = null;
     hideAsyncViews(); $('aGame').hidden = false; document.body.classList.add('ingame');
     $('aMsg').textContent = 'Lade …';
     ['aStepAnswer','aStepSet','aStepOwn','aReveal','aNext','aShare'].forEach(k => $(k).hidden = true);
@@ -2646,7 +2649,11 @@
                     : 'Gib das erste Wort vor, dann kannst du die Einladung schicken.';
     else msg = opName + ' ist dran. Du bekommst Bescheid, wenn du wieder dran bist.';
     if (st === 'set' && A.draft) msg = '<span class="tiny">Schritt 1 von 2</span><br>Gut so? Dann weiter – sonst einfach neu aufnehmen.';
+    const retry = A.retry && A.retry.stage === st;
+    if (A.note && (st === 'answer' || st === 'set' || st === 'own'))
+      msg += '<span class="anote">' + esc(A.note) + '</span>' + (retry ? '<button class="play main alt" id="aRetry">Nochmal senden ➜</button>' : '');
     $('aMsg').innerHTML = msg;
+    if (retry) $('aRetry').onclick = () => { const r = A.retry; asyncRecorded(r.key, r.buf); };
     $('aMsg').querySelectorAll('.guess button').forEach(b => b.onclick = () => sendGuess(b));
 
     if (st === 'set') renderAsyncTopic();
@@ -2848,8 +2855,20 @@
     catch(e){ toast('Wort konnte nicht geladen werden'); }
   };
 
+  // Senden fehlgeschlagen: Meldung bleibt stehen, Aufnahme wird behalten, Fehler geht als Auto-Feedback an Philip
+  function sendFailed(key, buf, e){
+    const m = errText(e);
+    A.note = '⚠️ Senden hat nicht geklappt: ' + m;
+    A.retry = { key, buf, stage: key === 'X' ? 'answer' : 'own' };
+    toast('Senden hat nicht geklappt');
+    try { rpc('send_feedback', { p_rating: null, p_turn: null, p_fun: [], p_message: '[Auto-Fehler] Duell ' + (key === 'X' ? 'Antworten' : 'Schritt 2 (eigener Versuch)') + ', Runde ' + ((A.game && A.game.cur_round) || '?') + ': ' + m, p_ua: navigator.userAgent }).catch(() => {}); } catch(_){}
+  }
   async function asyncRecorded(key, buf){
-    const g = A.game; if (!g || A.busy) return;
+    const g = A.game;
+    if (!g){ return; }
+    if (A.busy){ toast('Moment, wird noch gesendet …'); return; }
+    if (key === 'Z' && !A.draft){ A.note = '⚠️ Dein vorgegebenes Wort fehlt – bitte nochmal von vorn aufnehmen.'; A.stage = 'set'; renderGame(); return; }
+    A.note = ''; A.retry = null;
     const net = await toNet(buf);
     if (key === 'X' && A.stage === 'answer'){
       A.busy = true; A.stage = 'sending'; renderGame();
@@ -2867,7 +2886,7 @@
         A.stage = 'reveal'; renderGame();
         play(null, rev);
         refreshList();
-      } catch(e){ toast(errText(e)); A.stage = 'answer'; renderGame(); }
+      } catch(e){ sendFailed('X', buf, e); A.stage = 'answer'; renderGame(); }
       finally { A.busy = false; }
     }
     else if (key === 'Y' && A.stage === 'set'){
@@ -2894,7 +2913,7 @@
         A.stage = 'idle';
         await loadGame(g.id, true);
         refreshList();
-      } catch(e){ toast(errText(e)); A.stage = 'own'; renderGame(); }
+      } catch(e){ sendFailed('Z', buf, e); A.stage = 'own'; renderGame(); }
       finally { A.busy = false; }
     }
   }
