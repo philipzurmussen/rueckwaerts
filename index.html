@@ -3259,7 +3259,7 @@
   }
   // Fortschritt an echte Spielschritte koppeln
   new MutationObserver(() => { if (tourStep === 0 && !$('okA').hidden) showTour(1); }).observe($('okA'), { attributes:true });
-  $('okA').addEventListener('click', () => { if (tourStep === 1) setTimeout(() => showTour(2), 200); });
+  $('okA').addEventListener('click', () => { if (tourStep === 1){ $('tourBub').hidden = true; setTimeout(() => showTour(2), RM ? 300 : 1700); } });   // nach dem Zwischen-Slide
   new MutationObserver(() => { if (tourStep === 2 && $('score').classList.contains('show')) showTour(3); }).observe($('score'), { attributes:true });
   $('tourSkip').onclick = endTour;
   $('tourNext').onclick = endTour;
@@ -3392,7 +3392,7 @@
   handleHash();
   window.addEventListener('hashchange', handleHash);
   if (!$('solo').hidden) window.soloEnter();
-  if (!$('solo').hidden && store.get('rw-tour') !== 'done' && !store.get('rw-profile')) setTimeout(() => showTour(0), 600);
+  if (!$('solo').hidden && store.get('rw-tour') !== 'done' && !store.get('rw-profile')) setTimeout(startTour, 600);
 
   // Ohne Mikro-API direkt Hinweis zeigen
   if (!micMode) $('note').classList.add('show');
