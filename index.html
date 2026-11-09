@@ -407,6 +407,37 @@
   .shead h2{margin:0}
   .shead .backbtn{font-size:16px}
   @media (prefers-reduced-motion: reduce){.sheetwrap .card,.sheetwrap .scrim{animation:none}}
+
+  /* ---------- Spiel-Ansicht: ganzer Bildschirm, ohne Profil und Tab-Leiste ---------- */
+  body.ingame .pbar,body.ingame .bnav{display:none}
+  body.ingame{padding-bottom:calc(env(safe-area-inset-bottom) + 24px)}
+  .steps{width:100%;max-width:440px;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+  .steps div{display:flex;flex-direction:column;gap:6px}
+  .steps i{display:block;height:8px;border-radius:4px;background:#3a2470;box-shadow:0 0 0 2px #0e0722;transition:background .3s}
+  .steps span{font-size:12px;font-weight:800;color:var(--mute)}
+  .steps .done i,.steps .on i{background:var(--acc)}
+  .steps .on span{color:var(--acc)}
+  #soloFree .card{background:none;border:0;box-shadow:none;padding:6px 0 0;min-height:calc(100dvh - env(safe-area-inset-top) - 210px);justify-content:center;gap:22px}
+  .stagetitle{margin:0;text-align:center;font-size:36px;font-weight:800;line-height:1.05;color:#fff;-webkit-text-stroke:6px #0e0722;paint-order:stroke fill;text-shadow:0 5px 0 #0e0722}
+  #soloFree .row{flex-direction:column;gap:26px}
+  #soloFree .row canvas{order:0;width:100%;flex:none;height:110px;border-radius:20px;background:#0e0722}
+  #soloFree .row .recbtn{order:1;width:148px;height:148px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;border-width:5px;box-shadow:0 8px 0 #0e0722,inset 0 -6px 0 rgba(0,0,0,.18)}
+  #soloFree .row .recbtn:active{transform:translateY(5px);box-shadow:0 3px 0 #0e0722,inset 0 -6px 0 rgba(0,0,0,.18)}
+  #soloFree .recbtn .dot{width:40px;height:40px;border-width:4px}
+  #soloFree .recbtn.on .dot{width:36px;height:36px;border-radius:10px}
+  .recbtn .rl{display:none}
+  #soloFree .recbtn .rl{display:block;color:#fff;font:800 15px "Bricolage Grotesque",system-ui,sans-serif}
+  #soloFree .recbtn .rl::before{content:"Aufnehmen"}
+  #soloFree .recbtn.on .rl::before{content:"Stopp"}
+  #soloFree .btns .play{min-height:58px;font-size:16px}
+
+  #againB{display:none}
+  #cardB.scored{justify-content:flex-start}
+  #cardB.scored .stagetitle,#cardB.scored .row{display:none}
+  #cardB.scored #againB{display:flex;align-items:center;justify-content:center}
+  #cardB.scored .reveal{order:-2}
+  #cardB.scored .score{order:-1;margin-bottom:6px}
+  #soloFree > #reset{display:none}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -546,10 +577,11 @@
   </div>
   <div class="view" id="soloFree" hidden>
   <div class="gamehead"><button class="backbtn" id="fBack" aria-label="Zurück">‹</button><h2>Freies Spiel</h2></div>
+  <div class="steps" id="fSteps" aria-label="Fortschritt"><div><i></i><span>1 Aufnehmen</span></div><div><i></i><span>2 Nachsprechen</span></div><div><i></i><span>3 Ergebnis</span></div></div>
   <section class="card" id="cardA">
-    <div class="head"><div class="num">1</div><div><h2>Wort aufnehmen</h2><p>Tippen zum Starten, nochmal tippen zum Stoppen</p></div></div>
+    <h2 class="stagetitle">Sag ein Wort!</h2>
     <div class="row">
-      <button class="recbtn" id="recA" aria-label="Aufnahme 1"><span class="dot"></span></button>
+      <button class="recbtn" id="recA" aria-label="Aufnahme 1"><span class="dot"></span><span class="rl"></span></button>
       <canvas id="cvA"></canvas>
     </div>
     <div class="btns">
@@ -561,15 +593,16 @@
   </section>
 
   <section class="card" id="cardB" hidden>
-    <div class="head"><div class="num">2</div><div><h2>Rückwärts nachsprechen</h2><p>So genau wie möglich nachmachen</p></div></div>
+    <h2 class="stagetitle">Jetzt rückwärts nachsprechen!</h2>
     <div class="row">
-      <button class="recbtn" id="recB" aria-label="Aufnahme 2"><span class="dot"></span></button>
+      <button class="recbtn" id="recB" aria-label="Aufnahme 2"><span class="dot"></span><span class="rl"></span></button>
       <canvas id="cvB"></canvas>
     </div>
     <div class="btns">
       <button class="play main alt" id="revB" disabled>▶ Ergebnis</button>
       <button class="play" id="fwdB" disabled>▶ Dein Versuch</button>
       <button class="play" id="refB" style="flex-basis:100%">▶ Vorlage rückwärts</button>
+      <button class="play main" id="againB" style="flex-basis:100%">🎙️ Nochmal versuchen</button>
       <button class="reset" id="backA" style="flex-basis:100%;padding:4px">← Neues Wort aufnehmen</button>
     </div>
     <p class="reveal" id="reveal"></p>
@@ -1409,6 +1442,7 @@
 
   // Tabs
   function showMode(m){
+    document.body.classList.toggle('ingame', m === 'solo' && $('soloHome').hidden);
     $('solo').hidden = m !== 'solo'; $('duel').hidden = m !== 'duel'; $('async').hidden = m !== 'async'; $('ranks').hidden = m !== 'ranks';
     $('tabRanks').classList.toggle('on', m === 'ranks');
     if (m === 'ranks' && window.ranksEnter) window.ranksEnter();
@@ -2765,15 +2799,29 @@
   function showSoloHome(){
     stopPlay();
     $('sGame').hidden = true; $('zGame').hidden = true; $('soloFree').hidden = true; $('soloHome').hidden = false;
+    document.body.classList.remove('ingame');
     renderSeasonCard();
   }
   function openFree(){
     stopPlay(); $('soloHome').hidden = true; $('sGame').hidden = true; $('zGame').hidden = true; $('soloFree').hidden = false;
+    document.body.classList.add('ingame');
     window.scrollTo(0, 0);
     requestAnimationFrame(() => ['A','B'].forEach(k => draw(k, slots[k].buf)));
     enter($('cardA').hidden ? $('cardB') : $('cardA'));
   }
   $('tFree').onclick = openFree;
+  $('againB').onclick = () => {
+    stopPlay(); $('score').classList.remove('show'); $('reveal').textContent = '';
+    window.scrollTo(0, 0); enter($('cardB'));
+    requestAnimationFrame(() => draw('B', slots.B.buf));
+  };
+  function syncSteps(){
+    const n = $('score').classList.contains('show') ? 3 : $('cardB').hidden ? 1 : 2;
+    [...$('fSteps').children].forEach((d, i) => { d.className = i + 1 < n ? 'done' : i + 1 === n ? 'on' : ''; });
+    $('cardB').classList.toggle('scored', n === 3);
+  }
+  ['cardA','cardB','score'].forEach(id => new MutationObserver(syncSteps).observe($(id), { attributes:true, attributeFilter:['hidden','class'] }));
+  syncSteps();
   $('fBack').onclick = () => { showSoloHome(); window.scrollTo(0, 0); };
   const histSheet = (open) => { $('histSheet').hidden = !open; if (!open) stopPlay(); };
   $('tHist').onclick = () => histSheet(true);
@@ -2781,7 +2829,7 @@
   $('histScrim').onclick = () => histSheet(false);
   document.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('histSheet').hidden) histSheet(false); });
   function openSeason(){
-    stopPlay(); $('soloHome').hidden = true; $('soloFree').hidden = true; $('sGame').hidden = false;
+    stopPlay(); $('soloHome').hidden = true; $('soloFree').hidden = true; $('sGame').hidden = false; document.body.classList.add('ingame');
     SZ.result = null; SZ.stage = 'say'; SZ.orig = SZ.origRev = null; window.scrollTo(0, 0);
     renderSeason();
   }
@@ -3008,7 +3056,7 @@
     $('zPick').hidden = stage !== 'pick'; $('zPlay').hidden = !(stage === 'say' || stage === 'try'); $('zFinal').hidden = stage !== 'final';
   }
   function openSentence(){
-    stopPlay(); $('soloHome').hidden = true; $('soloFree').hidden = true; $('sGame').hidden = true; $('zGame').hidden = false;
+    stopPlay(); $('soloHome').hidden = true; $('soloFree').hidden = true; $('sGame').hidden = true; $('zGame').hidden = false; document.body.classList.add('ingame');
     dealSentences(); $('zCustom').value = ''; zShow('pick'); renderPick(); window.scrollTo(0, 0);
   }
   function closeSentence(){
