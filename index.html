@@ -497,6 +497,11 @@
   .chlist .chnav{display:none}
 
   .chhead{margin:8px 0 0;font-size:16px;font-weight:800}
+
+  /* Wort des Tages */
+  .card.season.daily{background:#c2410c}
+  .card.season.daily::before{background:repeating-conic-gradient(rgba(255,210,63,.16) 0deg 9deg,transparent 9deg 18deg)}
+  .card.season.daily .sinfo p{color:#ffedd5}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -2820,7 +2825,9 @@
   // =====================================================================
   const SZ = { data:null, cur:null, busy:false, result:null, stage:'say', orig:null, origRev:null };
   // Alle laufenden Challenges (alte Server-Version liefert nur eine)
-  const activeList = () => { const d = SZ.data; return !d ? [] : d.actives || (d.active ? [d.active] : []); };
+  const challengeList = () => { const d = SZ.data; return !d ? [] : d.actives || (d.active ? [d.active] : []); };
+  // Wort des Tages zuerst, dann die Challenges
+  const activeList = () => { const d = SZ.data; return (d && d.daily ? [d.daily] : []).concat(challengeList()); };
   const curS = () => activeList().find(c => c.id === SZ.cur) || null;
   const fmtDate = iso => new Date(iso).toLocaleString('de-DE', { weekday:'short', day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' });
   function hideAsyncViews(){
@@ -2868,7 +2875,7 @@
     });
   }
   function renderSeasonCard(){
-    const d = SZ.data, list = activeList(), s = list[0], card = $('sCard');
+    const d = SZ.data, list = challengeList(), s = list[0], card = $('sCard');
     const onHome = !$('soloHome').hidden;
     // kleiner Hinweis im Duelle-Tab
     const hint = $('sHint');
@@ -2902,6 +2909,19 @@
       const n = s.words.length, played = s.words.filter(w => w.my).length;
       const tl = timeLeft(s.ends_at).replace(/^(noch \d+ Tag(e)?) .*/, '$1');
       const el = document.createElement('section'); el.className = 'card season';
+      if (s.kind === 'daily'){
+        const my = s.words[0] && s.words[0].my, fire = s.streak ? ' · 🔥 ' + s.streak + (s.streak === 1 ? ' Tag' : ' Tage') : '';
+        el.className = 'card season daily';
+        el.innerHTML = '<div class="srow"><div class="num">☀️</div><div class="sinfo"><h2>Wort des Tages</h2><p></p></div><button class="splay"></button></div>';
+        el.querySelector('p').textContent = my
+          ? 'Heute: ' + '★'.repeat(my.stars) + '☆'.repeat(3 - my.stars) + (s.me && s.me.rank ? ' · Platz ' + s.me.rank + ' von ' + s.players : '') + fire
+          : (s.players ? s.players + ' haben heute gespielt' : 'Neues Wort – sei der Erste!') + fire;
+        const b = el.querySelector('.splay');
+        b.textContent = my ? 'Ergebnis' : 'Los ☀️';
+        b.onclick = () => openSeason(s.id);
+        box.appendChild(el);
+        return;
+      }
       el.innerHTML = '<div class="srow"><div class="num">🗓️</div><div class="sinfo"><h2></h2><p></p><div class="dots"></div></div><button class="splay"></button></div>';
       el.querySelector('h2').textContent = s.title;
       el.querySelector('p').textContent = tl + ' · ' + (s.me && s.me.rank ? 'Platz ' + s.me.rank + ' · ' + s.me.stars + ' ★' : (s.players ? s.players + ' dabei' : 'neu!'));
@@ -2969,7 +2989,9 @@
     if (!s){ toast('Diese Challenge ist vorbei'); showSoloHome(); return; }
     const n = s.words.length, idx = SZ.result ? SZ.result.idx : nextIdx(s);
     const word = idx ? s.words.find(w => w.idx === idx).word_text : null;
-    $('sTitle2').textContent = s.title;
+    $('sTitle2').textContent = (s.kind === 'daily' ? '☀️ ' : '') + s.title;
+    $('sDots2').hidden = s.kind === 'daily';
+    $('sBoardBtn').firstElementChild.textContent = s.kind === 'daily' ? '🏆 Rangliste von heute' : '🏆 Rangliste dieser Challenge';
     $('sSub2').textContent = timeLeft(s.ends_at) + (s.me && s.me.rank ? ' · du: ' + s.me.stars + ' ★, Platz ' + s.me.rank : '');
     seasonDots($('sDots2'), s, idx);
     $('sStep').hidden = !!SZ.result || !idx;
@@ -2983,21 +3005,27 @@
         '<div class="btns"><button class="play main alt" id="sMine">▶ Dein Ergebnis</button><button class="play" id="sOrig">▶ Dein Original</button></div>';
       $('sMine').onclick = () => play(null, r.rev);
       $('sOrig').onclick = () => play(null, r.orig);
-      if (!nextIdx(s)) $('sMsg').innerHTML += '<br><span style="font-size:15px">Alle ' + n + ' Begriffe geschafft – ' + s.me.stars + ' von ' + (n * 3) + ' Sternen! 🎉</span>';
+      if (s.kind === 'daily') $('sMsg').innerHTML += '<br><span style="font-size:15px">' + (s.streak ? '🔥 Serie: ' + s.streak + (s.streak === 1 ? ' Tag' : ' Tage') + ' · ' : '') + 'Morgen gibt’s ein neues Wort!</span>';
+      else if (!nextIdx(s)) $('sMsg').innerHTML += '<br><span style="font-size:15px">Alle ' + n + ' Begriffe geschafft – ' + s.me.stars + ' von ' + (n * 3) + ' Sternen! 🎉</span>';
     }
     else if (idx){
       const pos = s.words.findIndex(w => w.idx === idx) + 1;
       if (SZ.stage === 'say'){
-        $('sMsg').innerHTML = '<span class="tiny">Begriff ' + pos + ' von ' + n + ' · Schritt 1 von 2</span><br>Sag „' + esc(word) + '“ – tipp auf den roten Knopf.' +
+        $('sMsg').innerHTML = '<span class="tiny">' + (s.kind === 'daily' ? 'Ein Versuch pro Tag' : 'Begriff ' + pos + ' von ' + n) + ' · Schritt 1 von 2</span><br>Sag „' + esc(word) + '“ – tipp auf den roten Knopf.' +
           (SZ.orig ? '<br><span style="font-size:15px;font-weight:500">Gut so? Sonst einfach neu aufnehmen.</span>' : '');
         $('sRef').textContent = '▶ Rückwärts'; $('sRef').disabled = !SZ.orig;
         $('sOk').hidden = !SZ.orig;
       } else {
-        $('sMsg').innerHTML = '<span class="tiny">Begriff ' + pos + ' von ' + n + ' · Schritt 2 von 2</span><br>Jetzt rückwärts nachsprechen – du hast einen Versuch!';
+        $('sMsg').innerHTML = '<span class="tiny">' + (s.kind === 'daily' ? 'Wort des Tages' : 'Begriff ' + pos + ' von ' + n) + ' · Schritt 2 von 2</span><br>Jetzt rückwärts nachsprechen – du hast einen Versuch!';
         $('sRef').textContent = '▶ Deine Aufnahme rückwärts'; $('sRef').disabled = false;
         $('sOk').hidden = true;
       }
       requestAnimationFrame(() => draw('S', SZ.origRev));
+    }
+    else if (s.kind === 'daily'){
+      const my = s.words[0].my;
+      $('sMsg').innerHTML = 'Heute schon gespielt: ' + '★'.repeat(my.stars) + '☆'.repeat(3 - my.stars) + (s.me.rank ? ' · Platz ' + s.me.rank + ' von ' + s.players : '') +
+        '<span class="wordwas">„' + esc(s.words[0].word_text) + '“</span><br><span style="font-size:15px">' + (s.streak ? '🔥 Serie: ' + s.streak + (s.streak === 1 ? ' Tag' : ' Tage') + ' · ' : '') + 'Morgen gibt’s ein neues Wort!</span>';
     }
     else {
       $('sMsg').innerHTML = 'Geschafft! 🎉 ' + s.me.stars + ' von ' + (n * 3) + ' Sternen' + (s.me.rank ? ' · Platz ' + s.me.rank + ' von ' + s.players : '') +
@@ -3022,7 +3050,7 @@
       const rev = reverse(net);
       const sim = similarity(SZ.orig.getChannelData(0), rev.getChannelData(0), NET_SR), stars = starsFor(sim);
       const r = await rpc('season_attempt', { p_season: s.id, p_idx: idx, p_sim: sim, p_stars: stars });
-      logPlay('season', stars);
+      logPlay(s.kind === 'daily' ? 'tag' : 'season', stars);
       SZ.result = { idx, sim, stars, word: (r && r.word_text) || '', rev, orig: SZ.orig };
       play(null, rev);
       await refreshSeason();
@@ -3422,7 +3450,7 @@
         '<div><b>' + n(d.profiles_total) + '</b><span>Profile (' + n(d.profiles_7) + ' neu)</span></div>' +
       '</div>' +
       (days.length ? '<p class="tiny" style="margin:4px 0 0">Runden pro Tag (14 Tage)</p><div class="sbars">' + bars + '</div>' : '') +
-      '<p class="tiny">Modi: Freies Spiel ' + n(m.frei) + ' · Satz ' + n(m.satz) + ' · Challenge ' + n(m.season) + ' · Duell ' + n(m.duell) + '</p>' +
+      '<p class="tiny">Modi: Freies Spiel ' + n(m.frei) + ' · Satz ' + n(m.satz) + ' · Challenge ' + n(m.season) + ' · Wort des Tages ' + n(m.tag) + ' · Duell ' + n(m.duell) + '</p>' +
       '<p class="tiny">Schon vor dem Zähler gespeichert: ' + n(d.duel_attempts) + ' Duell-Versuche · ' + n(d.season_attempts) + ' Challenge-Versuche. Deine eigenen Runden: ' + n(d.own_plays) + '.</p>';
   }
   async function loadFeedback(){

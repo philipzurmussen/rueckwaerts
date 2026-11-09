@@ -603,6 +603,12 @@ create table if not exists public.seasons (
   created_at  timestamptz not null default now()
 );
 alter table public.seasons alter column id set default gen_random_uuid();
+-- 'challenge' = im Studio angelegt, 'daily' = automatisches Wort des Tages
+alter table public.seasons add column if not exists kind text not null default 'challenge';
+do $$ begin
+  alter table public.seasons add constraint seasons_kind_chk check (kind in ('challenge','daily'));
+exception when duplicate_object then null; end $$;
+create unique index if not exists seasons_daily_uq on public.seasons(starts_at) where kind = 'daily';
 create table if not exists public.season_words (
   season_id  uuid not null references public.seasons(id) on delete cascade,
   idx        int  not null,
@@ -648,7 +654,7 @@ begin
   if p_ends <= st then raise exception 'Das Ende muss nach dem Start liegen'; end if;
   if p_ends <= now() then raise exception 'Das Ende liegt in der Vergangenheit'; end if;
   -- Challenges dürfen sich überschneiden (mehrere gleichzeitig), aber nicht zu viele
-  if (select count(*) from public.seasons where starts_at < p_ends and ends_at > st) >= 8 then
+  if (select count(*) from public.seasons where kind = 'challenge' and starts_at < p_ends and ends_at > st) >= 8 then
     raise exception 'In diesem Zeitraum laufen schon 8 Challenges';
   end if;
   insert into public.seasons(title, topic, starts_at, ends_at)
@@ -683,7 +689,7 @@ begin
     'words', (select json_agg(word_text order by idx) from public.season_words where season_id = s.id),
     'players', (select count(distinct player) from public.season_attempts where season_id = s.id)
   ) order by s.starts_at), '[]'::json) into res
-  from public.seasons s where s.ends_at > now();
+  from public.seasons s where s.ends_at > now() and s.kind = 'challenge';
   return res;
 end $$;
 
@@ -713,7 +719,7 @@ begin
     from public.season_attempts where season_id = s.id group by player
   )
   select json_build_object(
-    'id', s.id, 'title', s.title, 'topic', s.topic, 'ends_at', s.ends_at,
+    'id', s.id, 'kind', s.kind, 'title', s.title, 'topic', s.topic, 'ends_at', s.ends_at,
     'words', (select json_agg(json_build_object(
                 'idx', w.idx, 'word_text', w.word_text,
                 'my', case when a.player is null then null else json_build_object('sim', a.sim, 'stars', a.stars) end
@@ -728,19 +734,65 @@ begin
   return res;
 end $$;
 
--- Laufende Challenges mit meinem Stand, dazu letzte und nächste
--- 'active' = erste laufende (für ältere App-Versionen), 'actives' = alle laufenden
-create or replace function public.current_season() returns json
-language plpgsql stable security definer set search_path = public as $$
-declare me uuid := auth.uid(); l public.seasons; n public.seasons; last json; nxt json; acts json;
+-- Wort des Tages: wird beim ersten Abruf des Tages automatisch angelegt (00:00–24:00 Uhr deutscher Zeit)
+create or replace function public.ensure_daily() returns uuid
+language plpgsql security definer set search_path = public as $$
+declare d date := (now() at time zone 'Europe/Berlin')::date;
+        st timestamptz := d::timestamp at time zone 'Europe/Berlin';
+        sid uuid; w text;
 begin
-  select * into l from public.seasons where ends_at <= now() order by ends_at desc limit 1;
+  select id into sid from public.seasons where kind = 'daily' and starts_at = st;
+  if found then return sid; end if;
+  -- fester Zufall pro Tag; Wörter der letzten 60 Tage auslassen
+  select word into w from public.words
+   where word not in (select sw.word_text from public.season_words sw join public.seasons x on x.id = sw.season_id
+                      where x.kind = 'daily' and x.starts_at > st - interval '60 days')
+   order by md5(word || d::text) limit 1;
+  if w is null then select word into w from public.words order by md5(word || d::text) limit 1; end if;
+  if w is null then return null; end if;
+  insert into public.seasons(title, topic, starts_at, ends_at, kind)
+    values ('Wort des Tages', null, st, (d + 1)::timestamp at time zone 'Europe/Berlin', 'daily')
+    on conflict (starts_at) where kind = 'daily' do nothing
+    returning id into sid;
+  if sid is null then select id into sid from public.seasons where kind = 'daily' and starts_at = st; return sid; end if;
+  insert into public.season_words(season_id, idx, word_text) values (sid, 1, w) on conflict do nothing;
+  return sid;
+end $$;
+
+-- Serie: wie viele Tage am Stück ich das Wort des Tages gespielt habe (bis heute bzw. gestern)
+create or replace function public.daily_streak(me uuid) returns int
+language plpgsql stable security definer set search_path = public as $$
+declare d date := (now() at time zone 'Europe/Berlin')::date; n int := 0;
+begin
+  if me is null then return 0; end if;
+  if not exists (select 1 from public.season_attempts a join public.seasons x on x.id = a.season_id
+                 where a.player = me and x.kind = 'daily' and (x.starts_at at time zone 'Europe/Berlin')::date = d) then
+    d := d - 1;
+  end if;
+  while exists (select 1 from public.season_attempts a join public.seasons x on x.id = a.season_id
+                where a.player = me and x.kind = 'daily' and (x.starts_at at time zone 'Europe/Berlin')::date = d) loop
+    n := n + 1; d := d - 1;
+  end loop;
+  return n;
+end $$;
+
+-- Laufende Challenges mit meinem Stand, dazu letzte und nächste und das Wort des Tages
+-- 'active' = erste laufende (für ältere App-Versionen), 'actives' = alle laufenden, 'daily' = Wort des Tages
+create or replace function public.current_season() returns json
+language plpgsql security definer set search_path = public as $$
+declare me uuid := auth.uid(); l public.seasons; n public.seasons; last json; nxt json; acts json; did uuid; daily json;
+begin
+  did := public.ensure_daily();
+  if did is not null then
+    daily := public.challenge_json(did, me)::jsonb || jsonb_build_object('streak', public.daily_streak(me));
+  end if;
+  select * into l from public.seasons where kind = 'challenge' and ends_at <= now() order by ends_at desc limit 1;
   if found then last := json_build_object('id', l.id, 'title', l.title, 'top', public.season_board(l.id, 3)); end if;
-  select * into n from public.seasons where starts_at > now() order by starts_at limit 1;
+  select * into n from public.seasons where kind = 'challenge' and starts_at > now() order by starts_at limit 1;
   if found then nxt := json_build_object('title', n.title, 'starts_at', n.starts_at); end if;
   select coalesce(json_agg(public.challenge_json(id, me) order by ends_at, starts_at), '[]'::json) into acts
-    from public.seasons where starts_at <= now() and ends_at > now();
-  return json_build_object('active', acts -> 0, 'actives', acts, 'last', last, 'next', nxt);
+    from public.seasons where kind = 'challenge' and starts_at <= now() and ends_at > now();
+  return json_build_object('active', acts -> 0, 'actives', acts, 'daily', daily, 'last', last, 'next', nxt);
 end $$;
 
 -- Einen Begriff der Season spielen (ein Versuch)
@@ -762,7 +814,7 @@ begin
   return json_build_object('ok', true, 'word_text', t);
 end $$;
 
-revoke all on function public.challenge_json(uuid,uuid) from public, anon, authenticated;
+revoke all on function public.challenge_json(uuid,uuid), public.ensure_daily(), public.daily_streak(uuid) from public, anon, authenticated;
 revoke all on function public.whoami(), public.create_season(text,text,timestamptz,timestamptz,json),
   public.end_season(uuid), public.list_seasons(), public.season_board(uuid,int), public.current_season(),
   public.season_attempt(uuid,int,real,int) from public, anon;
@@ -868,10 +920,12 @@ grant execute on function public.send_feedback(int,text,text[],text,text), publi
 create table if not exists public.plays (
   id          bigint generated always as identity primary key,
   player      uuid,
-  mode        text not null check (mode in ('frei','satz','season','duell')),
+  mode        text not null check (mode in ('frei','satz','season','tag','duell')),
   stars       int  check (stars between 0 and 3),
   created_at  timestamptz not null default now()
 );
+alter table public.plays drop constraint if exists plays_mode_check;
+alter table public.plays add constraint plays_mode_check check (mode in ('frei','satz','season','tag','duell'));
 create index if not exists plays_time_idx on public.plays(created_at);
 create index if not exists plays_player_idx on public.plays(player, created_at);
 alter table public.plays enable row level security;   -- kein direkter Zugriff, nur über die Funktionen
@@ -880,7 +934,7 @@ create or replace function public.log_play(p_mode text, p_stars int) returns voi
 language plpgsql security definer set search_path = public as $$
 declare me uuid := auth.uid();
 begin
-  if me is null or p_mode not in ('frei','satz','season','duell') then return; end if;
+  if me is null or p_mode not in ('frei','satz','season','tag','duell') then return; end if;
   if (select count(*) from public.plays where player = me and created_at > now() - interval '1 hour') >= 300 then return; end if;
   insert into public.plays(player, mode, stars) values (me, p_mode, case when p_stars between 0 and 3 then p_stars end);
 end $$;
