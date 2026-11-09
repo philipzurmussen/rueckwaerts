@@ -11,131 +11,67 @@
  ],
  "voices": [
   {
-   "id": "de_DE-thorsten-medium",
+   "id": "de_DE-thorsten-medium-x1.0",
    "name": "thorsten",
    "quality": "medium",
-   "desc": "männlich",
+   "desc": "männlich · normales Tempo",
    "files": {
-    "Giraffe": "audio/de_DE-thorsten-medium__giraffe.wav",
-    "Schmetterling": "audio/de_DE-thorsten-medium__schmetterling.wav",
-    "Eichhörnchen": "audio/de_DE-thorsten-medium__eichhoernchen.wav",
-    "Kölner Dom": "audio/de_DE-thorsten-medium__koelner_dom.wav",
-    "Gummibärchen": "audio/de_DE-thorsten-medium__gummibaerchen.wav",
-    "Sternschnuppe": "audio/de_DE-thorsten-medium__sternschnuppe.wav",
-    "Donaudampfschiff": "audio/de_DE-thorsten-medium__donaudampfschiff.wav",
-    "Ich verstehe nur Bahnhof": "audio/de_DE-thorsten-medium__ich_verstehe_nur_bahnhof.wav"
+    "Giraffe": "audio/de_DE-thorsten-medium-x1.0__giraffe.wav",
+    "Schmetterling": "audio/de_DE-thorsten-medium-x1.0__schmetterling.wav",
+    "Eichhörnchen": "audio/de_DE-thorsten-medium-x1.0__eichhoernchen.wav",
+    "Kölner Dom": "audio/de_DE-thorsten-medium-x1.0__koelner_dom.wav",
+    "Gummibärchen": "audio/de_DE-thorsten-medium-x1.0__gummibaerchen.wav",
+    "Sternschnuppe": "audio/de_DE-thorsten-medium-x1.0__sternschnuppe.wav",
+    "Donaudampfschiff": "audio/de_DE-thorsten-medium-x1.0__donaudampfschiff.wav",
+    "Ich verstehe nur Bahnhof": "audio/de_DE-thorsten-medium-x1.0__ich_verstehe_nur_bahnhof.wav"
    }
   },
   {
-   "id": "de_DE-thorsten-high",
+   "id": "de_DE-thorsten-medium-x1.25",
    "name": "thorsten",
-   "quality": "high",
-   "desc": "männlich, beste Qualität",
-   "files": {
-    "Giraffe": "audio/de_DE-thorsten-high__giraffe.wav",
-    "Schmetterling": "audio/de_DE-thorsten-high__schmetterling.wav",
-    "Eichhörnchen": "audio/de_DE-thorsten-high__eichhoernchen.wav",
-    "Kölner Dom": "audio/de_DE-thorsten-high__koelner_dom.wav",
-    "Gummibärchen": "audio/de_DE-thorsten-high__gummibaerchen.wav",
-    "Sternschnuppe": "audio/de_DE-thorsten-high__sternschnuppe.wav",
-    "Donaudampfschiff": "audio/de_DE-thorsten-high__donaudampfschiff.wav",
-    "Ich verstehe nur Bahnhof": "audio/de_DE-thorsten-high__ich_verstehe_nur_bahnhof.wav"
-   }
-  },
-  {
-   "id": "de_DE-karlsson-low",
-   "name": "karlsson",
-   "quality": "low",
-   "desc": "männlich",
-   "files": {
-    "Giraffe": "audio/de_DE-karlsson-low__giraffe.wav",
-    "Schmetterling": "audio/de_DE-karlsson-low__schmetterling.wav",
-    "Eichhörnchen": "audio/de_DE-karlsson-low__eichhoernchen.wav",
-    "Kölner Dom": "audio/de_DE-karlsson-low__koelner_dom.wav",
-    "Gummibärchen": "audio/de_DE-karlsson-low__gummibaerchen.wav",
-    "Sternschnuppe": "audio/de_DE-karlsson-low__sternschnuppe.wav",
-    "Donaudampfschiff": "audio/de_DE-karlsson-low__donaudampfschiff.wav",
-    "Ich verstehe nur Bahnhof": "audio/de_DE-karlsson-low__ich_verstehe_nur_bahnhof.wav"
-   }
-  },
-  {
-   "id": "de_DE-pavoque-low",
-   "name": "pavoque",
-   "quality": "low",
-   "desc": "männlich",
-   "files": {
-    "Giraffe": "audio/de_DE-pavoque-low__giraffe.wav",
-    "Schmetterling": "audio/de_DE-pavoque-low__schmetterling.wav",
-    "Eichhörnchen": "audio/de_DE-pavoque-low__eichhoernchen.wav",
-    "Kölner Dom": "audio/de_DE-pavoque-low__koelner_dom.wav",
-    "Gummibärchen": "audio/de_DE-pavoque-low__gummibaerchen.wav",
-    "Sternschnuppe": "audio/de_DE-pavoque-low__sternschnuppe.wav",
-    "Donaudampfschiff": "audio/de_DE-pavoque-low__donaudampfschiff.wav",
-    "Ich verstehe nur Bahnhof": "audio/de_DE-pavoque-low__ich_verstehe_nur_bahnhof.wav"
-   }
-  },
-  {
-   "id": "de_DE-eva_k-x_low",
-   "name": "eva_k",
-   "quality": "x_low",
-   "desc": "weiblich",
-   "files": {
-    "Giraffe": "audio/de_DE-eva_k-x_low__giraffe.wav",
-    "Schmetterling": "audio/de_DE-eva_k-x_low__schmetterling.wav",
-    "Eichhörnchen": "audio/de_DE-eva_k-x_low__eichhoernchen.wav",
-    "Kölner Dom": "audio/de_DE-eva_k-x_low__koelner_dom.wav",
-    "Gummibärchen": "audio/de_DE-eva_k-x_low__gummibaerchen.wav",
-    "Sternschnuppe": "audio/de_DE-eva_k-x_low__sternschnuppe.wav",
-    "Donaudampfschiff": "audio/de_DE-eva_k-x_low__donaudampfschiff.wav",
-    "Ich verstehe nur Bahnhof": "audio/de_DE-eva_k-x_low__ich_verstehe_nur_bahnhof.wav"
-   }
-  },
-  {
-   "id": "de_DE-kerstin-low",
-   "name": "kerstin",
-   "quality": "low",
-   "desc": "weiblich",
-   "files": {
-    "Giraffe": "audio/de_DE-kerstin-low__giraffe.wav",
-    "Schmetterling": "audio/de_DE-kerstin-low__schmetterling.wav",
-    "Eichhörnchen": "audio/de_DE-kerstin-low__eichhoernchen.wav",
-    "Kölner Dom": "audio/de_DE-kerstin-low__koelner_dom.wav",
-    "Gummibärchen": "audio/de_DE-kerstin-low__gummibaerchen.wav",
-    "Sternschnuppe": "audio/de_DE-kerstin-low__sternschnuppe.wav",
-    "Donaudampfschiff": "audio/de_DE-kerstin-low__donaudampfschiff.wav",
-    "Ich verstehe nur Bahnhof": "audio/de_DE-kerstin-low__ich_verstehe_nur_bahnhof.wav"
-   }
-  },
-  {
-   "id": "de_DE-ramona-low",
-   "name": "ramona",
-   "quality": "low",
-   "desc": "weiblich",
-   "files": {
-    "Giraffe": "audio/de_DE-ramona-low__giraffe.wav",
-    "Schmetterling": "audio/de_DE-ramona-low__schmetterling.wav",
-    "Eichhörnchen": "audio/de_DE-ramona-low__eichhoernchen.wav",
-    "Kölner Dom": "audio/de_DE-ramona-low__koelner_dom.wav",
-    "Gummibärchen": "audio/de_DE-ramona-low__gummibaerchen.wav",
-    "Sternschnuppe": "audio/de_DE-ramona-low__sternschnuppe.wav",
-    "Donaudampfschiff": "audio/de_DE-ramona-low__donaudampfschiff.wav",
-    "Ich verstehe nur Bahnhof": "audio/de_DE-ramona-low__ich_verstehe_nur_bahnhof.wav"
-   }
-  },
-  {
-   "id": "de_DE-mls-medium",
-   "name": "mls",
    "quality": "medium",
-   "desc": "gemischt (Sprecher 0)",
+   "desc": "männlich · etwas langsamer",
    "files": {
-    "Giraffe": "audio/de_DE-mls-medium__giraffe.wav",
-    "Schmetterling": "audio/de_DE-mls-medium__schmetterling.wav",
-    "Eichhörnchen": "audio/de_DE-mls-medium__eichhoernchen.wav",
-    "Kölner Dom": "audio/de_DE-mls-medium__koelner_dom.wav",
-    "Gummibärchen": "audio/de_DE-mls-medium__gummibaerchen.wav",
-    "Sternschnuppe": "audio/de_DE-mls-medium__sternschnuppe.wav",
-    "Donaudampfschiff": "audio/de_DE-mls-medium__donaudampfschiff.wav",
-    "Ich verstehe nur Bahnhof": "audio/de_DE-mls-medium__ich_verstehe_nur_bahnhof.wav"
+    "Giraffe": "audio/de_DE-thorsten-medium-x1.25__giraffe.wav",
+    "Schmetterling": "audio/de_DE-thorsten-medium-x1.25__schmetterling.wav",
+    "Eichhörnchen": "audio/de_DE-thorsten-medium-x1.25__eichhoernchen.wav",
+    "Kölner Dom": "audio/de_DE-thorsten-medium-x1.25__koelner_dom.wav",
+    "Gummibärchen": "audio/de_DE-thorsten-medium-x1.25__gummibaerchen.wav",
+    "Sternschnuppe": "audio/de_DE-thorsten-medium-x1.25__sternschnuppe.wav",
+    "Donaudampfschiff": "audio/de_DE-thorsten-medium-x1.25__donaudampfschiff.wav",
+    "Ich verstehe nur Bahnhof": "audio/de_DE-thorsten-medium-x1.25__ich_verstehe_nur_bahnhof.wav"
+   }
+  },
+  {
+   "id": "de_DE-thorsten-medium-x1.5",
+   "name": "thorsten",
+   "quality": "medium",
+   "desc": "männlich · langsam",
+   "files": {
+    "Giraffe": "audio/de_DE-thorsten-medium-x1.5__giraffe.wav",
+    "Schmetterling": "audio/de_DE-thorsten-medium-x1.5__schmetterling.wav",
+    "Eichhörnchen": "audio/de_DE-thorsten-medium-x1.5__eichhoernchen.wav",
+    "Kölner Dom": "audio/de_DE-thorsten-medium-x1.5__koelner_dom.wav",
+    "Gummibärchen": "audio/de_DE-thorsten-medium-x1.5__gummibaerchen.wav",
+    "Sternschnuppe": "audio/de_DE-thorsten-medium-x1.5__sternschnuppe.wav",
+    "Donaudampfschiff": "audio/de_DE-thorsten-medium-x1.5__donaudampfschiff.wav",
+    "Ich verstehe nur Bahnhof": "audio/de_DE-thorsten-medium-x1.5__ich_verstehe_nur_bahnhof.wav"
+   }
+  },
+  {
+   "id": "de_DE-thorsten-medium-x1.8",
+   "name": "thorsten",
+   "quality": "medium",
+   "desc": "männlich · sehr langsam",
+   "files": {
+    "Giraffe": "audio/de_DE-thorsten-medium-x1.8__giraffe.wav",
+    "Schmetterling": "audio/de_DE-thorsten-medium-x1.8__schmetterling.wav",
+    "Eichhörnchen": "audio/de_DE-thorsten-medium-x1.8__eichhoernchen.wav",
+    "Kölner Dom": "audio/de_DE-thorsten-medium-x1.8__koelner_dom.wav",
+    "Gummibärchen": "audio/de_DE-thorsten-medium-x1.8__gummibaerchen.wav",
+    "Sternschnuppe": "audio/de_DE-thorsten-medium-x1.8__sternschnuppe.wav",
+    "Donaudampfschiff": "audio/de_DE-thorsten-medium-x1.8__donaudampfschiff.wav",
+    "Ich verstehe nur Bahnhof": "audio/de_DE-thorsten-medium-x1.8__ich_verstehe_nur_bahnhof.wav"
    }
   }
  ]
