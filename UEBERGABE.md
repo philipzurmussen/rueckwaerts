@@ -18,6 +18,7 @@ Smartphone-Wortspiel: Wort aufnehmen → rückwärts anhören → rückwärts na
 
 - **Solo:** Schritt 1 Wort aufnehmen, dann Schritt 2 nachsprechen (nacheinander), Satzmodus darunter, Verlauf der letzten 5, Season-Karte.
 - **Duelle:** rundenbasiert (5 Runden), gegen Freunde (Einladungslink `#D` + 6 Zeichen) oder zufällige Gegner; Themenlisten, eigene Wörter nur unter Freunden; Reaktionen/Sprüche, Revanche, Aufgeben, 48 h Zeitlimit.
+- **Raten im Duell:** Bei Listen-Wörtern schickt der Vorgeber 3 falsche Antworten aus demselben Thema mit (`set_word(..., p_decoys)`). Der Gegner rät nach seinem Versuch aus 4 Antworten (`guess_word`), richtig = +1 Punkt (zählt in Duell-Punkte, Sieg und XP; `attempts.guess_ok`). Das Wort kommt erst nach dem Raten von `game_detail`; direktes Lesen von `rounds` ist gesperrt. Frei eingetippte Wörter: kein Raten.
 - **Rangliste:** Level (0/30/80/150/300 Punkte schalten Themen frei), Wochen-Season, Gesamtrangliste.
 - **Seasons:** eine Woche, 6 vorgegebene Begriffe, alle sprechen mit eigener Stimme. Planung im Admin-**Studio** (`#STUDIO`).
 - **Konto:** anonym starten, später E-Mail-Code (OTP) verknüpfen; Login auf anderem Gerät per Code.

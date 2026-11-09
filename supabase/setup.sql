@@ -70,6 +70,10 @@ create table if not exists public.reactions (
 );
 create index if not exists reactions_game_idx on public.reactions(game_id);
 
+-- Raten: Wer ein Listen-Wort beantwortet, rät danach aus 4 Antworten, was es war (+1 Punkt).
+alter table public.rounds   add column if not exists decoys text[];      -- 3 falsche Antworten (nur bei Listen-Wörtern)
+alter table public.attempts add column if not exists guess_ok boolean;   -- null = (noch) nicht geraten
+
 -- Erlaubte Listen-Wörter: Bei Zufallsgegnern wird nur Text aus dieser
 -- Liste gespeichert (selbst getippte Wörter gibt es nur unter Freunden).
 create table if not exists public.words (word text primary key);
@@ -410,11 +414,13 @@ end $$;
 
 -- Zug Teil 2: neues Wort vorgeben und selbst einmal versuchen.
 -- Danach ist der Gegner dran.
+drop function if exists public.set_word(uuid,text,text,text,real,int);
 create or replace function public.set_word(
-  p_game uuid, p_word_text text, p_word_path text, p_own_path text, p_own_sim real, p_own_stars int
+  p_game uuid, p_word_text text, p_word_path text, p_own_path text, p_own_sim real, p_own_stars int,
+  p_decoys text[] default null
 ) returns json
 language plpgsql security definer set search_path = public as $$
-declare me uuid := auth.uid(); g public.games; opp uuid; nr int; prefix text; v_text text;
+declare me uuid := auth.uid(); g public.games; opp uuid; nr int; prefix text; v_text text; v_decoys text[];
 begin
   select * into g from public.games where id = p_game for update;
   if not found or me not in (g.player_a, coalesce(g.player_b, g.player_a)) then raise exception 'Nicht dein Duell'; end if;
@@ -435,8 +441,17 @@ begin
   if g.is_random and v_text is not null and not exists (select 1 from public.words where word = v_text) then
     v_text := null;
   end if;
-  insert into public.rounds(game_id, round_no, setter, word_text, word_path)
-    values (p_game, nr, me, v_text, p_word_path);
+  -- 3 verschiedene falsche Antworten fürs Raten (bei Zufallsgegnern nur Listen-Wörter)
+  if v_text is not null and p_decoys is not null then
+    select array_agg(d) into v_decoys from (
+      select distinct left(trim(x), 40) as d from unnest(p_decoys) x
+      where nullif(trim(x), '') is not null and lower(trim(x)) <> lower(v_text)
+        and (not g.is_random or exists (select 1 from public.words w where w.word = trim(x)))
+    ) t;
+    if coalesce(array_length(v_decoys, 1), 0) <> 3 then v_decoys := null; end if;
+  end if;
+  insert into public.rounds(game_id, round_no, setter, word_text, word_path, decoys)
+    values (p_game, nr, me, v_text, p_word_path, v_decoys);
   insert into public.attempts(game_id, round_no, player, audio_path, sim, stars)
     values (p_game, nr, me, p_own_path, greatest(0, least(1, p_own_sim)), greatest(0, least(3, p_own_stars)));
   update public.games set cur_round = nr, turn = opp, last_move_at = now(), updated_at = now() where id = p_game;
@@ -517,8 +532,8 @@ begin
            g.forfeit_by is not null and g.forfeit_by <> me as opp_forfeited,
            g.turn = me as my_turn,
            public.profile_json(case when g.player_a = me then g.player_b else g.player_a end) as opponent,
-           coalesce((select sum(stars) from public.attempts a where a.game_id = g.id and a.player = me), 0) as my_score,
-           coalesce((select sum(stars) from public.attempts a where a.game_id = g.id and a.player <> me
+           coalesce((select sum(stars + coalesce(guess_ok::int, 0)) from public.attempts a where a.game_id = g.id and a.player = me), 0) as my_score,
+           coalesce((select sum(stars + coalesce(guess_ok::int, 0)) from public.attempts a where a.game_id = g.id and a.player <> me
                       and exists (select 1 from public.attempts b where b.game_id = a.game_id and b.round_no = a.round_no and b.player = me)), 0) as opp_score,
            case when g.status = 'done' then 2 when g.turn = me then 0 else 1 end as sort1
     from public.games g
@@ -551,13 +566,17 @@ begin
         'round_no', r.round_no,
         'mine', r.setter = me,
         'word_path', r.word_path,
-        'word_text', case when r.setter = me or mine.player is not null then r.word_text end,
-        'my', case when mine.player is null then null else json_build_object('path', mine.audio_path, 'sim', mine.sim, 'stars', mine.stars) end,
+        'word_text', case when r.setter = me
+                            or (mine.player is not null and (r.decoys is null or mine.guess_ok is not null)) then r.word_text end,
+        -- noch zu raten: 4 Antworten in fester, gemischter Reihenfolge
+        'options', case when r.setter <> me and mine.player is not null and r.decoys is not null and mine.guess_ok is null
+                        then (select json_agg(o order by md5(o || r.game_id::text)) from unnest(r.decoys || r.word_text) o) end,
+        'my', case when mine.player is null then null else json_build_object('path', mine.audio_path, 'sim', mine.sim, 'stars', mine.stars, 'guess', mine.guess_ok) end,
         'their', case when theirs.player is null then null
                       when mine.player is null then json_build_object('hidden', true)
                       else json_build_object(
                         'path', case when theirs.sim >= 0.10 then theirs.audio_path end,
-                        'sim', theirs.sim, 'stars', theirs.stars) end,
+                        'sim', theirs.sim, 'stars', theirs.stars, 'guess', theirs.guess_ok) end,
         'got', coalesce((select json_agg(emoji order by id) from public.reactions x
                           where x.game_id = r.game_id and x.round_no = r.round_no and x.target = me), '[]'::json),
         'sent', coalesce((select json_agg(distinct emoji) from public.reactions x
@@ -572,18 +591,37 @@ begin
   return res;
 end $$;
 
+-- Raten nach dem eigenen Versuch: einmal pro Runde, +1 Punkt bei richtig
+create or replace function public.guess_word(p_game uuid, p_round int, p_guess text) returns json
+language plpgsql security definer set search_path = public as $$
+declare me uuid := auth.uid(); r public.rounds; a public.attempts; ok boolean;
+begin
+  if not public.is_player(p_game) then raise exception 'Nicht dein Duell'; end if;
+  select * into r from public.rounds where game_id = p_game and round_no = p_round;
+  if not found or r.setter = me or r.decoys is null then raise exception 'Hier gibt es nichts zu raten'; end if;
+  select * into a from public.attempts where game_id = p_game and round_no = p_round and player = me for update;
+  if not found then raise exception 'Erst selbst spielen'; end if;
+  if a.guess_ok is not null then return json_build_object('ok', a.guess_ok, 'word', r.word_text, 'again', true); end if;
+  ok := lower(trim(coalesce(p_guess, ''))) = lower(r.word_text);
+  update public.attempts set guess_ok = ok where game_id = p_game and round_no = p_round and player = me;
+  update public.games set updated_at = now() where id = p_game;
+  return json_build_object('ok', ok, 'word', r.word_text);
+end $$;
+
 -- Ausführrechte: nur angemeldete Nutzer (auch anonyme)
 revoke all on function public.rematch(uuid) from public, anon;
 grant execute on function public.rematch(uuid) to authenticated;
 revoke all on function public.my_profile() from public, anon;
 grant execute on function public.my_profile() to authenticated;
 revoke all on function public.save_profile(text,text,text), public.start_game(boolean), public.join_game(text),
-  public.answer_round(uuid,text,real,int), public.set_word(uuid,text,text,text,real,int), public.react(uuid,int,uuid,text),
-  public.leave_game(uuid), public.my_games(), public.game_detail(uuid) from public, anon;
+  public.answer_round(uuid,text,real,int), public.set_word(uuid,text,text,text,real,int,text[]), public.react(uuid,int,uuid,text),
+  public.guess_word(uuid,int,text), public.leave_game(uuid), public.my_games(), public.game_detail(uuid) from public, anon;
 grant execute on function public.save_profile(text,text,text), public.start_game(boolean), public.join_game(text),
-  public.answer_round(uuid,text,real,int), public.set_word(uuid,text,text,text,real,int), public.react(uuid,int,uuid,text),
-  public.leave_game(uuid), public.my_games(), public.game_detail(uuid) to authenticated;
-grant select on public.profiles, public.games, public.rounds, public.attempts, public.reactions to authenticated;
+  public.answer_round(uuid,text,real,int), public.set_word(uuid,text,text,text,real,int,text[]), public.react(uuid,int,uuid,text),
+  public.guess_word(uuid,int,text), public.leave_game(uuid), public.my_games(), public.game_detail(uuid) to authenticated;
+grant select on public.profiles, public.games, public.attempts, public.reactions to authenticated;
+-- Runden (mit dem Wort-Text) nur über game_detail – sonst ließe sich das Wort vor dem Raten auslesen
+revoke select on public.rounds from authenticated;
 
 -- ---------- Seasons (Wochen-Challenges) -----------------------------
 -- Pro Woche eine Begriffsliste zu einem Thema. Alle spielen dieselben
@@ -827,15 +865,15 @@ grant execute on function public.is_admin(), public.whoami(), public.create_seas
 create or replace function public.player_xp(p uuid) returns int
 language sql stable security definer set search_path = public as $$
   select (
-    coalesce((select sum(a.stars) from public.attempts a join public.games g on g.id = a.game_id
+    coalesce((select sum(a.stars + coalesce(a.guess_ok::int, 0)) from public.attempts a join public.games g on g.id = a.game_id
               where a.player = p and g.player_b is not null), 0)
     + coalesce((select sum(stars) from public.season_attempts where player = p), 0)
     + 5 * (select count(*) from public.games g
            where g.status = 'done' and g.player_b is not null and p in (g.player_a, g.player_b)
              and ( (g.forfeit_by is not null and g.forfeit_by <> p)
                 or (g.forfeit_by is null and
-                    coalesce((select sum(stars) from public.attempts where game_id = g.id and player = p), 0) >
-                    coalesce((select sum(stars) from public.attempts where game_id = g.id and player <> p), 0)) ))
+                    coalesce((select sum(stars + coalesce(guess_ok::int, 0)) from public.attempts where game_id = g.id and player = p), 0) >
+                    coalesce((select sum(stars + coalesce(guess_ok::int, 0)) from public.attempts where game_id = g.id and player <> p), 0)) ))
   )::int;
 $$;
 

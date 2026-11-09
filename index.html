@@ -205,6 +205,10 @@
   .firsthint .reset{position:absolute;top:4px;right:6px;padding:6px;text-decoration:none;font-size:15px}
   .tour-hi{position:relative;z-index:61 !important;box-shadow:0 0 0 4px var(--acc),0 0 0 9999px rgba(10,5,25,.74) !important;border-radius:20px}
   .recbtn.tour-hi{border-radius:50%}
+  .words.guess{margin-top:12px}
+  .words.guess button{font-size:16px;padding:10px 14px}
+  .words.guess button.right{background:var(--acc2);color:#0e0722}
+  .words.guess button.wrong{background:#ff4d6d;color:#fff}
   .tour-also{position:relative;z-index:61 !important;box-shadow:0 0 0 4px var(--acc) !important}
   .tourbub{position:fixed;left:16px;right:16px;z-index:62;max-width:420px;margin:0 auto;background:var(--ink);color:var(--bg);border-radius:18px;padding:14px 16px;box-shadow:0 10px 30px rgba(0,0,0,.4);animation:toastin .3s cubic-bezier(.3,1.6,.5,1)}
   .tourbub[hidden]{display:none !important}
@@ -2551,15 +2555,20 @@
   }
   const curRound = g => g.rounds.find(r => r.round_no === g.cur_round);
   function pickStage(g){
+    const pend = g.rounds.find(guessPending);
+    if (pend){ A.revealRound = pend.round_no; return 'reveal'; }   // erst raten, dann weiter
     if (g.status === 'done' || !g.my_turn) return 'idle';
     const cr = curRound(g);
     if (g.cur_round > 0 && cr && !cr.my) return 'answer';
     if (g.cur_round < g.total_rounds) return 'set';
     return 'idle';
   }
+  // Punkte eines Versuchs: Sterne + 1, wenn das Wort richtig geraten wurde
+  const pts = t => (t ? t.stars + (t.guess === true ? 1 : 0) : 0);
+  const guessPending = r => !!(r && r.options && r.my && !r.mine);
   function scores(g){
     let me = 0, op = 0;
-    g.rounds.forEach(r => { if (r.my) me += r.my.stars; if (r.their && !r.their.hidden) op += r.their.stars; });
+    g.rounds.forEach(r => { if (r.my) me += pts(r.my); if (r.their && !r.their.hidden) op += pts(r.their); });
     return [me, op];
   }
 
@@ -2584,7 +2593,7 @@
     $('aStepAnswer').hidden = st !== 'answer';
     $('aStepSet').hidden = st !== 'set';
     $('aStepOwn').hidden = st !== 'own';
-    $('aNext').hidden = !(st === 'reveal' && g.my_turn && g.cur_round < g.total_rounds && g.status !== 'done');
+    $('aNext').hidden = !(st === 'reveal' && g.my_turn && g.cur_round < g.total_rounds && g.status !== 'done') || g.rounds.some(guessPending);
     const canShare = !op && g.status !== 'done' && !g.is_random && g.cur_round >= 1 && st === 'idle';
     let shared = false; try { shared = localStorage.getItem('rw-shared-' + g.id) === '1'; } catch(e){}
     $('aShare').hidden = !canShare; $('aShareHint').hidden = !canShare;
@@ -2616,9 +2625,16 @@
     }
     else if (st === 'reveal'){
       const r = g.rounds.find(x => x.round_no === A.revealRound) || cr;
-      const a = r && r.my ? r.my.stars : 0, b = r && r.their && !r.their.hidden ? r.their.stars : 0;
-      msg = (r && r.word_text ? 'Das Wort war: <span class="wordwas" style="display:inline">„' + esc(r.word_text) + '“</span>' : 'Runde ' + (r ? r.round_no : '') + ' ist durch!');
-      if (g.status === 'done') msg += '<br>' + finalLine(g, sMe, sOp, opName);
+      const a = r && r.my ? pts(r.my) : 0, b = r && r.their && !r.their.hidden ? pts(r.their) : 0;
+      if (guessPending(r)){
+        // Raten: erst das eigene Ergebnis hören, dann tippen, was es war
+        msg = '<b>Was hast du da gesagt?</b><br><span style="font-size:15px;font-weight:500">Hör dir dein Ergebnis an und rate das Wort – richtig gibt +1 Punkt.</span>' +
+              '<div class="words guess">' + r.options.map(o => '<button data-w="' + esc(o) + '">' + esc(o) + '</button>').join('') + '</div>';
+      } else {
+        msg = (r && r.word_text ? 'Das Wort war: <span class="wordwas" style="display:inline">„' + esc(r.word_text) + '“</span>' : 'Runde ' + (r ? r.round_no : '') + ' ist durch!');
+        if (r && !r.mine && r.my && r.my.guess != null) msg += '<br><span style="font-size:15px">' + (r.my.guess ? '🎯 Richtig geraten – +1 Punkt!' : '❌ Leider falsch geraten.') + '</span>';
+        if (g.status === 'done') msg += '<br>' + finalLine(g, sMe, sOp, opName);
+      }
       renderReveal(r, a > b ? 'Runde an dich! 🎉' : a < b ? 'Runde an ' + opName + '!' : 'Unentschieden!', a, b);
     }
     else if (st === 'set') msg = '<span class="tiny">Schritt 1 von 2</span><br>' + (A.chosen ? 'Sag „' + esc(A.chosen) + '“ – halt den roten Knopf gedrückt.' : 'Runde ' + (g.cur_round + 1) + ': Gib ein Wort vor – such dir eins aus oder denk dir eins aus.');
@@ -2631,6 +2647,7 @@
     else msg = opName + ' ist dran. Du bekommst Bescheid, wenn du wieder dran bist.';
     if (st === 'set' && A.draft) msg = '<span class="tiny">Schritt 1 von 2</span><br>Gut so? Dann weiter – sonst einfach neu aufnehmen.';
     $('aMsg').innerHTML = msg;
+    $('aMsg').querySelectorAll('.guess button').forEach(b => b.onclick = () => sendGuess(b));
 
     if (st === 'set') renderAsyncTopic();
     $('yOk').hidden = !(st === 'set' && A.draft);
@@ -2641,6 +2658,20 @@
       if (st === 'set') draw('Y', A.draftRev);
       if (st === 'own') draw('Z', A.draftRev);
     });
+  }
+  async function sendGuess(btn){
+    const g = A.game, r = g && g.rounds.find(x => x.round_no === A.revealRound);
+    if (!r || A.busy) return;
+    A.busy = true; btn.closest('.guess').querySelectorAll('button').forEach(b => b.disabled = true);
+    try {
+      const res = await rpc('guess_word', { p_game: g.id, p_round: r.round_no, p_guess: btn.dataset.w });
+      btn.classList.add(res.ok ? 'right' : 'wrong'); buzz(res.ok ? 40 : 15);
+      if (res.ok) floatEmoji('🎯');
+      await new Promise(ok => setTimeout(ok, 700));
+      await loadGame(g.id, true);
+      refreshList();
+    } catch(e){ toast(errText(e)); btn.closest('.guess').querySelectorAll('button').forEach(b => b.disabled = false); }
+    finally { A.busy = false; }
   }
   function finalLine(g, a, b, opName){
     if (g.opp_forfeited) return '🏆 Gewonnen! ' + opName + ' hat aufgegeben.';
@@ -2656,7 +2687,7 @@
     if (!t){ el.innerHTML = who + '<span class="hid">hat noch nicht gespielt</span></div></div>'; return el; }
     if (t.hidden){ el.innerHTML = who + '<span class="hid">🙈 Erst selbst spielen, dann siehst du das Ergebnis</span></div></div>'; return el; }
     const locked = !mine && !t.path;
-    el.innerHTML = who + '<span class="st">' + starTxt(t.stars) + '</span> <span class="pct">' + Math.round(t.sim*100) + ' %</span></div>' +
+    el.innerHTML = who + '<span class="st">' + starTxt(t.stars) + '</span> <span class="pct">' + Math.round(t.sim*100) + ' %' + (t.guess === true ? ' · 🎯 +1' : t.guess === false ? ' · ❌ geraten' : '') + '</span></div>' +
       '<button class="play main alt"' + (locked ? ' disabled' : '') + '>' + (locked ? '🔒 Zu weit weg' : '🤯 Ergebnis') + '</button></div>';
     if (!locked) el.querySelector('.play').onclick = () => playPath(t.path, true);
     if (inShow){ /* Reaktionen stehen schon in der Ergebnis-Show oben */ }
@@ -2848,7 +2879,11 @@
         const sim = similarity(A.draft.getChannelData(0), rev.getChannelData(0), NET_SR), stars = starsFor(sim);
         const nr = g.cur_round + 1;
         const [wp, op] = await Promise.all([upload(g.id, nr, 'w', A.draft), upload(g.id, nr, 't', net)]);
-        await rpc('set_word', { p_game: g.id, p_word_text: A.chosen, p_word_path: wp, p_own_path: op, p_own_sim: sim, p_own_stars: stars });
+        const sw = { p_game: g.id, p_word_text: A.chosen, p_word_path: wp, p_own_path: op, p_own_sim: sim, p_own_stars: stars };
+        const dec = decoysFor(A.chosen);
+        // Fallback, solange die Datenbank das Raten noch nicht kennt (setup.sql noch nicht ausgeführt)
+        try { await rpc('set_word', dec ? { ...sw, p_decoys: dec } : sw); }
+        catch(e){ if (dec && /p_decoys|function|schema cache/i.test(errText(e))) await rpc('set_word', sw); else throw e; }
         logPlay('duell', stars);
         audioCache.set(wp, Promise.resolve(A.draft)); audioCache.set(op, Promise.resolve(net));
         play(null, rev, () => {});
@@ -2868,6 +2903,14 @@
   };
 
   // ---------- Schritt 2: Wort vorgeben ----------
+  // 3 falsche Antworten aus demselben Themengebiet; frei eingetippte Wörter: keine (dann wird nicht geraten)
+  function decoysFor(word){
+    const t = word && Object.keys(TOPICS).find(k => TOPICS[k].includes(word));
+    if (!t) return null;
+    const pool = TOPICS[t].filter(w => w !== word), out = [];
+    while (out.length < 3 && pool.length) out.push(pool.splice(Math.floor(Math.random()*pool.length), 1)[0]);
+    return out.length === 3 ? out : null;
+  }
   function asyncDeal(){
     if (!isUnlocked(topic)) topic = MIX;
     const pool = (topic === MIX ? unlockedWords() : TOPICS[topic]).filter(w => !A.choices.includes(w));
