@@ -3690,7 +3690,7 @@
     return getAudio('tts/' + f);
   }
   const EASY = ['Pizza','Banane','Igel','Giraffe','Pommes','Ananas','Spaghetti','Elefant'];
-  const QZ = { word:null, buf:null, rev:null, heard:false, res:null, recent:[] };
+  const QZ = { word:null, buf:null, rev:null, heard:false, res:null, guess:null, opts:[], recent:[] };
   function pickQuickWord(first){
     const pool = (first ? EASY : unlockedWords()).filter(w => !QZ.recent.includes(w) && w.split(' ').length <= 3);
     const w = pool[Math.floor(Math.random() * pool.length)] || EASY[0];
@@ -3706,7 +3706,10 @@
   }
   async function newQuickWord(first){
     stopPlay();
-    Object.assign(QZ, { word: pickQuickWord(first), buf:null, rev:null, heard:false, res:null });
+    Object.assign(QZ, { word: pickQuickWord(first), buf:null, rev:null, heard:false, res:null, guess:null });
+    // 4 Antworten zum Raten: das Wort + 3 aus demselben Thema
+    const dec = decoysFor(QZ.word) || unlockedWords().filter(w => w !== QZ.word).sort(() => Math.random() - .5).slice(0, 3);
+    QZ.opts = [QZ.word, ...dec].sort(() => Math.random() - .5);
     renderQuick();
     try { QZ.buf = await ttsBuf(QZ.word); QZ.rev = reverse(QZ.buf); }
     catch(e){ $('qMsg').innerHTML = '⚠️ ' + esc(errText(e)) + '<br><span style="font-size:15px">Internet prüfen und nochmal probieren.</span>'; return; }
@@ -3720,13 +3723,26 @@
     $('qRev').textContent = QZ.heard ? '🔁 Rückwärts nochmal' : '▶ Rückwärts anhören';
     $('qRev').classList.toggle('alt', !QZ.heard);
     $('qRev').disabled = !QZ.rev;
-    const w = '<span class="wordwas">„' + esc(QZ.word || '') + '“</span>';
+    // Das Wort bleibt geheim, bis geraten wurde – dann kommt der Aha-Moment
+    const w = QZ.guess ? '<span class="wordwas">„' + esc(QZ.word || '') + '“</span>' : '';
+    if (QZ.res && !QZ.guess){
+      $('qPlayArea').hidden = true; $('qResult').hidden = true;
+      $('qMsg').innerHTML = '<b>Was hast du da gesagt?</b><br><span style="font-size:15px;font-weight:500">Hör dir dein Ergebnis an und rate das Wort.</span>' +
+        '<button class="play main alt" id="qMine2" style="margin:12px auto 0;min-width:0;padding:10px 18px;font-size:15px">🤯 Ergebnis nochmal anhören</button>' +
+        '<div class="words guess">' + QZ.opts.map(o => '<button data-w="' + esc(o) + '">' + esc(o) + '</button>').join('') + '</div>';
+      $('qMine2').onclick = () => play(null, QZ.res.rev);
+      $('qMsg').querySelectorAll('.guess button').forEach(b => b.onclick = () => quickGuess(b));
+      return;
+    }
     if (QZ.res){
-      $('qMsg').innerHTML = ['Nochmal probieren! 🙈','Da ist was dran! 🙂','Richtig gut! 😄','Perfekt rückwärts! 🤯'][QZ.res.stars] + w;
+      $('qMsg').innerHTML = ['Nochmal probieren! 🙈','Da ist was dran! 🙂','Richtig gut! 😄','Perfekt rückwärts! 🤯'][QZ.res.stars] + w +
+        '<span style="font-size:15px;display:block;margin-top:6px">' + (QZ.guess.ok ? '🎯 Richtig geraten!' : '❌ Du hast auf „' + esc(QZ.guess.pick) + '“ getippt.') + '</span>';
       $('qStars').innerHTML = [0,1,2].map(i => '<span class="' + (i < QZ.res.stars ? 'lit' : '') + '">★</span>').join('');
       $('qPct').textContent = 'Ähnlichkeit ' + Math.round(QZ.res.sim * 100) + ' %';
     } else {
-      $('qMsg').innerHTML = (QZ.heard ? 'Jetzt sprich nach, was du rückwärts gehört hast:' : 'Hör dir dieses Wort rückwärts an:') + w;
+      $('qMsg').innerHTML = QZ.guess ? 'Nochmal nachsprechen:' + w
+        : QZ.heard ? 'Jetzt sprich nach, was du rückwärts gehört hast.<br><span style="font-size:15px;font-weight:500">Welches Wort es ist, erfährst du am Ende.</span>'
+        : 'Hör dir ein Wort rückwärts an.<br><span style="font-size:15px;font-weight:500">Welches? Das verraten wir erst am Ende. 🤫</span>';
       requestAnimationFrame(() => draw('P', QZ.rev));
     }
   }
@@ -3740,12 +3756,24 @@
     const net = await toNet(buf), rev = reverse(net);
     const sim = similarity(QZ.buf.getChannelData(0), rev.getChannelData(0), NET_SR, true), stars = starsFor(sim);
     QZ.res = { sim, stars, rev };
-    renderQuick();
     logPlay('frei', stars);
     saveRound({ time: Date.now(), sr: NET_SR, a: new Float32Array(QZ.buf.getChannelData(0)), b: new Float32Array(net.getChannelData(0)), sim, stars });
-    // gleich das Aha: Original und Ergebnis hintereinander
-    playSeq([QZ.buf, rev]);
-    if (stars >= 2) setTimeout(() => confetti(stars === 3 ? 90 : 50), 400);
+    if (QZ.guess){ quickReveal(); return; }   // „Nochmal“ nach dem Raten: direkt Ergebnis
+    renderQuick();
+    play(null, rev);   // erst nur das Ergebnis – raten, dann Auflösung
+  }
+  function quickGuess(btn){
+    const pick = btn.dataset.w, ok = pick === QZ.word;
+    btn.classList.add(ok ? 'right' : 'wrong'); buzz(ok ? 40 : 15);
+    QZ.guess = { pick, ok };
+    if (ok) floatEmoji('🎯');
+    setTimeout(quickReveal, 600);
+  }
+  function quickReveal(){
+    renderQuick();
+    // jetzt das Aha: Original und Ergebnis hintereinander
+    playSeq([QZ.buf, QZ.res.rev]);
+    if (QZ.res.stars >= 2) setTimeout(() => confetti(QZ.res.stars === 3 ? 90 : 50), 400);
   }
   $('qCmp').onclick = () => { if (QZ.res) playSeq([QZ.buf, QZ.res.rev]); };
   $('qOrig').onclick = () => { if (QZ.buf) play(null, QZ.buf); };
