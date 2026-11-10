@@ -762,6 +762,7 @@ begin
   if found then return json_build_object('round_no', nr, 'word_path', r.word_path); end if;   -- schon ausgelost
   select word, topic into v_word, v_topic from public.words
     where word not in (select word_text from public.rounds where game_id = p_game and word_text is not null)
+      and array_length(regexp_split_to_array(trim(word), '\s+'), 1) <= 3   -- keine langen Redewendungen
     order by random() limit 1;
   if v_word is null then raise exception 'Keine Wörter mehr übrig'; end if;
   select array_agg(word) into v_decoys from (
@@ -830,7 +831,8 @@ begin
         'their', case when theirs.player is null then null
                       when mine.player is null then json_build_object('hidden', true)
                       else json_build_object(
-                        'path', case when theirs.sim >= 0.10 then theirs.audio_path end,
+                        -- Abhörsperre (unter 10 %) nur bei Zufallsgegnern; unter Freunden ist alles hörbar
+                        'path', case when not g.is_random or theirs.sim >= 0.10 then theirs.audio_path end,
                         'sim', theirs.sim, 'stars', theirs.stars, 'guess', theirs.guess_ok) end,
         'got', coalesce((select json_agg(emoji order by id) from public.reactions x
                           where x.game_id = r.game_id and x.round_no = r.round_no and x.target = me), '[]'::json),
