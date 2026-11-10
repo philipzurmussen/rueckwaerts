@@ -1,6 +1,8 @@
 name: Kunststimme
 on:
   workflow_dispatch:
+  schedule:
+    - cron: '7,37 * * * *'   # neue Challenge-Begriffe aus dem Studio abholen
   push:
     branches: [main]
     paths: ['supabase/setup.sql', 'tts/generate.py', '.github/workflows/tts.yml']

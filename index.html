@@ -218,7 +218,8 @@
   /* Nebenknöpfe klein, damit die Hauptaktion klar ist */
   .btns .play.mini{flex:1 1 22%;min-width:0;min-height:42px !important;font-size:14px !important;padding:6px 8px;background:rgba(255,255,255,.1);color:var(--ink);box-shadow:none;border-width:2px}
   #cardA #okA{order:-1}
-  #cmpB{display:none}
+  #cmpB,#shareB{display:none}
+  #cardB.scored #shareB{display:block}
   #cardB.scored #cmpB{display:flex;align-items:center;justify-content:center;order:-1}
   #cardB.scored #revB{flex:1 1 28%;min-height:42px !important;font-size:14px !important;padding:6px 8px;background:rgba(255,255,255,.1);color:var(--ink);box-shadow:none;border-width:2px}
   .starhint{margin:-4px 0 0;text-align:center}
@@ -692,9 +693,25 @@
   .sheetwrap .scrim{background:rgba(20,8,60,.65)}
   .anote{color:#ffd0e2}
   .chlist .card{justify-content:center}
+  /* Level-Pfad */
+  .lvpath{width:100%;max-width:440px;display:flex;flex-direction:column;align-items:center;gap:14px;padding:4px 0 40px}
+  .lvworld{align-self:stretch;margin:14px 0 2px;padding:8px 14px;border-radius:16px;background:#1c0b52;border:3px solid var(--line);box-shadow:0 4px 0 var(--line);font-weight:700;font-size:17px;text-align:center}
+  .lvnode{position:relative;width:78px;height:78px;border-radius:50%;border:4px solid var(--line);background:#2a1280;color:#fff;font-family:inherit;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0;
+    box-shadow:0 6px 0 var(--line),inset 0 -6px 0 rgba(0,0,0,.18),inset 0 3px 0 rgba(255,255,255,.2)}
+  .lvnode .lvn{font-size:26px;font-weight:700;line-height:1}
+  .lvnode .lvs{font-size:12px;font-weight:700;line-height:1.1;letter-spacing:1px}
+  .lvnode.done{background:linear-gradient(180deg,#ffe45c,#ffc61a);color:var(--line)}
+  .lvnode.cur{width:92px;height:92px;background:linear-gradient(180deg,#ff8cc8,#ff4d8f);color:#fff;animation:lvpulse 1.6s ease-in-out infinite}
+  .lvnode.cur .lvn{font-size:32px;-webkit-text-stroke:5px var(--line);paint-order:stroke fill}
+  .lvnode.cur .lvs{font-size:13px;color:var(--line)}
+  .lvnode.lock{background:rgba(14,7,34,.45);color:#b9a9e0;box-shadow:0 4px 0 var(--line)}
+  .lvnode.lock .lvn{font-size:22px}
+  .lvnode:active{margin-top:4px;margin-bottom:-4px;box-shadow:0 2px 0 var(--line)}
+  @keyframes lvpulse{0%,100%{box-shadow:0 6px 0 var(--line),0 0 0 0 rgba(255,95,176,.7)}50%{box-shadow:0 6px 0 var(--line),0 0 0 14px rgba(255,95,176,0)}}
+  #qShare.main,#shareB.main{background:linear-gradient(180deg,#ffe45c,#ffc61a);color:var(--line);min-height:54px;font-size:16px}
   #aStepSet .row .recbtn{width:104px;height:104px}
   #aStepSet .recbtn .dot{width:40px;height:40px}
-  @media (prefers-reduced-motion: reduce){.bigplay::before,.bigplay img,.recbtn{animation:none !important}}
+  @media (prefers-reduced-motion: reduce){.bigplay::before,.bigplay img,.recbtn,.lvnode.cur{animation:none !important}}
   @media (max-width:360px){ .bigplay img{width:76px;height:76px} .bigplay .bp1{font-size:32px} }
 </style>
 <script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js"></script>
@@ -791,7 +808,7 @@
 
   <div class="view" id="solo">
    <div class="view" id="soloHome">
-    <button class="bigplay" id="tPlay"><img src="o.png" alt=""><span class="bptxt"><span class="bp1">Spielen</span><span class="bp2">Rückwärts hören, nachsprechen, staunen!</span></span></button>
+    <button class="bigplay" id="tPlay"><img src="o.png" alt=""><span class="bptxt"><span class="bp1">Spielen</span><span class="bp2" id="tPlaySub">Rückwärts hören, nachsprechen, staunen!</span></span></button>
     <p class="ghead homehead" id="homeToday">☀️ Heute</p>
     <div class="chlist" id="chList" aria-label="Laufende Challenges"></div>
     <section class="card season" id="sCard" hidden>
@@ -832,8 +849,12 @@
       <button class="histbar" id="sBoardBtn" aria-haspopup="dialog"><span>🏆 Rangliste dieser Challenge</span><span class="hi">ansehen</span></button>
     </div>
 
+  <div class="view" id="lvView" hidden>
+    <div class="gamehead"><button class="backbtn" id="lvBack" aria-label="Zurück">‹</button><div class="ghtxt"><h2>Spielen</h2><p id="lvSub"></p></div><button class="play mini" id="lvRandom" style="flex:none;margin-left:auto;min-width:0;padding:8px 12px">🎲 Zufallswort</button></div>
+    <div class="lvpath" id="lvPath"></div>
+  </div>
   <div class="view" id="qGame" hidden>
-    <div class="gamehead"><button class="backbtn" id="qBack" aria-label="Zurück">‹</button><div class="ghtxt"><h2>Spielen</h2><p id="qSub">🤖 Die Kunststimme gibt vor</p></div></div>
+    <div class="gamehead"><button class="backbtn" id="qBack" aria-label="Zurück">‹</button><div class="ghtxt"><h2 id="qTitle">Spielen</h2><p id="qSub">🤖 Die Kunststimme gibt vor</p></div></div>
     <div class="steps" id="qSteps" aria-label="Fortschritt"><div><i></i><span>1 Hören</span></div><div><i></i><span>2 Nachsprechen</span></div><div><i></i><span>3 Ergebnis</span></div></div>
     <section class="card dstage">
       <p class="msg" id="qMsg"></p>
@@ -853,6 +874,7 @@
           <button class="play mini" id="qOrig">▶ Original</button>
           <button class="play mini" id="qMine">🤯 Ergebnis</button>
           <button class="play mini" id="qAgain">🎙️ Nochmal</button>
+          <button class="play mini" id="qShare" style="flex-basis:100%">📤 Als Clip teilen</button>
         </div>
         <button class="play main" id="qNext">Nächstes Wort ➜</button>
       </div>
@@ -926,6 +948,7 @@
       <button class="play mini" id="fwdB" disabled>🦜 Nachsprechen</button>
       <button class="play mini" id="refB"><span class="lg">🔁 Rückwärts nochmal</span><span class="sm">🔁 Rückwärts</span></button>
       <button class="play main" id="againB" style="flex-basis:100%">🎙️ Nochmal versuchen</button>
+      <button class="play mini" id="shareB" style="flex-basis:100%">📤 Als Clip teilen</button>
       <button class="reset" id="backA" style="flex-basis:100%;padding:4px">← Neues Wort aufnehmen</button>
     </div>
     <p class="reveal" id="reveal"></p>
@@ -1558,6 +1581,7 @@
   function enter(card){ if (!card) return; card.classList.remove('enter'); void card.offsetWidth; card.classList.add('enter'); }
   // Anonymer Rundenzähler (Modus + Sterne, ohne Audio/Namen); still, wenn offline oder noch nicht eingerichtet
   function logPlay(mode, stars){
+    try { markPlayed(); } catch(e){}
     (async () => { try { await asyncInit(); await rpc('log_play', { p_mode: mode, p_stars: stars }); } catch(e){} })();
   }
   let scoreRun = 0;
@@ -1737,8 +1761,10 @@
       if (key === 'A'){
         slots.B.buf = slots.B.rev = null; slots.B.r.disabled = slots.B.f.disabled = true;
         draw('B', null); $('reveal').textContent = ''; $('score').classList.remove('show');
-        $('okA').hidden = false;
-        play('A', s.rev);
+        // direkt weiter zum Nachsprechen („Rückwärts nochmal“ und „Neues Wort“ gibt es dort)
+        $('cardA').hidden = true; $('cardB').hidden = false; window.scrollTo(0, 0);
+        requestAnimationFrame(() => draw('B', null));
+        play('B', s.rev); enter($('cardB'));
       } else {
         $('reveal').textContent = ''; $('score').classList.remove('show');
         const A = slots.A.buf;
@@ -1950,7 +1976,8 @@
       $('pAvaE').textContent = profile.avatar; $('pAva').style.background = profile.color;
       $('pName').textContent = profile.name || 'Du';
       const xp = typeof myXP === 'number' ? myXP : 0, cur = levelOf(xp), nx = nextLevel(xp);
-      $('pLv').textContent = cur.n; $('pTitle').textContent = cur.name;
+      const fire = streakInfo().n;
+      $('pLv').textContent = cur.n; $('pTitle').textContent = cur.name + (fire ? ' · 🔥 ' + fire : '');
       $('pXpBar').style.width = (nx ? Math.max(4, Math.round(100 * (xp - cur.xp) / (nx.xp - cur.xp))) : 100) + '%';
       $('pXpTxt').textContent = nx ? xp + ' / ' + nx.xp : xp + ' Punkte';
       $('pNext').textContent = nx ? 'Noch ' + (nx.xp - xp) + ' Punkte bis ' + nx.name : 'Höchstes Level erreicht 👑';
@@ -3459,7 +3486,7 @@
       const tl = timeLeft(s.ends_at).replace(/^(noch \d+ Tag(e)?) .*/, '$1');
       const el = document.createElement('section'); el.className = 'card season';
       if (s.kind === 'daily'){
-        const my = s.words[0] && s.words[0].my, fire = s.streak ? ' · 🔥 ' + s.streak + (s.streak === 1 ? ' Tag' : ' Tage') : '';
+        const my = s.words[0] && s.words[0].my, fire = streakInfo().n ? ' · 🔥 ' + streakInfo().n + (streakInfo().n === 1 ? ' Tag' : ' Tage') : '';
         el.className = 'card season daily';
         el.innerHTML = '<div class="srow"><div class="num">☀️</div><div class="sinfo"><h2>Wort des Tages</h2><p></p></div><button class="splay"></button></div>';
         el.querySelector('p').textContent = my
@@ -3484,12 +3511,12 @@
   const nextIdx = s => { const w = s.words.find(w => !w.my); return w ? w.idx : null; };
   function showSoloHome(){
     stopPlay();
-    $('sGame').hidden = true; $('zGame').hidden = true; $('soloFree').hidden = true; $('qGame').hidden = true; $('soloHome').hidden = false;
+    $('sGame').hidden = true; $('zGame').hidden = true; $('soloFree').hidden = true; $('qGame').hidden = true; $('lvView').hidden = true; $('soloHome').hidden = false;
     document.body.classList.remove('ingame');
-    renderSeasonCard();
+    renderSeasonCard(); renderHero();
   }
   function openFree(){
-    stopPlay(); $('soloHome').hidden = true; $('sGame').hidden = true; $('zGame').hidden = true; $('qGame').hidden = true; $('soloFree').hidden = false;
+    stopPlay(); $('soloHome').hidden = true; $('sGame').hidden = true; $('zGame').hidden = true; $('qGame').hidden = true; $('lvView').hidden = true; $('soloFree').hidden = false;
     document.body.classList.add('ingame');
     window.scrollTo(0, 0);
     requestAnimationFrame(() => ['A','B'].forEach(k => draw(k, slots[k].buf)));
@@ -3524,10 +3551,17 @@
   $('histClose').onclick = () => histSheet(false);
   $('histScrim').onclick = () => histSheet(false);
   document.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('histSheet').hidden) histSheet(false); });
-  function openSeason(id){
+  async function openSeason(id){
     const list = activeList();
     SZ.cur = (typeof id === 'string' ? id : null) || (list.find(c => c.words.some(w => !w.my)) || list[0] || {}).id || null;
-    stopPlay(); $('soloHome').hidden = true; $('soloFree').hidden = true; $('qGame').hidden = true; $('sGame').hidden = false; document.body.classList.add('ingame');
+    // Gibt es für den nächsten Begriff die Kunststimme? Dann wie bei „Spielen“ (fair für alle, Wort bleibt geheim)
+    { const s0 = curS(), nx = s0 && nextIdx(s0);
+      if (nx){
+        let ix = null; try { ix = await ttsIndex(); } catch(e){}
+        const w0 = s0.words.find(x => x.idx === nx).word_text;
+        if (ix && ix[w0]){ seasonTts(s0, nx); return; }
+      } }
+    stopPlay(); $('soloHome').hidden = true; $('soloFree').hidden = true; $('qGame').hidden = true; $('lvView').hidden = true; $('sGame').hidden = false; document.body.classList.add('ingame');
     SZ.result = null; SZ.stage = 'say'; SZ.orig = SZ.origRev = null; window.scrollTo(0, 0);
     renderSeason();
   }
@@ -3555,7 +3589,7 @@
       $('sCmp').onclick = () => playSeq([r.orig, r.rev]);
       $('sMine').onclick = () => play(null, r.rev);
       $('sOrig').onclick = () => play(null, r.orig);
-      if (s.kind === 'daily') $('sMsg').innerHTML += '<br><span style="font-size:15px">' + (s.streak ? '🔥 Serie: ' + s.streak + (s.streak === 1 ? ' Tag' : ' Tage') + ' · ' : '') + 'Morgen gibt’s ein neues Wort!</span>';
+      if (s.kind === 'daily') $('sMsg').innerHTML += '<br><span style="font-size:15px">' + (streakInfo().n ? '🔥 Serie: ' + streakInfo().n + (streakInfo().n === 1 ? ' Tag' : ' Tage') + ' · ' : '') + 'Morgen gibt’s ein neues Wort!</span>';
       else if (!nextIdx(s)) $('sMsg').innerHTML += '<br><span style="font-size:15px">Alle ' + n + ' Begriffe geschafft – ' + s.me.stars + ' von ' + (n * 3) + ' Sternen! 🎉</span>';
     }
     else if (idx){
@@ -3575,7 +3609,7 @@
     else if (s.kind === 'daily'){
       const my = s.words[0].my;
       $('sMsg').innerHTML = 'Heute schon gespielt: ' + '★'.repeat(my.stars) + '☆'.repeat(3 - my.stars) + (s.me.rank ? ' · Platz ' + s.me.rank + ' von ' + s.players : '') +
-        '<span class="wordwas">„' + esc(s.words[0].word_text) + '“</span><br><span style="font-size:15px">' + (s.streak ? '🔥 Serie: ' + s.streak + (s.streak === 1 ? ' Tag' : ' Tage') + ' · ' : '') + 'Morgen gibt’s ein neues Wort!</span>';
+        '<span class="wordwas">„' + esc(s.words[0].word_text) + '“</span><br><span style="font-size:15px">' + (streakInfo().n ? '🔥 Serie: ' + streakInfo().n + (streakInfo().n === 1 ? ' Tag' : ' Tage') + ' · ' : '') + 'Morgen gibt’s ein neues Wort!</span>';
     }
     else {
       $('sMsg').innerHTML = 'Geschafft! 🎉 ' + s.me.stars + ' von ' + (n * 3) + ' Sternen' + (s.me.rank ? ' · Platz ' + s.me.rank + ' von ' + s.players : '') +
@@ -3766,7 +3800,7 @@
     $('zPick').hidden = stage !== 'pick'; $('zPlay').hidden = !(stage === 'say' || stage === 'try'); $('zFinal').hidden = stage !== 'final';
   }
   function openSentence(){
-    stopPlay(); $('soloHome').hidden = true; $('soloFree').hidden = true; $('sGame').hidden = true; $('qGame').hidden = true; $('zGame').hidden = false; document.body.classList.add('ingame');
+    stopPlay(); $('soloHome').hidden = true; $('soloFree').hidden = true; $('sGame').hidden = true; $('qGame').hidden = true; $('lvView').hidden = true; $('zGame').hidden = false; document.body.classList.add('ingame');
     dealSentences(); $('zCustom').value = ''; zShow('pick'); renderPick(); window.scrollTo(0, 0);
   }
   function closeSentence(){
@@ -3869,7 +3903,7 @@
   $('fileQ').addEventListener('change', () => { const f = $('fileQ').files && $('fileQ').files[0]; if (f) handleAudio('Q', f); $('fileQ').value = ''; });
 
   // =====================================================================
-  // SPIELEN: schnelle Runde mit der Kunststimme (kein eigenes Wort nötig)
+  // SPIELEN: Level-Pfad, Zufallswort und Challenges mit der Kunststimme
   // =====================================================================
   let ttsIdx = null;
   function ttsIndex(){
@@ -3883,44 +3917,114 @@
     if (!f) throw new Error('Kein Ton für „' + word + '“');
     return getAudio('tts/' + f);
   }
-  const EASY = ['Pizza','Banane','Igel','Giraffe','Pommes','Ananas','Spaghetti','Elefant'];
-  const QZ = { word:null, buf:null, rev:null, heard:false, res:null, guess:null, opts:[], recent:[] };
-  function pickQuickWord(first){
-    const pool = (first ? EASY : unlockedWords()).filter(w => !QZ.recent.includes(w) && w.split(' ').length <= 3);
-    const w = pool[Math.floor(Math.random() * pool.length)] || EASY[0];
+  const rnd3 = (word, pool) => pool.filter(w => w !== word).sort(() => Math.random() - .5).slice(0, 3);
+
+  // ---------- Serie: Spieltage in Folge (auf diesem Gerät) ----------
+  function dayKey(d){ const t = d || new Date(); return t.getFullYear() + '-' + String(t.getMonth()+1).padStart(2,'0') + '-' + String(t.getDate()).padStart(2,'0'); }
+  function streakInfo(){
+    let o = {}; try { o = JSON.parse(localStorage.getItem('rw-streak') || '{}') || {}; } catch(e){}
+    const today = dayKey(), yest = dayKey(new Date(Date.now() - 864e5));
+    return { n: (o.last === today || o.last === yest) ? (o.n || 0) : 0, today: o.last === today };
+  }
+  function markPlayed(){
+    const s = streakInfo(); if (s.today) return;
+    try { localStorage.setItem('rw-streak', JSON.stringify({ last: dayKey(), n: s.n + 1 })); } catch(e){}
+    renderPbar();
+  }
+
+  // ---------- Level-Pfad: 60 Wörter von mittel bis lang, Fortschritt auf diesem Gerät ----------
+  const LV = (() => {
+    const skip = new Set(['Promis', 'Redewendungen']);
+    const len = w => w.replace(/\s/g, '').length;
+    const h = w => { let x = 0; for (const c of w) x = (x * 31 + c.charCodeAt(0)) >>> 0; return x; };
+    // sehr kurze Wörter lassen sich schlecht bewerten → erst ab 6 Buchstaben
+    const all = [...new Set(Object.keys(TOPICS).filter(t => !skip.has(t)).flatMap(t => TOPICS[t]))].filter(w => w.split(' ').length <= 2 && len(w) >= 6);
+    all.sort((a, b) => len(a) - len(b) || h(a) - h(b));
+    const N = Math.min(60, all.length), out = [];
+    for (let i = 0; i < N; i++) out.push(all[Math.round(i * (all.length - 1) / (N - 1))]);
+    return [...new Set(out)];
+  })();
+  const WORLDS = ['Aufwärmen', 'Zungenlockerer', 'Silbensalat', 'Wortakrobat', 'Rückwärts-Profi', 'Endgegner'];
+  const worldOf = n => WORLDS[Math.min(WORLDS.length - 1, Math.floor((n - 1) / 10))];
+  function lvLoad(){ try { return JSON.parse(localStorage.getItem('rw-levels') || '{}') || {}; } catch(e){ return {}; } }
+  function lvSave(p){ try { localStorage.setItem('rw-levels', JSON.stringify(p)); } catch(e){} }
+  const lvStars = (p, n) => (p[n] && p[n].s) || 0;
+  const lvCurrent = p => { let n = 1; while (n < LV.length && lvStars(p, n) >= 1) n++; return n; };
+  const lvTotal = p => LV.reduce((a, _, i) => a + lvStars(p, i + 1), 0);
+  const starTxt3 = s => '★'.repeat(s) + '☆'.repeat(3 - s);
+  function soloOnly(id){
+    ['soloHome','soloFree','sGame','zGame','qGame','lvView'].forEach(k => $(k).hidden = k !== id);
+    document.body.classList.toggle('ingame', id !== 'soloHome');
+  }
+  function renderHero(){
+    const p = lvLoad(), cur = lvCurrent(p), tot = lvTotal(p);
+    $('tPlaySub').textContent = tot ? 'Level ' + cur + ' von ' + LV.length + ' · ' + tot + ' ⭐' : 'Rückwärts hören, nachsprechen, staunen!';
+  }
+  function openLevels(){
+    stopPlay(); soloOnly('lvView'); window.scrollTo(0, 0);
+    const p = lvLoad(), cur = lvCurrent(p), box = $('lvPath');
+    $('lvSub').textContent = lvTotal(p) + ' von ' + (LV.length * 3) + ' ⭐ · ' + worldOf(cur);
+    box.innerHTML = '';
+    const zig = [0, 46, 78, 46, 0, -46, -78, -46];
+    LV.forEach((w, i) => {
+      const n = i + 1, s = lvStars(p, n), open = n <= cur;
+      if (i % 10 === 0){
+        const hd = document.createElement('p'); hd.className = 'lvworld'; hd.textContent = worldOf(n); box.appendChild(hd);
+      }
+      const b = document.createElement('button');
+      b.className = 'lvnode' + (s ? ' done' : n === cur ? ' cur' : open ? '' : ' lock');
+      b.style.transform = 'translateX(' + zig[i % zig.length] + 'px)';
+      b.innerHTML = '<span class="lvn">' + (open ? n : '🔒') + '</span><span class="lvs">' + (s ? starTxt3(s) : n === cur ? 'Los!' : '') + '</span>';
+      b.setAttribute('aria-label', 'Level ' + n + (s ? ', ' + s + ' Sterne' : open ? '' : ', gesperrt'));
+      b.onclick = () => open ? startLevel(n) : toast('Erst Level ' + cur + ' schaffen (mindestens 1 Stern)');
+      box.appendChild(b);
+    });
+    const c = box.querySelector('.lvnode.cur') || box.querySelector('.lvnode.done:last-of-type');
+    if (c) setTimeout(() => c.scrollIntoView({ block:'center', behavior: RM ? 'auto' : 'smooth' }), 60);
+  }
+  function startLevel(n){
+    const p = lvLoad();
+    return quickStart({ type:'level', n }, LV[n - 1], lvStars(p, n) >= 1);
+  }
+
+  // ---------- Eine Runde: Hören → Nachsprechen → Raten → Auflösung ----------
+  const QZ = { ctx:{ type:'free' }, word:null, buf:null, rev:null, heard:false, res:null, guess:null, opts:[], recent:[], busy:false, clip:null };
+  function pickQuickWord(){
+    const pool = unlockedWords().filter(w => !QZ.recent.includes(w) && w.split(' ').length <= 3);
+    const w = pool[Math.floor(Math.random() * pool.length)] || LV[0];
     QZ.recent = [w, ...QZ.recent].slice(0, 15);
     return w;
   }
-  async function openQuick(first){
-    stopPlay();
-    $('soloHome').hidden = true; $('soloFree').hidden = true; $('sGame').hidden = true; $('zGame').hidden = true; $('qGame').hidden = false;
-    document.body.classList.add('ingame'); window.scrollTo(0, 0);
-    await newQuickWord(first);
-    enter($('qMsg').closest('.card'));
-  }
-  async function newQuickWord(first){
-    stopPlay();
-    Object.assign(QZ, { word: pickQuickWord(first), buf:null, rev:null, heard:false, res:null, guess:null });
-    // 4 Antworten zum Raten: das Wort + 3 aus demselben Thema
-    const dec = decoysFor(QZ.word) || unlockedWords().filter(w => w !== QZ.word).sort(() => Math.random() - .5).slice(0, 3);
-    QZ.opts = [QZ.word, ...dec].sort(() => Math.random() - .5);
+  const openQuick = () => quickStart({ type:'free' }, pickQuickWord(), false);
+  async function quickStart(ctx, word, known){
+    stopPlay(); soloOnly('qGame'); window.scrollTo(0, 0);
+    Object.assign(QZ, { ctx, word, buf:null, rev:null, heard:false, res:null, guess: known ? { skip:true } : null, busy:false, clip:null });
+    const dec = ctx.decoys || decoysFor(word) || rnd3(word, unlockedWords());
+    QZ.opts = [word, ...dec].sort(() => Math.random() - .5);
+    const p = lvLoad();
+    $('qTitle').textContent = ctx.type === 'level' ? 'Level ' + ctx.n : ctx.type === 'season' ? (ctx.daily ? '☀️ ' : '') + ctx.title : 'Zufallswort';
+    $('qSub').textContent = ctx.type === 'level' ? worldOf(ctx.n) + (lvStars(p, ctx.n) ? ' · Rekord ' + starTxt3(lvStars(p, ctx.n)) : '')
+      : ctx.type === 'season' ? (ctx.daily ? 'Ein Versuch pro Tag' : 'Begriff ' + ctx.pos + ' von ' + ctx.n + ' · ein Versuch') : '🤖 Die Kunststimme gibt vor';
     renderQuick();
-    try { QZ.buf = await ttsBuf(QZ.word); QZ.rev = reverse(QZ.buf); }
-    catch(e){ $('qMsg').innerHTML = '⚠️ ' + esc(errText(e)) + '<br><span style="font-size:15px">Internet prüfen und nochmal probieren.</span>'; return; }
-    renderQuick();
+    try { QZ.buf = await ttsBuf(word); QZ.rev = reverse(QZ.buf); }
+    catch(e){ if (QZ.word === word) $('qMsg').innerHTML = '⚠️ ' + esc(errText(e)) + '<br><span style="font-size:15px">Internet prüfen und nochmal probieren.</span>'; return false; }
+    if (QZ.word !== word) return false;
+    renderQuick(); enter($('qMsg').closest('.card'));
+    return true;
   }
   function renderQuick(){
-    const step = QZ.res ? 3 : QZ.heard ? 2 : 1;
+    const c = QZ.ctx, step = QZ.res ? 3 : QZ.heard ? 2 : 1;
     [...$('qSteps').children].forEach((d, i) => { d.className = i + 1 < step ? 'done' : i + 1 === step ? 'on' : ''; });
-    $('qPlayArea').hidden = !!QZ.res; $('qResult').hidden = !QZ.res;
+    $('qPlayArea').hidden = !!QZ.res || QZ.busy; $('qResult').hidden = !QZ.res;
     $('pRec').hidden = !QZ.heard;
     $('qRev').textContent = QZ.heard ? '🔁 Rückwärts nochmal' : '▶ Rückwärts anhören';
     $('qRev').classList.toggle('alt', !QZ.heard);
     $('qRev').disabled = !QZ.rev;
     // Das Wort bleibt geheim, bis geraten wurde – dann kommt der Aha-Moment
     const w = QZ.guess ? '<span class="wordwas">„' + esc(QZ.word || '') + '“</span>' : '';
+    if (QZ.busy){ $('qMsg').textContent = 'Wird ausgewertet …'; return; }
     if (QZ.res && !QZ.guess){
-      $('qPlayArea').hidden = true; $('qResult').hidden = true;
+      $('qResult').hidden = true;
       $('qMsg').innerHTML = '<b>Was hast du da gesagt?</b><br><span style="font-size:15px;font-weight:500">Hör dir dein Ergebnis an und rate das Wort.</span>' +
         '<button class="play main alt" id="qMine2" style="margin:12px auto 0;min-width:0;padding:10px 18px;font-size:15px">🤯 Ergebnis nochmal anhören</button>' +
         '<div class="words guess">' + QZ.opts.map(o => '<button data-w="' + esc(o) + '">' + esc(o) + '</button>').join('') + '</div>';
@@ -3929,13 +4033,21 @@
       return;
     }
     if (QZ.res){
-      $('qMsg').innerHTML = ['Nochmal probieren! 🙈','Da ist was dran! 🙂','Richtig gut! 😄','Perfekt rückwärts! 🤯'][QZ.res.stars] + w +
-        '<span style="font-size:15px;display:block;margin-top:6px">' + (QZ.guess.ok ? '🎯 Richtig geraten!' : '❌ Du hast auf „' + esc(QZ.guess.pick) + '“ getippt.') + '</span>';
-      $('qStars').innerHTML = [0,1,2].map(i => '<span class="' + (i < QZ.res.stars ? 'lit' : '') + '">★</span>').join('');
+      const st = QZ.res.stars;
+      $('qMsg').innerHTML = ['Nochmal probieren! 🙈','Da ist was dran! 🙂','Richtig gut! 😄','Perfekt rückwärts! 🤯'][st] + w +
+        (QZ.guess.skip ? '' : '<span style="font-size:15px;display:block;margin-top:6px">' + (QZ.guess.ok ? '🎯 Richtig geraten!' : '❌ Du hast auf „' + esc(QZ.guess.pick) + '“ getippt.') + '</span>') +
+        (c.type === 'level' && !st ? '<span style="font-size:15px;display:block;margin-top:6px">Für das nächste Level brauchst du mindestens 1 Stern.</span>' : '');
+      $('qStars').innerHTML = [0,1,2].map(i => '<span class="' + (i < st ? 'lit' : '') + '">★</span>').join('');
       $('qPct').textContent = 'Ähnlichkeit ' + Math.round(QZ.res.sim * 100) + ' %';
+      $('qAgain').hidden = c.type === 'season' || (c.type === 'level' && !st);
+      const s = c.type === 'season' ? curS() : null;
+      $('qNext').textContent = c.type === 'free' ? 'Nächstes Wort ➜'
+        : c.type === 'level' ? (!st ? '🎙️ Nochmal versuchen' : c.n < LV.length ? 'Weiter: Level ' + (c.n + 1) + ' ➜' : 'Alle Level geschafft! 🏆')
+        : (s && nextIdx(s) ? 'Nächster Begriff ➜' : 'Zur Übersicht ➜');
+      renderShare();
     } else {
-      $('qMsg').innerHTML = QZ.guess ? 'Nochmal nachsprechen:' + w
-        : QZ.heard ? 'Jetzt sprich nach, was du rückwärts gehört hast.<br><span style="font-size:15px;font-weight:500">Welches Wort es ist, erfährst du am Ende.</span>'
+      $('qMsg').innerHTML = QZ.guess ? (QZ.heard ? 'Sprich es rückwärts nach:' : 'Hör es dir rückwärts an:') + w
+        : QZ.heard ? 'Jetzt sprich nach, was du rückwärts gehört hast.<br><span style="font-size:15px;font-weight:500">' + (c.type === 'season' ? 'Du hast einen Versuch!' : 'Welches Wort es ist, erfährst du am Ende.') + '</span>'
         : 'Hör dir ein Wort rückwärts an.<br><span style="font-size:15px;font-weight:500">Welches? Das verraten wir erst am Ende. 🤫</span>';
       requestAnimationFrame(() => draw('P', QZ.rev));
     }
@@ -3946,13 +4058,27 @@
     if (!QZ.heard){ QZ.heard = true; renderQuick(); }
   };
   async function quickRecorded(buf){
-    if (!QZ.buf) return;
-    const net = await toNet(buf), rev = reverse(net);
+    if (!QZ.buf || QZ.busy || (QZ.res && QZ.ctx.type === 'season')) return;
+    const c = QZ.ctx, net = await toNet(buf), rev = reverse(net);
     const sim = similarity(QZ.buf.getChannelData(0), rev.getChannelData(0), NET_SR, true), stars = starsFor(sim);
-    QZ.res = { sim, stars, rev };
-    logPlay('frei', stars);
+    if (c.type === 'season'){
+      // Challenge / Wort des Tages: ein Versuch, zählt für die Rangliste
+      QZ.busy = true; renderQuick();
+      try {
+        await rpc('season_attempt', { p_season: c.sid, p_idx: c.idx, p_sim: sim, p_stars: stars });
+        logPlay(c.daily ? 'tag' : 'season', stars);
+        await refreshSeason(); refreshStats();
+      } catch(e){ QZ.busy = false; toast(errText(e)); renderQuick(); return; }
+      QZ.busy = false;
+    } else logPlay('frei', stars);
+    if (c.type === 'level'){
+      const p = lvLoad(), old = p[c.n] || {};
+      p[c.n] = { s: Math.max(old.s || 0, stars), b: Math.max(old.b || 0, Math.round(sim * 100)) };
+      lvSave(p); renderHero();
+    }
     saveRound({ time: Date.now(), sr: NET_SR, a: new Float32Array(QZ.buf.getChannelData(0)), b: new Float32Array(net.getChannelData(0)), sim, stars, tts: true, word: QZ.word });
-    if (QZ.guess){ quickReveal(); return; }   // „Nochmal“ nach dem Raten: direkt Ergebnis
+    QZ.res = { sim, stars, rev }; QZ.clip = null;
+    if (QZ.guess){ quickReveal(); return; }   // Wort schon bekannt: direkt zum Ergebnis
     renderQuick();
     play(null, rev);   // erst nur das Ergebnis – raten, dann Auflösung
   }
@@ -3969,15 +4095,126 @@
     playSeq([QZ.buf, QZ.res.rev]);
     if (QZ.res.stars >= 2) setTimeout(() => confetti(QZ.res.stars === 3 ? 90 : 50), 400);
   }
+  const quickRetry = () => { QZ.res = null; QZ.clip = null; renderQuick(); play('P', QZ.rev); };
   $('qCmp').onclick = () => { if (QZ.res) playSeq([QZ.buf, QZ.res.rev]); };
   $('qOrig').onclick = () => { if (QZ.buf) play(null, QZ.buf); };
   $('qMine').onclick = () => { if (QZ.res) play(null, QZ.res.rev); };
-  $('qAgain').onclick = () => { QZ.res = null; renderQuick(); play('P', QZ.rev); };
-  $('qNext').onclick = () => newQuickWord(false).then(() => enter($('qMsg').closest('.card')));
-  $('qBack').onclick = () => { showSoloHome(); window.scrollTo(0, 0); };
-  $('tPlay').onclick = () => openQuick(false);
+  $('qAgain').onclick = quickRetry;
+  $('qNext').onclick = () => {
+    const c = QZ.ctx;
+    if (c.type === 'free') return openQuick();
+    if (c.type === 'level'){
+      if (!QZ.res || !QZ.res.stars) return quickRetry();
+      return c.n < LV.length ? startLevel(c.n + 1) : openLevels();
+    }
+    openSeason(c.sid);   // nächster Begriff – oder die Übersicht, wenn alles gespielt ist
+  };
+  $('qBack').onclick = () => { stopPlay(); if (QZ.ctx.type === 'season') showSoloHome(); else openLevels(); };
+  $('lvBack').onclick = () => { showSoloHome(); window.scrollTo(0, 0); };
+  $('lvRandom').onclick = openQuick;
+  $('tPlay').onclick = openLevels;
   bindRec('P');
   $('fileP').addEventListener('change', () => { const f = $('fileP').files && $('fileP').files[0]; if (f) handleAudio('P', f); $('fileP').value = ''; });
+  // Challenge-Begriff mit der Kunststimme spielen (wenn es für das Wort einen Ton gibt)
+  function seasonTts(s, idx){
+    const w = s.words.find(x => x.idx === idx), others = s.words.filter(x => x.idx !== idx).map(x => x.word_text);
+    return quickStart({ type:'season', sid: s.id, idx, daily: s.kind === 'daily', title: s.title,
+      pos: s.words.findIndex(x => x.idx === idx) + 1, n: s.words.length,
+      decoys: others.length >= 3 ? rnd3(w.word_text, others) : null }, w.word_text, false);
+  }
+
+  // ---------- Teilen: kurzer Clip (Original → Ergebnis) mit Ton ----------
+  const clipPeaks = (buf, n) => { const d = buf.getChannelData(0), out = [], step = Math.max(1, Math.floor(d.length / n)); for (let i = 0; i < n; i++){ let m = 0; for (let j = i*step; j < Math.min(d.length, (i+1)*step); j += 8) m = Math.max(m, Math.abs(d[j])); out.push(m); } const mx = Math.max(.05, ...out); return out.map(v => v / mx); };
+  let clipLogo = null;
+  async function makeClip(o){
+    if (!window.MediaRecorder || !HTMLCanvasElement.prototype.captureStream) return null;
+    const mime = ['video/mp4;codecs=avc1.42E01E,mp4a.40.2', 'video/mp4', 'video/webm;codecs=vp9,opus', 'video/webm;codecs=vp8,opus', 'video/webm'].find(t => { try { return MediaRecorder.isTypeSupported(t); } catch(e){ return false; } });
+    if (!mime) return null;
+    if (!clipLogo) clipLogo = await new Promise(res => { const im = new Image(); im.onload = () => res(im); im.onerror = () => res(null); im.src = 'logo.png'; });
+    const W = 720, H = 720, cv = document.createElement('canvas'); cv.width = W; cv.height = H;
+    const g = cv.getContext('2d'), c = ac(), dest = c.createMediaStreamDestination();
+    const lead = .7, gap = .9, t1 = lead, t2 = t1 + o.orig.duration + gap, total = t2 + o.res.duration + 1.4;
+    const pk = [clipPeaks(o.orig, 48), clipPeaks(o.res, 48)];
+    const font = (px, w) => (w || 700) + ' ' + px + 'px Fredoka, "Bricolage Grotesque", system-ui, sans-serif';
+    const fit = (txt, px, max) => { g.font = font(px); while (g.measureText(txt).width > max && px > 26){ px -= 2; g.font = font(px); } };
+    const frame = t => {
+      const grad = g.createLinearGradient(0, 0, 0, H); grad.addColorStop(0, '#6a2df2'); grad.addColorStop(1, '#3a14b4');
+      g.fillStyle = grad; g.fillRect(0, 0, W, H);
+      g.save(); g.translate(W/2, H/2); g.rotate(-28 * Math.PI / 180); g.fillStyle = 'rgba(255,255,255,.055)';
+      for (let x = -900; x < 900; x += 150) g.fillRect(x, -900, 75, 1800);
+      g.restore();
+      g.textAlign = 'center'; g.textBaseline = 'middle';
+      if (clipLogo){ const lw = 300, lh = lw * clipLogo.height / clipLogo.width; g.drawImage(clipLogo, (W - lw)/2, 44, lw, lh); }
+      const ph = t < t2 - gap/2 ? 0 : 1, buf = ph ? o.res : o.orig, ts = ph ? t2 : t1;
+      const prog = Math.max(0, Math.min(1, (t - ts) / buf.duration));
+      // Etikett
+      const lab = ph ? '2 · Rückwärts nachgesprochen – und umgedreht' : '1 · Das Wort';
+      g.font = font(28); const lwid = g.measureText(lab).width + 44;
+      g.fillStyle = ph ? '#2ff0c0' : '#ffd426'; g.strokeStyle = '#0e0722'; g.lineWidth = 5;
+      g.beginPath(); g.roundRect((W - lwid)/2, 232, lwid, 56, 28); g.fill(); g.stroke();
+      g.fillStyle = '#0e0722'; g.fillText(lab, W/2, 262);
+      // Wort
+      const word = '„' + o.word + '“'; fit(word, 76, W - 80);
+      g.lineJoin = 'round'; g.lineWidth = 12; g.strokeStyle = '#0e0722'; g.strokeText(word, W/2, 352);
+      g.fillStyle = '#fff'; g.fillText(word, W/2, 352);
+      // Waveform
+      g.fillStyle = '#0e0722'; g.beginPath(); g.roundRect(60, 420, W - 120, 150, 28); g.fill();
+      const bars = pk[ph], bw = (W - 180) / bars.length;
+      bars.forEach((v, i) => { const hh = Math.max(6, v * 110), x = 90 + i * bw; g.fillStyle = (i / bars.length) <= prog ? (ph ? '#2ff0c0' : '#ffd426') : 'rgba(255,255,255,.28)'; g.beginPath(); g.roundRect(x, 495 - hh/2, bw * .62, hh, 4); g.fill(); });
+      // Sterne + Prozent am Ende
+      if (ph && t > t2 + o.res.duration){
+        const k = Math.min(1, (t - t2 - o.res.duration) / .35);
+        g.font = font(58); g.lineWidth = 10; g.strokeStyle = '#0e0722';
+        const st = '★'.repeat(o.stars) + '☆'.repeat(3 - o.stars) + '  ' + o.pct + ' %';
+        g.globalAlpha = k; g.strokeText(st, W/2, 630); g.fillStyle = '#ffd426'; g.fillText(st, W/2, 630); g.globalAlpha = 1;
+      }
+      g.font = font(26, 600); g.fillStyle = 'rgba(255,255,255,.85)'; g.fillText('ollah.app – schaffst du das besser?', W/2, 690);
+    };
+    frame(0);
+    const stream = cv.captureStream(30);
+    dest.stream.getAudioTracks().forEach(tr => stream.addTrack(tr));
+    const rec = new MediaRecorder(stream, { mimeType: mime, videoBitsPerSecond: 1600000 }), chunks = [];
+    rec.ondataavailable = e => { if (e.data && e.data.size) chunks.push(e.data); };
+    const stopped = new Promise(res => { rec.onstop = res; });
+    const t0 = c.currentTime + .12;
+    [[o.orig, t1], [o.res, t2]].forEach(([b, t]) => { const s = c.createBufferSource(); s.buffer = b; s.connect(dest); s.start(t0 + t); });
+    rec.start(200);
+    await new Promise(res => { const tick = () => { const t = c.currentTime - t0; frame(Math.max(0, t)); if (t >= total) res(); else setTimeout(tick, 33); }; tick(); });
+    rec.stop(); await stopped;
+    stream.getTracks().forEach(tr => tr.stop());
+    const type = mime.split(';')[0];
+    return new File([new Blob(chunks, { type })], 'ollah-clip.' + (type.includes('mp4') ? 'mp4' : 'webm'), { type });
+  }
+  // Zwei Schritte, weil das Teilen-Menü nur direkt aus einem Tipp heraus aufgehen darf:
+  // 1. Tipp erstellt den Clip, 2. Tipp öffnet das Teilen-Menü.
+  function shareButton(btn, getData){
+    let file = null, busy = false, key = null;
+    const label = () => { btn.textContent = busy ? '⏳ Clip wird erstellt …' : file ? '📤 Clip jetzt senden' : '📤 Als Clip teilen'; btn.classList.toggle('main', !!file); btn.classList.toggle('mini', !file); };
+    btn.resetShare = () => { file = null; busy = false; key = null; label(); };
+    btn.onclick = async () => {
+      const o = getData(); if (!o || busy) return;
+      const text = 'Ich hab „' + o.word + '“ rückwärts gesprochen: ' + o.pct + ' % bei Ollah! 😂 Schaffst du das besser? https://ollah.app';
+      if (!file){
+        stopPlay(); busy = true; label();
+        try { file = await makeClip(o); } catch(e){ file = null; }
+        if (!file){   // kein Video möglich → Tonspur
+          try { file = new File([wavBlob(joinBuffers([await toNet(o.orig), await toNet(o.res)]))], 'ollah.wav', { type:'audio/wav' }); } catch(e){}
+        }
+        busy = false; label();
+        if (!file){ toast('Clip konnte nicht erstellt werden'); }
+        return;
+      }
+      try { if (navigator.canShare && navigator.canShare({ files:[file] })){ await navigator.share({ files:[file], text }); return; } }
+      catch(e){ if (e && e.name === 'AbortError') return; }
+      const a = document.createElement('a'); a.href = URL.createObjectURL(file); a.download = file.name; document.body.appendChild(a); a.click(); a.remove();
+      toast('Gespeichert als ' + file.name);
+    };
+    label();
+  }
+  shareButton($('qShare'), () => QZ.res && QZ.buf ? { word: QZ.word, orig: QZ.buf, res: QZ.res.rev, stars: QZ.res.stars, pct: Math.round(QZ.res.sim * 100) } : null);
+  shareButton($('shareB'), () => (slots.A.buf && slots.B.rev && slots.B.score) ? { word: 'Mein Wort', orig: slots.A.buf, res: slots.B.rev, stars: slots.B.score.stars, pct: Math.round(slots.B.score.sim * 100) } : null);
+  function renderShare(){ $('qShare').resetShare(); }
+  renderHero();
 
   // ---------- Einstieg: Beispiel „Hallo“ → rückwärts → „Olla“ → umgedreht ----------
   let introBufs = null;
@@ -3999,7 +4236,7 @@
     try { const b = await introLoad(), k = +el.dataset.k; seqTok++; introMark(k); play(null, b[k]); }
     catch(e){ toast('Beispiel konnte nicht geladen werden'); }
   });
-  $('introGo').onclick = () => { closeIntro(); showMode('solo'); openQuick(true); };
+  $('introGo').onclick = () => { closeIntro(); showMode('solo'); startLevel(1); };
   $('introSkip').onclick = closeIntro;
 
   // =====================================================================

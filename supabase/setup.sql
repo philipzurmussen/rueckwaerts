@@ -1093,6 +1093,16 @@ begin
   return json_build_object('active', acts -> 0, 'actives', acts, 'daily', daily, 'last', last, 'next', nxt);
 end $$;
 
+-- Begriffe laufender und geplanter Challenges – öffentlich lesbar, damit die GitHub Action
+-- (tts/generate.py) dafür die Kunststimme erzeugen kann. Enthält nur die Begriffe selbst.
+create or replace function public.tts_words() returns json
+language sql stable security definer set search_path = public as $$
+  select coalesce(json_agg(distinct w.word_text), '[]'::json)
+  from public.season_words w join public.seasons s on s.id = w.season_id
+  where s.ends_at > now() and w.word_text is not null and char_length(trim(w.word_text)) between 2 and 40;
+$$;
+grant execute on function public.tts_words() to anon, authenticated;
+
 -- Einen Begriff der Season spielen (ein Versuch)
 create or replace function public.season_attempt(p_season uuid, p_idx int, p_sim real, p_stars int) returns json
 language plpgsql security definer set search_path = public as $$

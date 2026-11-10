@@ -22,11 +22,30 @@ def fname(word):
     return hashlib.md5(word.encode("utf-8")).hexdigest()[:12] + ".mp3"
 
 import json
-ALL = words() + [w for w in EXTRA if w not in words()]
+
+def challenge_words():
+    """Begriffe laufender/geplanter Challenges aus Supabase (öffentliche Funktion tts_words)."""
+    try:
+        html = open(os.path.join(ROOT, "index.html"), encoding="utf-8").read()
+        url = re.search(r"const SB_URL = '([^']+)'", html).group(1)
+        key = re.search(r"const SB_KEY = '([^']+)'", html).group(1)
+        req = urllib.request.Request(url + "/rest/v1/rpc/tts_words", data=b"{}", method="POST",
+                                     headers={"apikey": key, "Authorization": "Bearer " + key, "Content-Type": "application/json"})
+        with urllib.request.urlopen(req, timeout=20) as r:
+            got = json.loads(r.read().decode("utf-8")) or []
+        return [w.strip() for w in got if isinstance(w, str) and 2 <= len(w.strip()) <= 40]
+    except Exception as e:
+        print("Challenge-Begriffe nicht abrufbar:", e)
+        return []
+
+BASE = words()
+ALL = BASE + [w for w in EXTRA + challenge_words() if w not in BASE]
+ALL = list(dict.fromkeys(ALL))
 INDEX = os.path.join(OUT, "index.json")
-index = {w: fname(w) for w in ALL}
+old = json.load(open(INDEX, encoding="utf-8")) if os.path.exists(INDEX) else {}
+index = {**{w: f for w, f in old.items() if os.path.exists(os.path.join(OUT, f))}, **{w: fname(w) for w in ALL}}
 missing = [w for w in ALL if not os.path.exists(os.path.join(OUT, fname(w)))]
-stale = not os.path.exists(INDEX) or json.load(open(INDEX, encoding="utf-8")) != index
+stale = old != index
 print(len(ALL), "Wörter,", len(missing), "fehlen", "| Index veraltet" if stale else "")
 if "--check" in sys.argv:
     sys.exit(1 if (missing or stale) else 0)
