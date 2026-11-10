@@ -78,6 +78,7 @@ Samstags läuft eine geplante Aufgabe, die Ereignisse und Gedenktage der kommend
 - Push-Mitteilung „Du bist dran“ bei Duellen: erst mit der richtigen App (App-Store-Version) bauen. Web-Push wäre möglich (Service Worker + VAPID + Supabase-Funktion), auf dem iPhone aber nur als installierte Web-App.
 - Neutrale Kunststimme (Stand Nov. 2026): Piper `de_DE-thorsten-medium` mit `length_scale` 1.5 („langsam“) ist Philips Wahl – am besten nachzuahmen. Frauenstimmen von Piper klangen unnatürlich (Akzent), thorsten-high verschluckt Endsilben. Geplant: Duell-Option „🤖 Kunststimme“ (beide kennen das Wort nicht, beide raten) und Level-Pfad.
 - App-Store-Build: Capacitor, Push-Benachrichtigungen, Login mit Apple/Google.
+- Spracherkennung als Bewertung (getestet 10.11.2026, verworfen): Whisper tiny/base/small mit Abgleich gegen alle Kunststimme-Wörter trennt gut/falsch schlechter (0,74–0,80) als die Klangmessung (0,94). Die Modelle verstehen umgedrehte Nachahmungen nicht. Mehrere Vergleichsstimmen (andere Piper-Stimmen) brachten ebenfalls kaum etwas. Nur ein eigenes, auf Ollah!-Runden trainiertes Modell wäre noch eine Option – dafür bräuchte es sehr viele beurteilte Runden.
 
 ## Reward-System (Plan für später, nach ersten Tester-Erfahrungen)
 
