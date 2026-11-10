@@ -1,0 +1,23 @@
+name: Machbarkeitstest Spracherkennung
+on:
+  workflow_dispatch:
+concurrency: asr-eval
+permissions:
+  contents: write
+jobs:
+  eval:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.11' }
+      - run: pip install --index-url https://download.pytorch.org/whl/cpu torch && pip install transformers numpy
+      - run: python eval/asr_eval.py
+      - run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898283+github-actions[bot]@users.noreply.github.com"
+          git add eval/results.json
+          git commit -m "Machbarkeitstest Spracherkennung: Ergebnisse" || exit 0
+          git pull --rebase origin main
+          git push
