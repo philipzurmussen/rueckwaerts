@@ -222,6 +222,17 @@
   #cardB.scored #cmpB{display:flex;align-items:center;justify-content:center;order:-1}
   #cardB.scored #revB{flex:1 1 28%;min-height:42px !important;font-size:14px !important;padding:6px 8px;background:rgba(255,255,255,.1);color:var(--ink);box-shadow:none;border-width:2px}
   .starhint{margin:-4px 0 0;text-align:center}
+  #cardB .starhint{display:none}
+  #cardB.scored .starhint{display:block;order:-1;margin:-14px 0 0}
+  #refB .sm{display:none}
+  #cardB.scored #refB .lg{display:none}
+  #cardB.scored #refB .sm{display:inline}
+  #cardB:not(.scored) #refB{flex-basis:100%;min-height:58px !important;font-size:16px !important;background:var(--acc);color:#0e0722;border-width:3px}
+  .btns .play.mini{white-space:nowrap}
+  #cardB.scored .btns .play.mini,#cardB.scored #revB{flex:1 1 30%;font-size:13px !important;padding:6px 2px}
+  /* Einzelne Knöpfe in der Spiel-Ansicht nicht in die Höhe ziehen */
+  .dstage > .play{flex:0 0 auto;min-height:58px;font-size:17px}
+  @media (max-width:360px){ .steps span{font-size:10px;white-space:nowrap;letter-spacing:-.2px} .btns .play.mini{font-size:12.5px !important;padding:6px 4px} }
   /* Spielen */
   #qGame .wordwas{font-size:30px}
   /* Einstieg */
@@ -786,9 +797,9 @@
     </div>
     <div class="btns">
       <button class="play main alt" id="cmpB" style="flex-basis:100%">▶ Vergleichen: Original + Ergebnis</button>
-      <button class="play main alt" id="revB" disabled>🤯 Ergebnis anhören</button>
-      <button class="play mini" id="fwdB" disabled>🦜 Dein Nachsprechen</button>
-      <button class="play mini" id="refB">🔁 Rückwärts nochmal</button>
+      <button class="play main alt" id="revB" disabled>🤯 Ergebnis</button>
+      <button class="play mini" id="fwdB" disabled>🦜 Nachsprechen</button>
+      <button class="play mini" id="refB"><span class="lg">🔁 Rückwärts nochmal</span><span class="sm">🔁 Rückwärts</span></button>
       <button class="play main" id="againB" style="flex-basis:100%">🎙️ Nochmal versuchen</button>
       <button class="reset" id="backA" style="flex-basis:100%;padding:4px">← Neues Wort aufnehmen</button>
     </div>
@@ -1074,10 +1085,10 @@
   <div class="overlay" id="helpBox" hidden>
     <section class="card stack" style="max-height:90vh;overflow:auto">
       <div class="head"><div class="num">❓</div><div><h2>So geht Ollah!</h2><p>Hallo, nur rückwärts.</p></div></div>
-      <div class="helpstep"><b>🎙️ 1. Sag ein Wort</b><span>zum Beispiel deinen Namen.</span></div>
+      <div class="helpstep"><b>🎙️ 1. Ein Wort</b><span>Die Kunststimme gibt eins vor – oder du sprichst selbst eins ein.</span></div>
       <div class="helpstep"><b>🔁 2. Hör es rückwärts</b><span>Klingt wie eine fremde Sprache.</span></div>
       <div class="helpstep"><b>🦜 3. Mach es nach</b><span>Sprich genau diese Rückwärts-Version nach – so gut du kannst.</span></div>
-      <div class="helpstep"><b>🤯 4. Umdrehen!</b><span>Dein Versuch wird umgedreht – und klingt plötzlich wie dein Wort. Je ähnlicher, desto mehr ⭐.</span></div>
+      <div class="helpstep"><b>🤯 4. Umdrehen!</b><span>Dein Versuch wird umgedreht – und klingt plötzlich wie das Wort. Je ähnlicher, desto mehr ⭐.</span></div>
       <p class="tiny"><b>Solo</b> zum Üben und für die laufenden Challenges · <b>Duelle</b> gegen Freunde oder Zufallsgegner, jeder spielt, wann er Zeit hat · <b>Rangliste</b>: Sterne sammeln, Level aufsteigen, neue Themen freischalten.</p>
       <button class="play main" id="helpTour">▶ Beispiel anhören</button>
       <div class="btns">
@@ -1452,7 +1463,7 @@
     requestAnimationFrame(step);
   }
 
-  // ---------- Speicher: letzte 5 Runden ----------
+  // ---------- Speicher: letzte Runden (5, auf Admin-Geräten 40) ----------
   const isAdminDev = () => { try { return localStorage.getItem('ollahAdmin') === '1'; } catch(e){ return false; } };
   const maxRounds = () => isAdminDev() ? 40 : 5;   // Admins sammeln mehr Runden zum Eichen der Bewertung
   let dbp = null, memRounds = [];
@@ -2739,12 +2750,12 @@
   }
   // Kunststimme: nächstes Wort auslosen lassen und direkt spielen
   async function ttsNext(id){
-    try { await rpc('tts_round', { p_game: id }); }
-    catch(e){ toast(errText(e)); return false; }
-    const g = await rpc('game_detail', { p_game: id });
+    let g;
+    try { await rpc('tts_round', { p_game: id }); g = await rpc('game_detail', { p_game: id }); }
+    catch(e){ toast(errText(e)); if (A.gid === id && A.stage === 'ttsnext') A.stage = 'ttsfail'; return false; }
     if (A.gid !== id) return false;
-    A.game = g; A.stage = pickStage(g); if (A.stage === 'ttsnext') A.stage = 'idle';
-    return true;
+    A.game = g; A.stage = pickStage(g); if (A.stage === 'ttsnext') A.stage = 'ttsfail';
+    return A.stage !== 'ttsfail';
   }
   // Punkte eines Versuchs: Sterne + 1, wenn das Wort richtig geraten wurde
   const pts = t => (t ? t.stars + (t.guess === true ? 1 : 0) : 0);
@@ -2777,8 +2788,8 @@
     $('aStepAnswer').hidden = st !== 'answer';
     $('aStepSet').hidden = st !== 'set';
     $('aStepOwn').hidden = st !== 'own';
-    $('aNext').hidden = !(st === 'reveal' && g.my_turn && g.cur_round < g.total_rounds && g.status !== 'done') || g.rounds.some(guessPending);
-    $('aNext').textContent = g.voice === 'tts' ? 'Weiter: nächstes Wort ➜' : 'Weiter: dein Wort ➜';
+    $('aNext').hidden = !((st === 'reveal' || st === 'ttsfail') && g.my_turn && g.cur_round < g.total_rounds && g.status !== 'done') || g.rounds.some(guessPending);
+    $('aNext').textContent = st === 'ttsfail' ? 'Nochmal versuchen ➜' : g.voice === 'tts' ? 'Weiter: nächstes Wort ➜' : 'Weiter: dein Wort ➜';
     const canShare = !op && g.status !== 'done' && !g.is_random && g.cur_round >= 1 && (st === 'idle' || (st === 'reveal' && !g.my_turn && !g.rounds.some(guessPending)));
     let shared = false; try { shared = localStorage.getItem('rw-shared-' + g.id) === '1'; } catch(e){}
     $('aShare').hidden = !canShare; $('aShareHint').hidden = !canShare;
@@ -2829,6 +2840,7 @@
     else if (st === 'set') msg = '<span class="tiny">Schritt 1 von 2</span><br>' + (A.chosen ? 'Sag „' + esc(A.chosen) + '“ – halt den roten Knopf gedrückt.' : 'Runde ' + (g.cur_round + 1) + ': Gib ein Wort vor – such dir eins aus oder denk dir eins aus.');
     else if (st === 'own') msg = '<span class="tiny">Schritt 2 von 2</span><br>Jetzt du selbst: Hör dir dein Wort rückwärts an und sprich es nach. Danach geht dein Zug raus' + (op ? '.' : ' und du kannst die Einladung schicken.');
     else if (st === 'sending') msg = 'Wird gesendet …';
+    else if (st === 'ttsfail') msg = '⚠️ Das nächste Wort konnte nicht geladen werden.<br><span style="font-size:15px;font-weight:500">Internet prüfen und nochmal versuchen.</span>';
     else if (g.status === 'done') msg = finalLine(g, sMe, sOp, opName);
     else if (!op) msg = g.is_random ? 'Dein Wort ist vorgelegt. Sobald jemand einen Zufallsgegner sucht, geht’s los – du bekommst Bescheid.'
                     : g.cur_round >= 1 ? 'Dein Wort ist vorgelegt! ✅ Schick jetzt die Einladung an deinen Gegner.'
@@ -3120,8 +3132,8 @@
     const g = A.game;
     if (g.voice === 'tts'){
       if (A.busy) return; A.busy = true;
-      const ok = await ttsNext(g.id); A.busy = false;
-      if (!ok) return;
+      let ok = false; try { ok = await ttsNext(g.id); } finally { A.busy = false; }
+      if (!ok){ renderGame(); return; }
       renderGame(); window.scrollTo(0, 0);
       interstitial('Runde ' + Math.min(g.cur_round + 1, g.total_rounds), '🤖 Neues Wort – keiner kennt es').then(() => enter($('aMsg').closest('.card')));
       return;
