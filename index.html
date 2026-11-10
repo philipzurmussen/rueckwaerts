@@ -582,14 +582,10 @@
   html{background:#3a14b4}
   html,body{font-family:"Fredoka","Bricolage Grotesque",system-ui,sans-serif}
   body{background:none}
-  /* Hintergrund: Farbverlauf mit bunten Lichtern und Punkten (fest, scrollt nicht mit) */
+  /* Hintergrund: violetter Verlauf mit breiten, schrägen Ton-in-Ton-Streifen (fest, scrollt nicht mit) */
   body::before{content:"";position:fixed;inset:0;z-index:-2;pointer-events:none;background:
-    radial-gradient(70vmax 60vmax at 115% -10%, rgba(255,95,176,.75) 0, transparent 60%),
-    radial-gradient(55vmax 55vmax at -20% 38%, rgba(63,200,255,.55) 0, transparent 60%),
-    radial-gradient(70vmax 55vmax at 70% 118%, rgba(47,240,192,.35) 0, transparent 62%),
-    linear-gradient(180deg,#6a2df2 0,#4a1cd0 55%,#3a14b4 100%)}
-  body::after{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;
-    background-image:radial-gradient(rgba(255,255,255,.10) 2px,transparent 2.6px);background-size:28px 28px}
+    repeating-linear-gradient(-28deg, rgba(255,255,255,.055) 0 46px, transparent 46px 92px),
+    linear-gradient(180deg,#6a2df2 0,#4a1cd0 60%,#3a14b4 100%)}
 
   /* Karten und Flächen */
   .card{background:var(--card);border-radius:28px;box-shadow:0 7px 0 var(--line)}
