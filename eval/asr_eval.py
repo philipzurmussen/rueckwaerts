@@ -44,10 +44,14 @@ for name in sys.argv[1:] or ["openai/whisper-tiny", "openai/whisper-base", "open
         out = {}
         for key, audio in (("res", res), ("orig", orig)):
             feats = proc(audio, sampling_rate=16000, return_tensors="pt").input_features
+            lps = []
             with torch.no_grad():
                 enc = model.model.encoder(feats).last_hidden_state
-                logits = model(encoder_outputs=(enc.expand(len(words), -1, -1),), decoder_input_ids=ids[:, :-1]).logits
-            lp = torch.log_softmax(logits, -1).gather(-1, ids[:, 1:].unsqueeze(-1)).squeeze(-1)
+                for k in range(0, len(words), 24):   # in Häppchen, sonst reicht der Speicher nicht
+                    chunk = ids[k:k+24]
+                    logits = model(encoder_outputs=(enc.expand(len(chunk), -1, -1),), decoder_input_ids=chunk[:, :-1]).logits
+                    lps.append(torch.log_softmax(logits, -1).gather(-1, chunk[:, 1:].unsqueeze(-1)).squeeze(-1))
+            lp = torch.cat(lps)
             m = mask[:, 1:]
             s_sum = (lp * m).sum(1).numpy(); s_mean = s_sum / m.sum(1).numpy()
             ti = words.index(r["word"])
@@ -70,4 +74,4 @@ for name in sys.argv[1:] or ["openai/whisper-tiny", "openai/whisper-base", "open
     for x in sorted(rows, key=lambda x: -x["res_sum"]["z"]):
         print(f"{x['label']:10} {x['word']:15} d {x['d']:.2f} | Rang {x['res_sum']['rank']:3} z {x['res_sum']['z']:5.2f} m {x['res_sum']['margin']:6.2f} | Top {', '.join(x['res_sum']['top'])} | gehört: {x['heard']}")
     report[name] = rows
-json.dump(report, open(os.path.join(ROOT, "eval", "results.json"), "w", encoding="utf-8"), ensure_ascii=False, indent=0)
+json.dump(report, open(os.path.join(ROOT, "eval", "results-" + "-".join(n.split("/")[-1] for n in report) + ".json"), "w", encoding="utf-8"), ensure_ascii=False, indent=0)
