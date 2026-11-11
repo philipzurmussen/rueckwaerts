@@ -206,6 +206,11 @@
   .tour-hi{position:relative;z-index:61 !important;box-shadow:0 0 0 4px var(--acc),0 0 0 9999px rgba(10,5,25,.74) !important;border-radius:20px}
   .recbtn.tour-hi{border-radius:50%}
   .words.guess{margin-top:12px}
+  .gtype{display:flex;gap:8px;margin-top:12px}
+  .gtype .field{flex:1;min-width:0;font-size:18px;font-weight:700;text-align:center}
+  .gtype .field.right{background:var(--acc2);color:#0e0722}
+  .gtype .field.wrong{background:#ff4d6d;color:#fff;animation:shake .35s}
+  .gtype .play{flex:none;width:auto;padding:0 18px}
   .words.lbl{grid-template-columns:repeat(4,1fr);gap:6px;margin-top:8px}
   .words.lbl button{font-size:12px;padding:8px 4px}
   /* Startseite */
@@ -996,8 +1001,8 @@
 
   <div class="view" id="async" hidden>
     <section class="card" id="aHome">
-      <div class="head"><div class="num">⚔️</div><div><h2>Duelle</h2><p>Spiel, wann du Zeit hast · 6 Runden · 48 Std. pro Zug</p></div></div>
-      <div class="firsthint" data-hint="duelle" hidden>👋 <b>So geht’s:</b> Wort rückwärts hören, nachsprechen, raten, was es war. Jeder spielt, wann er Zeit hat – nach 6 Runden gewinnt, wer mehr Punkte hat.<button class="reset" aria-label="Hinweis schließen">✕</button></div>
+      <div class="head"><div class="num">⚔️</div><div><h2>Duelle</h2><p>Spiel, wann du Zeit hast · 48 Std. pro Zug</p></div></div>
+      <div class="firsthint" data-hint="duelle" hidden>👋 <b>So geht’s:</b> Wort rückwärts hören, nachsprechen, raten, was es war. Jeder spielt, wann er Zeit hat – am Ende gewinnt, wer mehr Punkte hat.<button class="reset" aria-label="Hinweis schließen">✕</button></div>
       <p class="msg" id="aInviteHint" hidden></p>
       <button class="play main" id="aAccept" hidden>Herausforderung annehmen ⚔️</button>
       <p class="ghead" style="margin:2px 0 -4px">1 · Wer gibt die Wörter vor?</p>
@@ -2901,11 +2906,19 @@
   const curRound = g => g.rounds.find(r => r.round_no === g.cur_round);
   // Runde, die ich gerade nachsprechen soll: das Wort des Gegners – oder bei Kunststimme das frisch ausgeloste
   const ansRound = g => g.rounds.find(r => r.round_no === A.ansRound) || curRound(g);
+  // Neue Regeln bei eigener Stimme: Vorgeber nimmt nur auf, nur der Gegner spricht nach und rät
+  const isV2 = g => !!(g && g.voice !== 'tts' && g.rules >= 2);
+  // Für das Wappen: mein Versuch an seinem Wort vs. sein Versuch an meinem vorigen Wort
+  function pairRound(g, r){
+    if (!isV2(g) || !r) return r;
+    const prev = g.rounds.filter(x => x.mine && x.round_no < r.round_no).pop();
+    return { ...r, their: prev ? prev.their : null, reactRound: prev ? prev.round_no : null, sent: prev ? prev.sent : [], prevWord: prev ? prev.word_text : null };
+  }
   function pickStage(g){
     const pend = g.rounds.find(guessPending);
     if (pend){ A.revealRound = pend.round_no; return 'reveal'; }   // erst raten, dann weiter
     if (g.status === 'done' || !g.my_turn) return 'idle';
-    const open = g.rounds.find(r => !r.my && (r.round_no <= g.cur_round || r.mine));
+    const open = g.rounds.find(r => !r.my && (isV2(g) ? !r.mine : (r.round_no <= g.cur_round || r.mine)));
     if (open){ A.ansRound = open.round_no; return 'answer'; }
     if (g.cur_round < g.total_rounds) return g.voice === 'tts' ? 'ttsnext' : 'set';
     return 'idle';
@@ -2921,10 +2934,13 @@
   }
   // Punkte eines Versuchs: Sterne + 1, wenn das Wort richtig geraten wurde
   const pts = t => (t ? t.stars + (t.guess === true ? 1 : 0) : 0);
-  const guessPending = r => !!(r && r.options && r.my);   // der Server liefert Antworten nur, wenn ich raten darf
+  const guessPending = r => !!(r && r.guess_open && r.my);   // der Server meldet, wenn ich (noch) raten darf
   function scores(g){
     let me = 0, op = 0;
-    g.rounds.forEach(r => { if (r.my) me += pts(r.my); if (r.their && !r.their.hidden) op += pts(r.their); });
+    g.rounds.forEach(r => {
+      if (r.my) me += pts(r.my); if (r.their && !r.their.hidden) op += pts(r.their);
+      if (isV2(g)){ if (r.mine && r.their && r.their.guess === true) me++; if (!r.mine && r.my && r.my.guess === true) op++; }   // Vorgeber +1, wenn erraten
+    });
     return [me, op];
   }
 
@@ -2941,7 +2957,7 @@
     const dots = $('aDots'); dots.innerHTML = '';
     for (let i=1;i<=g.total_rounds;i++){
       const r = g.rounds.find(x => x.round_no === i), sp = document.createElement('span');
-      if (r && r.my && r.their && !r.their.hidden) sp.className = 'done';
+      if (r && (isV2(g) ? (r.mine ? r.their : r.my) : (r.my && r.their && !r.their.hidden))) sp.className = 'done';
       else if (r) sp.className = 'now';
       dots.appendChild(sp);
     }
@@ -2956,7 +2972,7 @@
     $('aStepSet').hidden = st !== 'set';
     $('aStepOwn').hidden = st !== 'own';
     $('aNext').hidden = !((st === 'reveal' || st === 'ttsfail') && g.my_turn && g.cur_round < g.total_rounds && g.status !== 'done') || g.rounds.some(guessPending);
-    $('aNext').textContent = st === 'ttsfail' ? 'Nochmal versuchen ➜' : g.voice === 'tts' ? 'Weiter: nächstes Wort ➜' : 'Weiter: dein Wort ➜';
+    $('aNext').textContent = st === 'ttsfail' ? 'Nochmal versuchen ➜' : g.voice === 'tts' ? 'Weiter: nächstes Wort ➜' : 'Weiter: dein Wort vorgeben ➜';
     const canShare = !op && g.status !== 'done' && !g.is_random && g.cur_round >= 1 && (st === 'idle' || (st === 'reveal' && !g.my_turn && !g.rounds.some(guessPending)));
     let shared = false; try { shared = localStorage.getItem('rw-shared-' + g.id) === '1'; } catch(e){}
     $('aShare').hidden = !canShare; $('aShareHint').hidden = !canShare;
@@ -2991,20 +3007,23 @@
             : rn + 'Hör dir ' + opName + 's Wort rückwärts an – so oft du willst.';
     }
     else if (st === 'reveal'){
-      const r = g.rounds.find(x => x.round_no === A.revealRound) || cr;
+      const r0 = g.rounds.find(x => x.round_no === A.revealRound) || cr, r = pairRound(g, r0);
       const a = r && r.my ? pts(r.my) : 0, b = r && r.their && !r.their.hidden ? pts(r.their) : 0;
       if (guessPending(r)){
-        // Raten: erst das eigene Ergebnis hören, dann tippen, was es war
-        msg = '<b>Was hast du da gesagt?</b><br><span style="font-size:15px;font-weight:500">Hör dir dein Ergebnis an und rate das Wort – richtig gibt +1 Punkt.</span>' +
-              '<div class="words guess">' + r.options.map(o => '<button data-w="' + esc(o) + '">' + esc(o) + '</button>').join('') + '</div>';
+        // Raten: erst das eigene Ergebnis hören, dann eintippen, was es war
+        msg = '<b>Was hast du da gesagt?</b><br><span style="font-size:15px;font-weight:500">Hör dir dein Ergebnis an und tipp das Wort ein – richtig gibt +1 Punkt' + (isV2(g) ? ' für euch beide' : '') + '.</span>' +
+              '<form class="gtype" autocomplete="off"><input class="field" maxlength="40" placeholder="Was war das Wort?" enterkeyhint="send" autocapitalize="words" spellcheck="false"><button class="play main" type="submit">Raten</button></form>';
       } else {
         msg = (r && r.word_text ? 'Das Wort war: <span class="wordwas" style="display:inline">„' + esc(r.word_text) + '“</span>' : 'Runde ' + (r ? r.round_no : '') + ' ist durch!');
-        if (r && (!r.mine || g.voice === 'tts') && r.my && r.my.guess != null) msg += '<br><span style="font-size:15px">' + (r.my.guess ? '🎯 Richtig geraten – +1 Punkt!' : '❌ Leider falsch geraten.') + '</span>';
+        if (r && (!r.mine || g.voice === 'tts') && r.my && r.my.guess != null) msg += '<br><span style="font-size:15px">' + (r.my.guess ? '🎯 Richtig geraten – +1 Punkt' + (isV2(g) ? ' für euch beide!' : '!') : '❌ Du hast „' + esc(r.my.gtext || '?') + '“ getippt.') + '</span>';
+        // Was hat der Gegner bei meinem Wort getippt?
+        if (isV2(g) && r.their && r.their.guess != null)
+          msg += '<br><span style="font-size:15px">Dein Wort „' + esc(r.prevWord || '') + '“: ' + opName + ' tippte „' + esc(r.their.gtext || '?') + '“ ' + (r.their.guess ? '🎯 +1 für euch beide' : '😂') + '</span>';
         if (g.status === 'done') msg += '<br>' + finalLine(g, sMe, sOp, opName);
       }
-      renderReveal(r, !(r && r.their) ? 'Vorgelegt! ✅' : a > b ? 'Runde an dich! 🎉' : a < b ? 'Runde an ' + opName + '!' : 'Unentschieden!', a, b);
+      renderReveal(r, !(r && r.their) ? (isV2(g) ? 'Gespielt! ✅' : 'Vorgelegt! ✅') : a > b ? 'Runde an dich! 🎉' : a < b ? 'Runde an ' + opName + '!' : 'Unentschieden!', a, b);
     }
-    else if (st === 'set') msg = '<span class="tiny">Schritt 1 von 2</span><br>' + (A.chosen ? 'Sag „' + esc(A.chosen) + '“ – halt den roten Knopf gedrückt.' : 'Runde ' + (g.cur_round + 1) + ': Gib ein Wort vor – such dir eins aus oder denk dir eins aus.');
+    else if (st === 'set') msg = (isV2(g) ? '' : '<span class="tiny">Schritt 1 von 2</span><br>') + (A.chosen ? 'Sag „' + esc(A.chosen) + '“ – halt den roten Knopf gedrückt.' : 'Runde ' + (g.cur_round + 1) + ': Gib ein Wort vor – such dir eins aus oder denk dir eins aus.');
     else if (st === 'own') msg = '<span class="tiny">Schritt 2 von 2</span><br>Jetzt du selbst: Hör dir dein Wort rückwärts an und sprich es nach. Danach geht dein Zug raus' + (op ? '.' : ' und du kannst die Einladung schicken.');
     else if (st === 'sending') msg = 'Wird gesendet …';
     else if (st === 'ttsfail') msg = '⚠️ Das nächste Wort konnte nicht geladen werden.<br><span style="font-size:15px;font-weight:500">Internet prüfen und nochmal versuchen.</span>';
@@ -3013,16 +3032,19 @@
                     : g.cur_round >= 1 ? 'Dein Wort ist vorgelegt! ✅ Schick jetzt die Einladung an deinen Gegner.'
                     : 'Gib das erste Wort vor, dann kannst du die Einladung schicken.';
     else msg = opName + ' ist dran. Du bekommst Bescheid, wenn du wieder dran bist.';
-    if (st === 'set' && A.draft) msg = '<span class="tiny">Schritt 1 von 2</span><br>Gut so? Dann weiter – sonst einfach neu aufnehmen.';
+    if (st === 'set' && A.draft) msg = isV2(g) ? 'Gut so? Dann abschicken – sonst einfach neu aufnehmen.' + (A.chosen ? '' : '<br><b>Wähl oder tipp oben noch das Wort ein</b>, damit ' + opName + ' raten kann.')
+                                          : '<span class="tiny">Schritt 1 von 2</span><br>Gut so? Dann weiter – sonst einfach neu aufnehmen.';
     const retry = A.retry && A.retry.stage === st;
     if (A.note && (st === 'answer' || st === 'set' || st === 'own'))
       msg += '<span class="anote">' + esc(A.note) + '</span>' + (retry ? '<button class="play main alt" id="aRetry">Nochmal senden ➜</button>' : '');
     $('aMsg').innerHTML = msg;
     if (retry) $('aRetry').onclick = () => { const r = A.retry; asyncRecorded(r.key, r.buf); };
-    $('aMsg').querySelectorAll('.guess button').forEach(b => b.onclick = () => sendGuess(b));
+    { const gf = $('aMsg').querySelector('form.gtype');
+      if (gf) gf.onsubmit = ev => { ev.preventDefault(); sendGuess(gf); }; }
 
     if (st === 'set') renderAsyncTopic();
     $('yOk').hidden = !(st === 'set' && A.draft);
+    $('yOk').textContent = isV2(g) ? 'Abschicken ➜' : 'Passt so ➜ weiter';
     $('yRev').disabled = !A.draft;
     renderRounds();
     requestAnimationFrame(() => {
@@ -3031,18 +3053,20 @@
       if (st === 'own') draw('Z', A.draftRev);
     });
   }
-  async function sendGuess(btn){
+  async function sendGuess(form){
     const g = A.game, r = g && g.rounds.find(x => x.round_no === A.revealRound);
+    const inp = form.querySelector('input'), btn = form.querySelector('button'), txt = inp.value.trim();
     if (!r || A.busy) return;
-    A.busy = true; btn.closest('.guess').querySelectorAll('button').forEach(b => b.disabled = true);
+    if (!txt){ inp.focus(); return; }
+    A.busy = true; inp.disabled = btn.disabled = true; inp.blur();
     try {
-      const res = await rpc('guess_word', { p_game: g.id, p_round: r.round_no, p_guess: btn.dataset.w });
-      btn.classList.add(res.ok ? 'right' : 'wrong'); buzz(res.ok ? 40 : 15);
+      const res = await rpc('guess_text', { p_game: g.id, p_round: r.round_no, p_text: txt });
+      inp.classList.add(res.ok ? 'right' : 'wrong'); buzz(res.ok ? 40 : 15);
       if (res.ok) floatEmoji('🎯');
       await new Promise(ok => setTimeout(ok, 700));
       await loadGame(g.id, true);
       refreshList();
-    } catch(e){ toast(errText(e)); btn.closest('.guess').querySelectorAll('button').forEach(b => b.disabled = false); }
+    } catch(e){ toast(errText(e)); inp.disabled = btn.disabled = false; }
     finally { A.busy = false; }
   }
   function finalLine(g, a, b, opName){
@@ -3059,7 +3083,7 @@
     if (!t){ el.innerHTML = who + '<span class="hid">hat noch nicht gespielt</span></div></div>'; return el; }
     if (t.hidden){ el.innerHTML = who + '<span class="hid">🙈 Erst selbst spielen, dann siehst du das Ergebnis</span></div></div>'; return el; }
     const locked = !mine && !t.path;
-    el.innerHTML = who + '<span class="st">' + starTxt(t.stars) + '</span> <span class="pct">' + Math.round(t.sim*100) + ' %' + (t.guess === true ? ' · 🎯 +1' : t.guess === false ? ' · ❌ geraten' : '') + '</span></div>' +
+    el.innerHTML = who + '<span class="st">' + starTxt(t.stars) + '</span> <span class="pct">' + Math.round(t.sim*100) + ' %' + (t.guess === true ? ' · 🎯 +1' : t.guess === false ? ' · ❌ „' + esc(t.gtext || '?') + '“' : '') + '</span></div>' +
       '<button class="play main alt"' + (locked ? ' disabled' : '') + '>' + (locked ? '🔒 Zu weit weg' : '🤯 Ergebnis') + '</button></div>';
     if (!locked) el.querySelector('.play').onclick = () => playPath(t.path, true);
     if (inShow){ /* Reaktionen stehen schon in der Ergebnis-Show oben */ }
@@ -3068,7 +3092,7 @@
         const ch = document.createElement('div'); ch.className = 'chips';
         ch.innerHTML = r.got.map(e => '<span>' + e + '</span>').join(''); el.appendChild(ch);
       }
-    } else if (r.my){
+    } else if (r.my || (isV2(g) && r.mine)){
       const rx = document.createElement('div'); rx.className = 'reacts';
       REACTS.forEach(e => {
         const b = document.createElement('button'); b.textContent = e;
@@ -3141,7 +3165,7 @@
         if ((r.sent || []).includes(e)) bt.className = 'sent';
         bt.onclick = async () => {
           floatEmoji(e); bt.className = 'sent'; buzz(20);
-          try { await rpc('react', { p_game: g.id, p_round: r.round_no, p_target: g.opponent.id, p_emoji: e }); } catch(err){}
+          try { await rpc('react', { p_game: g.id, p_round: r.reactRound || r.round_no, p_target: g.opponent.id, p_emoji: e }); } catch(err){}
         };
         rx.appendChild(bt);
       });
@@ -3188,12 +3212,13 @@
   function renderRounds(box){
     const g = A.game; box = box || $('aRounds'); box.innerHTML = '';
     const rs = g.rounds.slice().reverse();
-    const doneN = g.rounds.filter(r => r.my && r.their && !r.their.hidden).length;
+    const doneN = g.rounds.filter(r => isV2(g) ? (r.mine ? r.their : r.my) : (r.my && r.their && !r.their.hidden)).length;
     $('aRoundsInfo').textContent = doneN ? doneN + (doneN === 1 ? ' Runde' : ' Runden') + ' gespielt' : 'noch keine';
     if (!rs.length){ box.innerHTML = '<p class="empty">Noch keine Runde gespielt.</p>'; return; }
     rs.forEach(r => {
       const el = document.createElement('div'); el.className = 'rnd';
       if (!r.my && !(r.their && !r.their.hidden) && r.round_no > g.cur_round) return;   // frisch ausgelost, noch ungespielt
+      if (isV2(g) && !r.mine && !r.my) return;   // Wort des Gegners, das ich noch nicht gespielt habe
       const title = 'Runde ' + r.round_no + ' · ' + (r.word_text ? '„' + esc(r.word_text) + '“' : g.voice === 'tts' ? '🤖 Wort der Kunststimme' : (r.mine ? 'dein Wort' : 'Wort von ' + esc(g.opponent ? g.opponent.nickname : 'Gegner')));
       el.innerHTML = '<div class="rt"><b>' + title + '</b></div>';
       // Das Wort selbst anhören – erst, wenn man die Runde gespielt hat (oder es selbst vorgegeben hat)
@@ -3203,8 +3228,8 @@
         el.querySelector('.rt').appendChild(wb);
       }
       const inShow = A.stage === 'reveal' && !$('aReveal').hidden && r.round_no === (A.revealRound || g.cur_round);
-      el.appendChild(resultRow(g, r, true, inShow));
-      el.appendChild(resultRow(g, r, false, inShow));
+      if (isV2(g)) el.appendChild(resultRow(g, r, !r.mine, inShow));
+      else { el.appendChild(resultRow(g, r, true, inShow)); el.appendChild(resultRow(g, r, false, inShow)); }
       box.appendChild(el);
     });
   }
@@ -3364,7 +3389,31 @@
     $('aMsg').innerHTML = '<span class="tiny">Schritt 1 von 2</span><br>' + (A.chosen ? 'Sag „' + esc(A.chosen) + '“ – halt den roten Knopf gedrückt.' : 'Gib ein Wort vor – such dir eins aus oder denk dir eins aus.');
   });
   $('yRev').onclick = () => { if (A.draftRev) play('Y', A.draftRev); };
-  $('yOk').onclick = () => { if (!A.draft) return; A.stage = 'own'; renderGame(); play('Z', A.draftRev); };
+  $('yOk').onclick = () => {
+    if (!A.draft) return;
+    if (isV2(A.game)){
+      if (!A.chosen){ toast('Wähl oder tipp erst das Wort ein'); if (!A.game.is_random) $('aCustom').focus(); return; }
+      sendWordV2(); return;
+    }
+    A.stage = 'own'; renderGame(); play('Z', A.draftRev);
+  };
+  // Neue Regeln: nur das Wort aufnehmen und abschicken – kein eigener Versuch
+  async function sendWordV2(){
+    const g = A.game; if (!g || A.busy || !A.draft) return;
+    A.busy = true; A.note = ''; A.retry = null; A.stage = 'sending'; renderGame();
+    try {
+      const nr = g.cur_round + 1;
+      const wp = await upload(g.id, nr, 'w', A.draft);
+      await rpc('set_word', { p_game: g.id, p_word_text: A.chosen, p_word_path: wp, p_own_path: null, p_own_sim: null, p_own_stars: null });
+      audioCache.set(wp, Promise.resolve(A.draft));
+      toast('Zug gesendet! Jetzt ist ' + (g.opponent ? g.opponent.nickname : 'dein Gegner') + ' dran.');
+      A.draft = A.draftRev = null; A.chosen = null; A.choices = []; $('aCustom').value = '';
+      A.stage = 'idle';
+      await loadGame(g.id, true);
+      refreshList();
+    } catch(e){ A.note = '⚠️ Senden hat nicht geklappt: ' + errText(e); toast('Senden hat nicht geklappt'); A.stage = 'set'; renderGame(); }
+    finally { A.busy = false; }
+  }
   $('zWord').onclick = () => { if (A.draftRev){ draw('Z', A.draftRev); play('Z', A.draftRev); } };
 
   $('aRematch').onclick = async () => {

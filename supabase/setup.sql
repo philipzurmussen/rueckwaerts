@@ -78,6 +78,40 @@ create index if not exists reactions_game_idx on public.reactions(game_id);
 -- Raten: Wer ein Listen-Wort beantwortet, rät danach aus 4 Antworten, was es war (+1 Punkt).
 alter table public.rounds   add column if not exists decoys text[];      -- 3 falsche Antworten (nur bei Listen-Wörtern)
 alter table public.attempts add column if not exists guess_ok boolean;   -- null = (noch) nicht geraten
+-- Raten per Eintippen (Nov. 2026): Runde ist ratbar, getippter Text wird gezeigt
+alter table public.rounds   add column if not exists guess boolean not null default false;
+alter table public.attempts add column if not exists guess_text text check (char_length(guess_text) <= 40);
+update public.rounds set guess = true where decoys is not null and not guess;
+-- Regeln: 1 = alt (Vorgeber spielt sein eigenes Wort mit), 2 = neu bei eigener Stimme:
+-- Vorgeber nimmt nur auf, nur der Gegner spricht nach und rät; wird das Wort erraten, bekommt der Vorgeber +1
+alter table public.games add column if not exists rules int not null default 1;
+
+-- Wort vergleichen: Groß/klein, Umlaute (ä = ae), Leer- und Satzzeichen egal; bei längeren Wörtern Tippfehler erlaubt
+create or replace function public.norm_word(t text) returns text
+language sql immutable as $$
+  select regexp_replace(replace(replace(replace(replace(lower(coalesce(t, '')), 'ä', 'ae'), 'ö', 'oe'), 'ü', 'ue'), 'ß', 'ss'), '[^a-z0-9]', '', 'g');
+$$;
+create or replace function public.lev(a text, b text) returns int
+language plpgsql immutable as $$
+declare la int := length(a); lb int := length(b); prev int[]; cur int[]; i int; j int;
+begin
+  if la = 0 then return lb; end if; if lb = 0 then return la; end if;
+  prev := array(select generate_series(0, lb));
+  for i in 1..la loop
+    cur := array[i];
+    for j in 1..lb loop
+      cur := cur || least(prev[j+1] + 1, cur[j] + 1, prev[j] + case when substr(a,i,1) = substr(b,j,1) then 0 else 1 end);
+    end loop;
+    prev := cur;
+  end loop;
+  return prev[lb+1];
+end $$;
+create or replace function public.guess_match(p_guess text, p_word text) returns boolean
+language sql immutable as $$
+  select case when public.norm_word(p_guess) = '' then false
+              else public.lev(public.norm_word(p_guess), public.norm_word(p_word))
+                   <= case when length(public.norm_word(p_word)) <= 4 then 0 when length(public.norm_word(p_word)) <= 8 then 1 else 2 end end;
+$$;
 
 -- Erlaubte Listen-Wörter: Bei Zufallsgegnern wird nur Text aus dieser
 -- Liste gespeichert (selbst getippte Wörter gibt es nur unter Freunden).
@@ -557,8 +591,9 @@ begin
     if found then return json_build_object('id', g.id, 'code', g.code, 'joined', false); end if;
   end if;
   -- Zufallsgegner spielen immer mit Kunststimme
-  insert into public.games(code, player_a, is_random, turn, voice)
-    values (public.new_code(), me, p_random, me, case when p_random or p_tts then 'tts' else 'own' end) returning * into g;
+  insert into public.games(code, player_a, is_random, turn, voice, rules, total_rounds)
+    values (public.new_code(), me, p_random, me, case when p_random or p_tts then 'tts' else 'own' end, 2,
+            case when p_random or p_tts then 6 else 8 end) returning * into g;
   return json_build_object('id', g.id, 'code', g.code, 'joined', false);
 end $$;
 
@@ -628,8 +663,8 @@ begin
     raise exception 'Erst das Wort deines Gegners spielen';
   end if;
   prefix := p_game::text || '/';
-  if p_word_path is null or p_own_path is null
-     or left(p_word_path, length(prefix)) <> prefix or left(p_own_path, length(prefix)) <> prefix then
+  if p_word_path is null or left(p_word_path, length(prefix)) <> prefix
+     or (g.rules < 2 and (p_own_path is null or left(p_own_path, length(prefix)) <> prefix)) then
     raise exception 'Aufnahme fehlt';
   end if;
   opp := case when me = g.player_a then g.player_b else g.player_a end;
@@ -647,10 +682,13 @@ begin
     ) t;
     if coalesce(array_length(v_decoys, 1), 0) <> 3 then v_decoys := null; end if;
   end if;
-  insert into public.rounds(game_id, round_no, setter, word_text, word_path, decoys)
-    values (p_game, nr, me, v_text, p_word_path, v_decoys);
-  insert into public.attempts(game_id, round_no, player, audio_path, sim, stars)
-    values (p_game, nr, me, p_own_path, greatest(0, least(1, p_own_sim)), greatest(0, least(3, p_own_stars)));
+  if g.rules >= 2 and v_text is null then raise exception 'Bitte erst das Wort auswählen oder eintippen'; end if;
+  insert into public.rounds(game_id, round_no, setter, word_text, word_path, decoys, guess)
+    values (p_game, nr, me, v_text, p_word_path, v_decoys, case when g.rules >= 2 then true else v_decoys is not null end);
+  if g.rules < 2 then   -- alte Regeln: Vorgeber spielt sein Wort selbst mit
+    insert into public.attempts(game_id, round_no, player, audio_path, sim, stars)
+      values (p_game, nr, me, p_own_path, greatest(0, least(1, p_own_sim)), greatest(0, least(3, p_own_stars)));
+  end if;
   update public.games set cur_round = nr, turn = opp, last_move_at = now(), updated_at = now() where id = p_game;
   return json_build_object('ok', true);
 end $$;
@@ -671,8 +709,8 @@ begin
   if opp is null then raise exception 'Kein Gegner für eine Revanche'; end if;
   select id into nid from public.games where rematch_of = p_game limit 1;
   if nid is not null then return json_build_object('id', nid, 'existing', true); end if;
-  insert into public.games(code, player_a, player_b, status, turn, rematch_of, voice)
-    values (public.new_code(), me, opp, 'active', me, p_game, g.voice) returning id into nid;
+  insert into public.games(code, player_a, player_b, status, turn, rematch_of, voice, rules, total_rounds)
+    values (public.new_code(), me, opp, 'active', me, p_game, g.voice, 2, case when g.voice = 'tts' then 6 else 8 end) returning id into nid;
   return json_build_object('id', nid, 'existing', false);
 end $$;
 
@@ -683,7 +721,9 @@ declare me uuid := auth.uid();
 begin
   if not public.is_player(p_game) then raise exception 'Nicht dein Duell'; end if;
   if p_target = me then raise exception 'Nicht auf dich selbst'; end if;
-  if not exists (select 1 from public.attempts where game_id = p_game and round_no = p_round and player = me) then
+  if not exists (select 1 from public.attempts where game_id = p_game and round_no = p_round and player = me)
+     and not exists (select 1 from public.rounds r join public.games g on g.id = r.game_id
+                     where r.game_id = p_game and r.round_no = p_round and r.setter = me and g.rules >= 2 and g.voice = 'own') then
     raise exception 'Erst selbst versuchen';
   end if;
   if (select count(*) from public.reactions where game_id = p_game and round_no = p_round and from_player = me) >= 10 then
@@ -709,6 +749,17 @@ begin
   return json_build_object('ok', true);
 end $$;
 
+-- Punkte eines Spielers in einem Duell: Sterne + richtig geraten;
+-- bei Regeln 2 (eigene Stimme) +1 für den Vorgeber, wenn sein Wort erraten wurde
+create or replace function public.game_points(p_game uuid, p uuid) returns int
+language sql stable security definer set search_path = public as $$
+  select (coalesce((select sum(a.stars + coalesce(a.guess_ok::int, 0)) from public.attempts a where a.game_id = p_game and a.player = p), 0)
+        + coalesce((select count(*) from public.attempts a
+                      join public.rounds r on r.game_id = a.game_id and r.round_no = a.round_no
+                      join public.games g on g.id = a.game_id
+                    where a.game_id = p_game and g.rules >= 2 and g.voice = 'own' and r.setter = p and a.player <> p and a.guess_ok), 0))::int;
+$$;
+
 -- Übersicht meiner Duelle (inkl. 48-Stunden-Regel)
 create or replace function public.my_games() returns json
 language plpgsql security definer set search_path = public as $$
@@ -729,9 +780,11 @@ begin
            g.forfeit_by is not null and g.forfeit_by <> me as opp_forfeited,
            g.turn = me as my_turn,
            public.profile_json(case when g.player_a = me then g.player_b else g.player_a end) as opponent,
-           coalesce((select sum(stars + coalesce(guess_ok::int, 0)) from public.attempts a where a.game_id = g.id and a.player = me), 0) as my_score,
-           coalesce((select sum(stars + coalesce(guess_ok::int, 0)) from public.attempts a where a.game_id = g.id and a.player <> me
-                      and exists (select 1 from public.attempts b where b.game_id = a.game_id and b.round_no = a.round_no and b.player = me)), 0) as opp_score,
+           public.game_points(g.id, me) as my_score,
+           case when g.rules >= 2 and g.voice = 'own' then public.game_points(g.id, case when g.player_a = me then g.player_b else g.player_a end)
+                else coalesce((select sum(stars + coalesce(guess_ok::int, 0)) from public.attempts a where a.game_id = g.id and a.player <> me
+                      and exists (select 1 from public.attempts b where b.game_id = a.game_id and b.round_no = a.round_no and b.player = me)), 0) end as opp_score,
+           g.rules,
            case when g.status = 'done' then 2 when g.turn = me then 0 else 1 end as sort1
     from public.games g
     where me in (g.player_a, g.player_b)
@@ -771,8 +824,8 @@ begin
     select array_agg(word) into v_decoys from (select word from public.words where word <> v_word order by random() limit 3) t;
   end if;
   v_path := 'tts/' || left(md5(v_word), 12) || '.mp3';
-  insert into public.rounds(game_id, round_no, setter, word_text, word_path, decoys)
-    values (p_game, nr, me, v_word, v_path, v_decoys);
+  insert into public.rounds(game_id, round_no, setter, word_text, word_path, decoys, guess)
+    values (p_game, nr, me, v_word, v_path, v_decoys, true);
   return json_build_object('round_no', nr, 'word_path', v_path);
 end $$;
 
@@ -812,7 +865,7 @@ begin
   opp := case when me = g.player_a then g.player_b else g.player_a end;
   select json_build_object(
     'id', g.id, 'code', g.code, 'status', g.status, 'is_random', g.is_random,
-    'cur_round', g.cur_round, 'total_rounds', g.total_rounds, 'my_turn', g.turn = me, 'voice', g.voice,
+    'cur_round', g.cur_round, 'total_rounds', g.total_rounds, 'my_turn', g.turn = me, 'voice', g.voice, 'rules', g.rules,
     'i_forfeited', g.forfeit_by = me, 'opp_forfeited', g.forfeit_by is not null and g.forfeit_by <> me,
     'last_move_at', g.last_move_at,
     'rematch_id', (select x.id from public.games x where x.rematch_of = g.id limit 1),
@@ -823,17 +876,18 @@ begin
         'mine', r.setter = me,
         'word_path', r.word_path,
         'word_text', case when (r.setter = me and g.voice <> 'tts')
-                            or (mine.player is not null and (r.decoys is null or mine.guess_ok is not null)) then r.word_text end,
-        -- noch zu raten: 4 Antworten in fester, gemischter Reihenfolge (bei Kunststimme raten beide)
-        'options', case when (r.setter <> me or g.voice = 'tts') and mine.player is not null and r.decoys is not null and mine.guess_ok is null
-                        then (select json_agg(o order by md5(o || r.game_id::text)) from unnest(r.decoys || r.word_text) o) end,
-        'my', case when mine.player is null then null else json_build_object('path', mine.audio_path, 'sim', mine.sim, 'stars', mine.stars, 'guess', mine.guess_ok) end,
+                            or (mine.player is not null and (not r.guess or mine.guess_ok is not null)) then r.word_text end,
+        -- noch zu raten (per Eintippen; bei Kunststimme raten beide)
+        'guess_open', (r.setter <> me or g.voice = 'tts') and mine.player is not null and r.guess and r.word_text is not null and mine.guess_ok is null,
+        'my', case when mine.player is null then null else json_build_object('path', mine.audio_path, 'sim', mine.sim, 'stars', mine.stars, 'guess', mine.guess_ok, 'gtext', mine.guess_text) end,
         'their', case when theirs.player is null then null
-                      when mine.player is null then json_build_object('hidden', true)
+                      -- Regeln 2: den Versuch des Gegners auf mein eigenes Wort darf ich immer sehen
+                      when mine.player is null and not (g.rules >= 2 and g.voice = 'own' and r.setter = me) then json_build_object('hidden', true)
                       else json_build_object(
                         -- Abhörsperre (unter 10 %) nur bei Zufallsgegnern; unter Freunden ist alles hörbar
                         'path', case when not g.is_random or theirs.sim >= 0.10 then theirs.audio_path end,
-                        'sim', theirs.sim, 'stars', theirs.stars, 'guess', theirs.guess_ok) end,
+                        'sim', theirs.sim, 'stars', theirs.stars, 'guess', theirs.guess_ok,
+                        'gtext', case when theirs.guess_ok is not null then theirs.guess_text end) end,
         'got', coalesce((select json_agg(emoji order by id) from public.reactions x
                           where x.game_id = r.game_id and x.round_no = r.round_no and x.target = me), '[]'::json),
         'sent', coalesce((select json_agg(distinct emoji) from public.reactions x
@@ -865,6 +919,29 @@ begin
   update public.games set updated_at = now() where id = p_game;
   return json_build_object('ok', ok, 'word', r.word_text);
 end $$;
+
+-- Raten per Eintippen: einmal pro Runde, tolerant bei Schreibweise und kleinen Tippfehlern
+create or replace function public.guess_text(p_game uuid, p_round int, p_text text) returns json
+language plpgsql security definer set search_path = public as $$
+declare me uuid := auth.uid(); r public.rounds; a public.attempts; ok boolean; v_voice text; t text;
+begin
+  if not public.is_player(p_game) then raise exception 'Nicht dein Duell'; end if;
+  select voice into v_voice from public.games where id = p_game;
+  select * into r from public.rounds where game_id = p_game and round_no = p_round;
+  if not found or (r.setter = me and v_voice <> 'tts') or not r.guess or r.word_text is null then raise exception 'Hier gibt es nichts zu raten'; end if;
+  select * into a from public.attempts where game_id = p_game and round_no = p_round and player = me for update;
+  if not found then raise exception 'Erst selbst spielen'; end if;
+  if a.guess_ok is not null then return json_build_object('ok', a.guess_ok, 'word', r.word_text, 'again', true); end if;
+  t := nullif(left(trim(coalesce(p_text, '')), 40), '');
+  if t is null then raise exception 'Bitte ein Wort eintippen'; end if;
+  ok := public.guess_match(t, r.word_text);
+  update public.attempts set guess_ok = ok, guess_text = t where game_id = p_game and round_no = p_round and player = me;
+  update public.games set updated_at = now() where id = p_game;
+  return json_build_object('ok', ok, 'word', r.word_text);
+end $$;
+revoke all on function public.guess_text(uuid,int,text) from public, anon;
+grant execute on function public.guess_text(uuid,int,text) to authenticated;
+revoke all on function public.game_points(uuid,uuid) from public, anon, authenticated;
 
 -- Ausführrechte: nur angemeldete Nutzer (auch anonyme)
 revoke all on function public.rematch(uuid) from public, anon;
@@ -1135,15 +1212,15 @@ grant execute on function public.is_admin(), public.whoami(), public.create_seas
 create or replace function public.player_xp(p uuid) returns int
 language sql stable security definer set search_path = public as $$
   select (
-    coalesce((select sum(a.stars + coalesce(a.guess_ok::int, 0)) from public.attempts a join public.games g on g.id = a.game_id
-              where a.player = p and g.player_b is not null), 0)
+    coalesce((select sum(public.game_points(g.id, p)) from public.games g
+              where p in (g.player_a, g.player_b) and g.player_b is not null), 0)
     + coalesce((select sum(stars) from public.season_attempts where player = p), 0)
     + 5 * (select count(*) from public.games g
            where g.status = 'done' and g.player_b is not null and p in (g.player_a, g.player_b)
              and ( (g.forfeit_by is not null and g.forfeit_by <> p)
                 or (g.forfeit_by is null and
-                    coalesce((select sum(stars + coalesce(guess_ok::int, 0)) from public.attempts where game_id = g.id and player = p), 0) >
-                    coalesce((select sum(stars + coalesce(guess_ok::int, 0)) from public.attempts where game_id = g.id and player <> p), 0)) ))
+                    public.game_points(g.id, p) >
+                    public.game_points(g.id, case when g.player_a = p then g.player_b else g.player_a end)) ))
   )::int;
 $$;
 
