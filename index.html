@@ -3514,15 +3514,7 @@
   function renderSeasonCard(){
     const d = SZ.data, list = challengeList(), s = list[0], card = $('sCard');
     const onHome = !$('soloHome').hidden;
-    // kleiner Hinweis im Duelle-Tab
-    const hint = $('sHint');
-    hint.hidden = !(s && !$('aHome').hidden);
-    if (s){
-      const open = list.filter(c => c.words.some(w => !w.my)).length;
-      hint.innerHTML = '<div class="gi" style="text-align:center"><b>🗓️ ' + (list.length > 1 ? list.length + ' Challenges laufen' : esc(s.title) + ' läuft') + '</b><small>' +
-        (open ? 'Im Tab „Spielen“ mitmachen ➜' : 'Alles gespielt ➜') + '</small></div>';
-      hint.onclick = () => { showMode('solo'); window.scrollTo(0, 0); };
-    }
+    $('sHint').hidden = true;   // Challenge-Hinweis im Duelle-Tab entfernt (11.11.2026)
     renderChallenges(onHome);
     if (!s){
       if (d && d.last && d.last.top && d.last.top.length){
