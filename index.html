@@ -358,12 +358,15 @@
   .dside.lose{opacity:.75}
   .dvs{font-size:22px;font-weight:800;color:var(--acc);-webkit-text-stroke:4px #0e0722;paint-order:stroke fill;text-shadow:0 3px 0 #0e0722}
   .duelshow .reveal.ribbon{margin-bottom:-30px}
+  .duelshow .oppplay{flex:1 1 100%;min-height:62px;font-size:18px}
+  .duelshow .oppplay.nudge{animation:oppnudge 1.4s ease-in-out infinite}
+  @keyframes oppnudge{0%,100%{transform:scale(1)}50%{transform:scale(1.045)}}
   .duelshow .rlabel{margin:0;font-size:12px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--mute)}
   .duelshow .reacts{gap:8px}
   .duelshow .reacts button{background:#fff;border:3px solid #0e0722;box-shadow:0 4px 0 #0e0722;border-radius:16px;font-size:24px;padding:7px 10px}
   .duelshow .reacts button:active{transform:translateY(3px);box-shadow:0 1px 0 #0e0722}
   .duelshow .reacts button.sent{background:var(--acc)}
-  @media (prefers-reduced-motion: reduce){.dshield,.dside.win .ava::before{animation:none}}
+  @media (prefers-reduced-motion: reduce){.dshield,.dside.win .ava::before,.duelshow .oppplay.nudge{animation:none}}
 
   /* ---------- Neuer Look: Mini-Profil oben, Konturen + 3D wie die Ergebnistafel ---------- */
   .vh{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
@@ -2447,7 +2450,7 @@
   const A = {
     sb:null, uid:null, ready:null, list:[], game:null, gid:null,
     stage:'idle', busy:false, wordNet:null, draft:null, draftRev:null,
-    choices:[], chosen:null, pendingInvite:null, myTurnIds:new Set(), knownIds:new Set(), firstList:true, heard:new Set()
+    choices:[], chosen:null, pendingInvite:null, myTurnIds:new Set(), knownIds:new Set(), firstList:true, heard:new Set(), oppHeard:new Set()
   };
   const audioCache = new Map();
 
@@ -3107,15 +3110,22 @@
       '<div class="dshield"' + (fresh ? '' : ' style="animation:none"') + '><div class="rays" aria-hidden="true"></div>' + side(true) + '<div class="dvs">VS</div>' + side(false) + '</div>';
     // Abspielen
     const btns = document.createElement('div'); btns.className = 'btns';
-    [[true, '▶ Dein Ergebnis'], [false, '▶ ' + (g.opponent ? g.opponent.nickname : 'Gegner')]].forEach(([mine, label]) => {
-      const t = mine ? r.my : r.their, bt = document.createElement('button');
-      const locked = !t || t.hidden || !t.path;
-      bt.className = 'play' + (mine ? ' main alt' : ' main');
-      bt.textContent = locked && t && !t.hidden ? '🔒 Zu weit weg' : label;
-      bt.disabled = locked;
-      if (!locked) bt.onclick = () => playPath(t.path, true);
-      btns.appendChild(bt);
-    });
+    const opName = g.opponent ? g.opponent.nickname : 'Gegner', ot = r.their;
+    // Gegner-Ergebnis groß und pulsierend direkt unter dem Wappen – viele wussten nicht, dass man es hören kann.
+    // Pulsiert, bis man es einmal gehört hat (während des Ratens nicht, sonst wird man zum Spicken gedrängt).
+    if (ot && !ot.hidden){
+      const ob = document.createElement('button'), locked = !ot.path;
+      ob.className = 'play main oppplay' + (!locked && !A.oppHeard.has(key) && !guessPending(r) ? ' nudge' : '');
+      ob.textContent = locked ? '🔒 ' + opName + ' war zu weit weg' : '🤯 So klang ' + opName + '!';
+      ob.disabled = locked;
+      if (!locked) ob.onclick = () => { A.oppHeard.add(key); ob.classList.remove('nudge'); playPath(ot.path, true); };
+      btns.appendChild(ob);
+    }
+    const mt = r.my, mb = document.createElement('button');
+    mb.className = 'play main alt'; mb.textContent = '▶ Dein Ergebnis';
+    mb.disabled = !mt || !mt.path;
+    if (mt && mt.path) mb.onclick = () => playPath(mt.path, true);
+    btns.appendChild(mb);
     // Vergleichen: Original-Wort und dein Ergebnis direkt hintereinander (erst nach dem Raten, sonst wäre das Wort verraten)
     if (r.my && r.my.path && r.word_path && (r.word_text || (r.mine && g.voice !== 'tts'))){
       const cb = document.createElement('button'); cb.className = 'play main alt'; cb.style.flexBasis = '100%';
@@ -3124,7 +3134,7 @@
         try { const [o, m] = await Promise.all([getAudio(r.word_path), getAudio(r.my.path)]); playSeq([o, reverse(m)]); }
         catch(e){ toast('Aufnahme konnte nicht geladen werden'); }
       };
-      btns.prepend(cb);
+      btns.appendChild(cb);
     }
     w.appendChild(btns);
     // Reaktionen an den Gegner
