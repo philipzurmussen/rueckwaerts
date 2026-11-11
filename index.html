@@ -3295,6 +3295,13 @@
   }
   $('aNext').onclick = async () => {
     const g = A.game;
+    // Wurde gerade eine ältere Runde nachgeraten, wartet evtl. schon das neue Wort des Gegners –
+    // dann erst das spielen (sonst lehnt der Server ab: „Erst das Wort deines Gegners spielen“)
+    if (pickStage(g) === 'answer'){
+      A.stage = 'answer'; renderGame(); window.scrollTo(0, 0);
+      interstitial('Runde ' + A.ansRound, 'Du bist dran!').then(() => enter($('aMsg').closest('.card')));
+      return;
+    }
     if (g.voice === 'tts'){
       if (A.busy) return; A.busy = true;
       let ok = false; try { ok = await ttsNext(g.id); } finally { A.busy = false; }

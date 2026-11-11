@@ -1,5 +1,5 @@
 // Ollah! – Service Worker: Seite immer frisch aus dem Netz, offline aus dem Cache
-const CACHE = 'ollah-v70';
+const CACHE = 'ollah-v71';
 const CORE = ['./', './index.html', './manifest.webmanifest', './icon-192.png', './icon-512.png', './apple-touch-icon.png', './logo.png', './o.png', './favicon-48.png'];
 
 self.addEventListener('install', e => {
