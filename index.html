@@ -1257,6 +1257,7 @@
       <div class="btns">
         <button class="play" id="fbOpen">💬 Feedback geben</button>
         <button class="play" id="handBtn">🤚 Knopf links</button>
+        <button class="play" id="sndBtn">🔊 Töne an</button>
       </div>
       <button class="reset" id="helpClose">Schließen</button>
     </section>
@@ -1306,6 +1307,7 @@
   let micMode = !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia && window.MediaRecorder);
   let stream = null, rec = null, recSlot = null, chunks = [], maxTimer = null;
   let playing = null; // {src, slot, buffer, t0}
+  let lastPlayAt = 0;  // für die UI-Sounds: Knopf hat Audio gestartet → kein Klick-Sound
 
   // ---------- Zeichnen ----------
   function sizeCanvas(cv){
@@ -1430,6 +1432,7 @@
     if (!inSeq) seqTok++;   // anderer Knopf unterbricht eine laufende Folge
     stopPlay();
     if (!buffer) return;
+    lastPlayAt = performance.now();
     const url = URL.createObjectURL(wavBlob(buffer));
     const p = { slot:key, buffer, url };
     playing = p;
@@ -1562,7 +1565,125 @@
   // ---------- Ergebnis-Show: Zahl zählt hoch, Sterne ploppen, Konfetti ----------
   const RM = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
   const buzz = ms => { try { navigator.vibrate && navigator.vibrate(ms); } catch(e){} };
+
+  // ---------- UI-Sounds (synthetisch per Web Audio, keine Dateien) ----------
+  // Ein/aus über „?“ → 🔊 (localStorage rw-sound). Nie während das Mikro offen ist (würde mit aufgenommen).
+  // Ergebnis-Jingles warten, bis eine laufende Wiedergabe fertig ist, damit sie das Wort nicht überdecken.
+  // Eigene Samples später: in SFX.x statt tone()/noise() einen AudioBuffer abspielen.
+  const SFX = (() => {
+    let on = true; try { on = localStorage.getItem('rw-sound') !== 'off'; } catch(e){}
+    let master = null, last = 0, noiseBuf = null;
+    const busy = () => !on || document.hidden || (rec && rec.state === 'recording') || (stream && stream.active);
+    const out = () => {
+      const c = ac();
+      if (!master || master.context !== c){
+        const comp = c.createDynamicsCompressor(); comp.threshold.value = -12; comp.ratio.value = 4;
+        master = c.createGain(); master.gain.value = 0.55; master.connect(comp); comp.connect(c.destination);
+      }
+      return c;
+    };
+    // Ton mit Tonhöhen-Verlauf und kurzer Hüllkurve
+    function tone(f0, f1, dur, o){
+      o = o || {};
+      const c = out(), t = c.currentTime + (o.at || 0) + 0.005;
+      const osc = c.createOscillator(), g = c.createGain();
+      osc.type = o.type || 'sine';
+      osc.frequency.setValueAtTime(f0, t);
+      if (f1 && f1 !== f0) osc.frequency.exponentialRampToValueAtTime(f1, t + dur * (o.glide || 0.8));
+      const v = o.vol || 0.3, a = o.att || 0.004;
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime(v, t + a);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+      let node = osc;
+      if (o.lp){ const fl = c.createBiquadFilter(); fl.type = 'lowpass'; fl.frequency.value = o.lp; osc.connect(fl); node = fl; }
+      node.connect(g); g.connect(master);
+      osc.start(t); osc.stop(t + dur + 0.05);
+    }
+    // Rauschen mit Bandpass – rise=true schwillt an und bricht ab (wie ein rückwärts abgespieltes Becken)
+    function noise(dur, o){
+      o = o || {};
+      const c = out(), t = c.currentTime + (o.at || 0) + 0.005;
+      if (!noiseBuf || noiseBuf.sampleRate !== c.sampleRate){
+        noiseBuf = c.createBuffer(1, c.sampleRate, c.sampleRate);
+        const d = noiseBuf.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+      }
+      const src = c.createBufferSource(), bp = c.createBiquadFilter(), g = c.createGain();
+      src.buffer = noiseBuf; src.loop = true;
+      bp.type = 'bandpass'; bp.Q.value = o.q || 1.2;
+      bp.frequency.setValueAtTime(o.f0 || 800, t); bp.frequency.exponentialRampToValueAtTime(o.f1 || 4000, t + dur);
+      const v = o.vol || 0.25;
+      g.gain.setValueAtTime(0.0001, t);
+      if (o.rise){ g.gain.exponentialRampToValueAtTime(v, t + dur * 0.92); g.gain.exponentialRampToValueAtTime(0.0001, t + dur); }
+      else { g.gain.exponentialRampToValueAtTime(v, t + 0.01); g.gain.exponentialRampToValueAtTime(0.0001, t + dur); }
+      src.connect(bp); bp.connect(g); g.connect(master);
+      src.start(t); src.stop(t + dur + 0.05);
+    }
+    const jit = () => 1 + (Math.random() - 0.5) * 0.06;   // leichte Variation, damit es nicht maschinell klingt
+    const N = { C5:523.25, D5:587.33, E5:659.25, G5:783.99, A5:880, C6:1046.5, E6:1318.5, G6:1568, C7:2093 };
+    const S = {
+      tap(){ const j = jit(); tone(720*j, 420*j, 0.07, { type:'triangle', vol:0.22 }); },
+      big(){ const j = jit(); tone(520*j, 300*j, 0.11, { type:'triangle', vol:0.28 }); tone(1040*j, 900*j, 0.06, { vol:0.08 }); },
+      soft(){ const j = jit(); tone(420*j, 300*j, 0.07, { type:'sine', vol:0.18 }); },
+      tab(){ const j = jit(); tone(1250*j, 1250*j, 0.045, { type:'sine', vol:0.16 }); tone(1870*j, 1870*j, 0.03, { vol:0.06, at:0.012 }); },
+      sticker(){ const j = jit(); tone(980*j, 620*j, 0.06, { type:'square', vol:0.08, lp:2400 }); },
+      pop(){ const j = jit(); tone(300*j, 1300*j, 0.09, { type:'sine', vol:0.25, glide:0.5 }); },
+      toggle(){ tone(N.E5, N.E5, 0.08, { type:'triangle', vol:0.2 }); tone(N.A5, N.A5, 0.12, { type:'triangle', vol:0.2, at:0.07 }); },
+      recDone(){ tone(N.G5, N.G5, 0.07, { type:'triangle', vol:0.18 }); tone(N.C6, N.C6, 0.1, { type:'triangle', vol:0.18, at:0.06 }); },
+      // Zwischen-Slide: Rückwärts-Becken + steigender Ton (passend zum O, das sich rückwärts dreht)
+      whoosh(){ noise(0.55, { rise:true, f0:500, f1:6000, vol:0.18, q:0.9 }); tone(200, 900, 0.55, { type:'sine', vol:0.05, att:0.45, glide:1 }); },
+      rise(dur){ tone(260, 1040, dur || 0.9, { type:'sine', vol:0.05, att:(dur || 0.9) * 0.85, glide:1 }); },
+      star(i){ const f = [N.C6, N.E6, N.G6][Math.min(i, 2)]; tone(f, f, 0.45, { vol:0.2 }); tone(f*2, f*2, 0.18, { vol:0.05 }); },
+      right(){ tone(N.E5, N.E5, 0.09, { type:'triangle', vol:0.24 }); tone(N.A5, N.A5, 0.22, { type:'triangle', vol:0.24, at:0.09 }); tone(N.A5*2, N.A5*2, 0.15, { vol:0.06, at:0.09 }); },
+      wrong(){ tone(190, 140, 0.22, { type:'square', vol:0.1, lp:900 }); tone(150, 110, 0.26, { type:'square', vol:0.08, lp:700, at:0.12 }); },
+      win(big){
+        const seq = big ? [N.C5, N.E5, N.G5, N.C6, N.E6] : [N.C5, N.E5, N.G5, N.C6];
+        seq.forEach((f, i) => { tone(f, f, 0.22, { type:'triangle', vol:0.2, at:i*0.08 }); });
+        const end = seq.length * 0.08;
+        tone(seq[seq.length-1], seq[seq.length-1], 0.6, { type:'triangle', vol:0.18, at:end });
+        noise(0.5, { f0:6000, f1:9000, vol:0.05, q:3, at:end });
+      },
+      meh(){ tone(N.E5*0.75, N.E5*0.75, 0.16, { type:'triangle', vol:0.15 }); tone(N.C5*0.7, N.C5*0.66, 0.34, { type:'triangle', vol:0.15, at:0.15 }); }
+    };
+    const api = {};
+    Object.keys(S).forEach(k => { api[k] = (...a) => { last = performance.now(); if (busy()) return; try { S[k](...a); } catch(e){} }; });
+    // Erst abspielen, wenn gerade keine Aufnahme läuft und die Wiedergabe (inkl. Folgen) zu Ende ist
+    api.after = (name, ...a) => {
+      last = performance.now();
+      if (!on) return;
+      const t0 = performance.now(); let quietSince = 0;
+      (function wait(){
+        const now = performance.now();
+        if (now - t0 > 12000) return;
+        if (playing){ quietSince = 0; return setTimeout(wait, 120); }
+        if (!quietSince) quietSince = now;
+        if (now - quietSince < 550) return setTimeout(wait, 120);   // Pause zwischen zwei Teilen einer Folge abwarten
+        api[name](...a);
+      })();
+    };
+    api.free = () => !playing;   // für Sounds, die nur ohne laufende Wiedergabe Sinn ergeben
+    api.last = () => last;
+    api.isOn = () => on;
+    api.set = v => { on = v; try { localStorage.setItem('rw-sound', v ? 'on' : 'off'); } catch(e){} };
+    return api;
+  })();
+  // Klick-Sound für alle Knöpfe. Kurz verzögert: hat der Knopf selbst einen Sound oder Audio gestartet, bleibt er still.
+  document.addEventListener('click', e => {
+    const b = e.target.closest && e.target.closest('button, .istep, [role="button"]');
+    if (!b || b.disabled || b.classList.contains('recbtn')) return;
+    const t = performance.now();
+    const kind = b.closest('.bnav') ? 'tab'
+      : b.closest('.reacts') ? 'pop'
+      : b.classList.contains('reset') ? 'soft'
+      : b.classList.contains('main') ? 'big'
+      : b.closest('.topics, .opts, .guess, .choices') ? 'sticker'
+      : 'tap';
+    setTimeout(() => {
+      if (SFX.last() >= t || lastPlayAt >= t) return;
+      SFX[kind]();
+    }, 0);
+  }, true);
   function confetti(n){
+    SFX.after('win', (n || 60) >= 90);
     if (RM) return;
     const box = document.createElement('div'); box.className = 'confetti'; box.setAttribute('aria-hidden', 'true');
     const cols = ['#ffd23f','#ff4d6d','#3ee6c1','#4cc9f0','#ffffff','#c77dff'];
@@ -1579,6 +1700,7 @@
   // Kurzer Zwischen-Slide mit dem O (Tippen überspringt); das Promise kommt beim Ausblenden
   function interstitial(title, sub, ms){
     document.querySelectorAll('.islide').forEach(e => e.remove());
+    SFX.whoosh();
     return new Promise(res => {
       const el = document.createElement('div'); el.className = 'islide'; el.setAttribute('role', 'status');
       el.innerHTML = '<img src="o.png" alt=""><div class="it"></div>' + (sub ? '<div class="is"></div>' : '');
@@ -1613,10 +1735,12 @@
     }
     const finish = () => {
       num.textContent = goal;
-      for (let i=0;i<stars;i++) setTimeout(() => { if (run !== scoreRun) return; sp[i].classList.add('lit'); buzz(30); }, 300*i + 80);
+      for (let i=0;i<stars;i++) setTimeout(() => { if (run !== scoreRun) return; sp[i].classList.add('lit'); buzz(30); if (SFX.free()) SFX.star(i); }, 300*i + 80);
+      if (!stars) SFX.after('meh');
       if (stars >= 2) setTimeout(() => { if (run === scoreRun) confetti(stars === 3 ? 90 : 50); }, 300*stars + 60);
     };
     const t0 = performance.now(), dur = 900;
+    if (SFX.free()) SFX.rise(dur / 1000);
     num.textContent = '0';
     const step = now => {
       if (run !== scoreRun) return;
@@ -1905,6 +2029,7 @@
       releaseMic(); stopping = false;
       setRecUI(key, false);
       if (document.hidden) return;
+      SFX.recDone();
       handleAudio(key, new Blob(chunks, { type: rec.mimeType || 'audio/webm' }));
     };
     rec.start();
@@ -3061,7 +3186,7 @@
     A.busy = true; inp.disabled = btn.disabled = true; inp.blur();
     try {
       const res = await rpc('guess_text', { p_game: g.id, p_round: r.round_no, p_text: txt });
-      inp.classList.add(res.ok ? 'right' : 'wrong'); buzz(res.ok ? 40 : 15);
+      inp.classList.add(res.ok ? 'right' : 'wrong'); buzz(res.ok ? 40 : 15); SFX[res.ok ? 'right' : 'wrong']();
       if (res.ok) floatEmoji('🎯');
       await new Promise(ok => setTimeout(ok, 700));
       await loadGame(g.id, true);
@@ -3182,7 +3307,7 @@
       const n = +sd.querySelector('.stars').dataset.n, sp = sd.querySelectorAll('.stars span');
       for (let i = 0; i < n; i++){
         if (!anim) sp[i].classList.add('lit');
-        else setTimeout(() => { if (sp[i].isConnected){ sp[i].classList.add('lit'); buzz(25); } }, delay + 260 * i);
+        else setTimeout(() => { if (sp[i].isConnected){ sp[i].classList.add('lit'); buzz(25); if (SFX.free()) SFX.star(i); } }, delay + 260 * i);
       }
       return n;
     };
@@ -3192,6 +3317,7 @@
     winners.forEach(sd => sd.classList.remove('win'));
     const ribbon = w.querySelector('.ribbon'); ribbon.style.visibility = 'hidden';
     let pending = sides.length;
+    if (SFX.free()) SFX.rise(0.9);
     sides.forEach(sd => {
       const num = sd.querySelector('[data-goal]'), goal = num.dataset.goal;
       const after = () => { if (--pending === 0) finale(); };
@@ -4137,7 +4263,7 @@
   }
   function quickGuess(btn){
     const pick = btn.dataset.w, ok = pick === QZ.word;
-    btn.classList.add(ok ? 'right' : 'wrong'); buzz(ok ? 40 : 15);
+    btn.classList.add(ok ? 'right' : 'wrong'); buzz(ok ? 40 : 15); SFX[ok ? 'right' : 'wrong']();
     QZ.guess = { pick, ok };
     if (ok) floatEmoji('🎯');
     setTimeout(quickReveal, 600);
@@ -4371,6 +4497,11 @@
     toast(left ? 'Aufnahmeknopf jetzt links' : 'Aufnahmeknopf jetzt rechts');
   };
   applyHand();
+
+  // ---------- Töne an/aus ----------
+  const applySnd = () => { $('sndBtn').textContent = SFX.isOn() ? '🔊 Töne an' : '🔇 Töne aus'; };
+  $('sndBtn').onclick = () => { SFX.set(!SFX.isOn()); applySnd(); if (SFX.isOn()) SFX.toggle(); toast(SFX.isOn() ? 'Töne an' : 'Töne aus'); };
+  applySnd();
 
   // ---------- Feedback ----------
   const FB = { rating:0, turn:'', fun:new Set() };
