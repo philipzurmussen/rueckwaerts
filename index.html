@@ -358,15 +358,17 @@
   .dside.lose{opacity:.75}
   .dvs{font-size:22px;font-weight:800;color:var(--acc);-webkit-text-stroke:4px #0e0722;paint-order:stroke fill;text-shadow:0 3px 0 #0e0722}
   .duelshow .reveal.ribbon{margin-bottom:-30px}
-  .duelshow .oppplay{flex:1 1 100%;min-height:62px;font-size:18px}
-  .duelshow .oppplay.nudge{animation:oppnudge 1.4s ease-in-out infinite}
-  @keyframes oppnudge{0%,100%{transform:scale(1)}50%{transform:scale(1.045)}}
+  .dplay{margin-top:8px;padding:5px 12px;font:inherit;font-size:13px;font-weight:800;color:#0e0722;background:#fff;border:3px solid #0e0722;border-radius:999px;box-shadow:0 3px 0 #0e0722;white-space:nowrap;cursor:pointer}
+  .dplay:active{transform:translateY(2px);box-shadow:0 1px 0 #0e0722}
+  .dplay.nudge{background:var(--acc);animation:oppnudge 1.3s ease-in-out infinite}
+  .dplay.off{background:rgba(255,255,255,.25);color:#fff;border-color:transparent;box-shadow:none;cursor:default;font-size:12px}
+  @keyframes oppnudge{0%,100%{transform:rotate(0) scale(1)}15%{transform:rotate(-6deg) scale(1.08)}30%{transform:rotate(5deg) scale(1.08)}45%{transform:rotate(0) scale(1)}}
   .duelshow .rlabel{margin:0;font-size:12px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--mute)}
   .duelshow .reacts{gap:8px}
   .duelshow .reacts button{background:#fff;border:3px solid #0e0722;box-shadow:0 4px 0 #0e0722;border-radius:16px;font-size:24px;padding:7px 10px}
   .duelshow .reacts button:active{transform:translateY(3px);box-shadow:0 1px 0 #0e0722}
   .duelshow .reacts button.sent{background:var(--acc)}
-  @media (prefers-reduced-motion: reduce){.dshield,.dside.win .ava::before,.duelshow .oppplay.nudge{animation:none}}
+  @media (prefers-reduced-motion: reduce){.dshield,.dside.win .ava::before,.dplay.nudge{animation:none}}
 
   /* ---------- Neuer Look: Mini-Profil oben, Konturen + 3D wie die Ergebnistafel ---------- */
   .vh{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
@@ -3103,29 +3105,20 @@
       return '<div class="dside' + res + '">' + avaHTML(esc(p ? p.avatar : '🙂'), p ? p.color : COLORS[3]) +
         '<div class="nm">' + esc(mine ? 'Du' : (p ? p.nickname : 'Gegner')) + '</div>' +
         '<div class="dpct"><span data-goal="' + (ok ? Math.round(t.sim * 100) : '') + '">' + (ok ? Math.round(t.sim * 100) : '?') + '</span><small> %</small></div>' +
-        '<div class="stars" data-n="' + (ok ? t.stars : 0) + '"><span>★</span><span>★</span><span>★</span></div></div>';
+        '<div class="stars" data-n="' + (ok ? t.stars : 0) + '"><span>★</span><span>★</span><span>★</span></div>' +
+        (!ok ? '' : t.path ? '<button class="dplay' + (!mine && !A.oppHeard.has(key) && !guessPending(r) ? ' nudge' : '') + '" data-mine="' + (mine ? 1 : 0) + '">▶ Anhören</button>'
+                           : '<span class="dplay off">🔒 zu weit weg</span>') + '</div>';
     };
     const w = document.createElement('div'); w.className = 'duelshow';
     w.innerHTML = '<p class="reveal ribbon">' + verdict + '</p>' +
       '<div class="dshield"' + (fresh ? '' : ' style="animation:none"') + '><div class="rays" aria-hidden="true"></div>' + side(true) + '<div class="dvs">VS</div>' + side(false) + '</div>';
-    // Abspielen
+    // Abspielen: kleine Knöpfe direkt im Wappen; der des Gegners wippt, bis man ihn einmal gehört hat
+    // (nicht während des Ratens, sonst wird man zum Spicken gedrängt) – viele wussten nicht, dass man ihn hören kann
+    w.querySelectorAll('.dplay[data-mine]').forEach(bt => {
+      const mine = bt.dataset.mine === '1', t = mine ? r.my : r.their;
+      bt.onclick = () => { if (!mine){ A.oppHeard.add(key); bt.classList.remove('nudge'); } playPath(t.path, true); };
+    });
     const btns = document.createElement('div'); btns.className = 'btns';
-    const opName = g.opponent ? g.opponent.nickname : 'Gegner', ot = r.their;
-    // Gegner-Ergebnis groß und pulsierend direkt unter dem Wappen – viele wussten nicht, dass man es hören kann.
-    // Pulsiert, bis man es einmal gehört hat (während des Ratens nicht, sonst wird man zum Spicken gedrängt).
-    if (ot && !ot.hidden){
-      const ob = document.createElement('button'), locked = !ot.path;
-      ob.className = 'play main oppplay' + (!locked && !A.oppHeard.has(key) && !guessPending(r) ? ' nudge' : '');
-      ob.textContent = locked ? '🔒 ' + opName + ' war zu weit weg' : '🤯 So klang ' + opName + '!';
-      ob.disabled = locked;
-      if (!locked) ob.onclick = () => { A.oppHeard.add(key); ob.classList.remove('nudge'); playPath(ot.path, true); };
-      btns.appendChild(ob);
-    }
-    const mt = r.my, mb = document.createElement('button');
-    mb.className = 'play main alt'; mb.textContent = '▶ Dein Ergebnis';
-    mb.disabled = !mt || !mt.path;
-    if (mt && mt.path) mb.onclick = () => playPath(mt.path, true);
-    btns.appendChild(mb);
     // Vergleichen: Original-Wort und dein Ergebnis direkt hintereinander (erst nach dem Raten, sonst wäre das Wort verraten)
     if (r.my && r.my.path && r.word_path && (r.word_text || (r.mine && g.voice !== 'tts'))){
       const cb = document.createElement('button'); cb.className = 'play main alt'; cb.style.flexBasis = '100%';
@@ -3136,7 +3129,7 @@
       };
       btns.appendChild(cb);
     }
-    w.appendChild(btns);
+    if (btns.children.length) w.appendChild(btns);
     // Reaktionen an den Gegner
     if (g.opponent && r.their && !r.their.hidden){
       const lab = document.createElement('p'); lab.className = 'rlabel'; lab.textContent = 'Reagieren';
