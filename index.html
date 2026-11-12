@@ -1644,8 +1644,44 @@
       },
       meh(){ tone(N.E5*0.75, N.E5*0.75, 0.16, { type:'triangle', vol:0.15 }); tone(N.C5*0.7, N.C5*0.66, 0.34, { type:'triangle', vol:0.15, at:0.15 }); }
     };
+    // Eigene Samples aus sfx/ (Philips Sound-Pack). Fehlt eine Datei, bleibt der synthetische Ton.
+    // Pegel: alle Dateien sind auf dieselbe Spitze normalisiert → Klicks hier leiser als Effekte/Jingles.
+    const FILES = {
+      tap: ['tap.wav','tap-2.wav','tap-3.wav'], big: ['big.wav'], soft: ['soft.wav'], tab: ['tab.wav'],
+      sticker: ['sticker.wav','sticker-2.wav','sticker-3.wav'], pop: ['pop.wav'], toggle: ['toggle.wav'], recDone: ['rec-done.wav'],
+      whoosh: ['whoosh.mp3'], rise: ['rise.mp3'], star0: ['star-1.mp3'], star1: ['star-2.mp3'], star2: ['star-3.mp3'],
+      right: ['right.mp3'], wrong: ['wrong.mp3'], win: ['win.mp3'], winBig: ['win-big.mp3'], meh: ['meh.mp3']
+    };
+    const GAIN = { tap:0.45, big:0.55, soft:0.45, tab:0.4, sticker:0.5, pop:0.5, toggle:0.5, recDone:0.5,
+      whoosh:0.8, rise:0.6, star0:0.8, star1:0.8, star2:0.8, right:0.85, wrong:0.8, win:0.9, winBig:0.95, meh:0.85 };
+    const bufs = {}, lastIdx = {};
+    let loading = null;
+    const decode = (c, ab) => new Promise((res, rej) => { const pr = c.decodeAudioData(ab, res, rej); if (pr && pr.then) pr.then(res, rej); });
+    function load(){
+      if (loading) return loading;
+      const c = ac();
+      loading = Promise.all(Object.keys(FILES).map(k => Promise.all(FILES[k].map(f =>
+        fetch('sfx/' + f).then(r => r.ok ? r.arrayBuffer() : null).then(ab => ab ? decode(c, ab) : null).catch(() => null)
+      )).then(list => { const ok = list.filter(Boolean); if (ok.length) bufs[k] = ok; })));
+      return loading;
+    }
+    function sample(k){
+      const list = bufs[k]; if (!list) return false;
+      let i = Math.floor(Math.random() * list.length);
+      if (list.length > 1 && i === lastIdx[k]) i = (i + 1) % list.length;   // nicht zweimal dieselbe Variante
+      lastIdx[k] = i;
+      const c = out(), src = c.createBufferSource(), g = c.createGain();
+      src.buffer = list[i]; g.gain.value = GAIN[k] || 0.6;
+      src.connect(g); g.connect(master); src.start();
+      return true;
+    }
+    const keyOf = (k, a) => k === 'star' ? 'star' + Math.min(+a[0] || 0, 2) : k === 'win' && a[0] ? 'winBig' : k;
     const api = {};
-    Object.keys(S).forEach(k => { api[k] = (...a) => { last = performance.now(); if (busy()) return; try { S[k](...a); } catch(e){} }; });
+    Object.keys(S).forEach(k => { api[k] = (...a) => {
+      last = performance.now(); if (busy()) return;
+      try { if (!sample(keyOf(k, a))) S[k](...a); } catch(e){}
+    }; });
+    api.load = load;
     // Erst abspielen, wenn gerade keine Aufnahme läuft und die Wiedergabe (inkl. Folgen) zu Ende ist
     api.after = (name, ...a) => {
       last = performance.now();
@@ -1666,6 +1702,7 @@
     api.set = v => { on = v; try { localStorage.setItem('rw-sound', v ? 'on' : 'off'); } catch(e){} };
     return api;
   })();
+  ['pointerdown','touchend','click'].forEach(ev => document.addEventListener(ev, () => { try { SFX.load(); } catch(e){} }, { capture:true, once:true, passive:true }));
   // Klick-Sound für alle Knöpfe. Kurz verzögert: hat der Knopf selbst einen Sound oder Audio gestartet, bleibt er still.
   document.addEventListener('click', e => {
     const b = e.target.closest && e.target.closest('button, .istep, [role="button"]');
