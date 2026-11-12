@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<title>Ollah! – Sound-Test</title>
+<style>
+  :root{--bg:#2a0f6b;--card:#1c0b52;--line:#0e0722;--acc:#ffd426;--mint:#2ff0c0;--txt:#fff;--mute:#cbbcff}
+  *{box-sizing:border-box}
+  body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",sans-serif;background:var(--bg);color:var(--txt);padding:16px 14px 60px}
+  h1{font-size:22px;margin:4px 0 2px}
+  p.sub{color:var(--mute);margin:0 0 14px;font-size:14px;line-height:1.4}
+  h2{font-size:13px;letter-spacing:.08em;color:var(--acc);margin:22px 0 8px}
+  .row{display:grid;grid-template-columns:1fr auto auto;gap:8px;align-items:center;background:var(--card);border:3px solid var(--line);border-radius:16px;padding:10px 10px 10px 12px;margin-bottom:8px}
+  .row b{display:block;font-size:15px}
+  .row span{display:block;color:var(--mute);font-size:12.5px;line-height:1.3;margin-top:2px}
+  button{font:inherit;font-weight:700;font-size:14px;border:3px solid var(--line);border-radius:14px;padding:10px 12px;min-width:64px;cursor:pointer;box-shadow:0 4px 0 rgba(14,7,34,.6);-webkit-tap-highlight-color:transparent}
+  button:active{transform:translateY(2px);box-shadow:0 2px 0 rgba(14,7,34,.6)}
+  .old{background:#fff;color:#2a0f6b}
+  .warm{background:var(--mint);color:#0e0722}
+  .seq{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:6px}
+  .seq button{width:100%}
+  .vol{display:flex;gap:10px;align-items:center;color:var(--mute);font-size:13px;margin:10px 0 0}
+  .vol input{flex:1}
+  .note{background:var(--card);border:3px solid var(--line);border-radius:16px;padding:12px;font-size:13.5px;line-height:1.45;color:var(--mute);margin-top:20px}
+  .note a{color:var(--acc)}
+</style>
+</head>
+<body>
+<h1>🔊 Ollah! – Sound-Test</h1>
+<p class="sub">Jeden Sound im Vergleich: <b style="color:#fff">Alt</b> = aktuelles Pack, <b style="color:var(--mint)">Warm</b> = neues Pack. Pegel wie in der App (Klicks leiser als Effekte). iPhone: Lautlos-Schalter aus.</p>
+
+<h2>ABLÄUFE WIE IN DER APP</h2>
+<div class="seq" id="seqs"></div>
+
+<div id="list"></div>
+
+<div class="vol">Lautstärke <input type="range" id="vol" min="0" max="1.5" step="0.05" value="1"></div>
+
+<div class="note">
+  <b style="color:#fff">In der App testen:</b> <a href="./?sfx=warm">ollah.app/?sfx=warm</a> schaltet <i>nur auf diesem Gerät</i> auf das Warm-Pack um (im „?“-Menü steht dann „Test: warm“).
+  Zurück zum aktuellen Pack: <a href="./?sfx=standard">ollah.app/?sfx=standard</a>.
+</div>
+
+<script>
+const GROUPS = [
+  ['KNÖPFE', [
+    ['tap', 'Standard-Knopf · weicher Gummi-Plopp', ['tap.wav','tap-2.wav','tap-3.wav'], 0.45],
+    ['big', 'Hauptknopf (Spielen, Jetzt du!) · satter, tiefer Plopp', ['big.wav'], 0.55],
+    ['soft', 'Zurück / Schließen · Luft-Puff', ['soft.wav'], 0.45],
+    ['tab', 'Tab-Leiste · Plastik-Klacken', ['tab.wav'], 0.4],
+    ['sticker', 'Auswahl (Thema, Antwort) · Sticker-Klatsch', ['sticker.wav','sticker-2.wav','sticker-3.wav'], 0.5],
+    ['pop', 'Emoji-Reaktion · Kaugummiblase', ['pop.wav'], 0.5],
+    ['toggle', '„Töne an“ · Plopp + Glitzer', ['toggle.wav'], 0.5],
+    ['rec-done', 'Aufnahme fertig · Kapsel schnappt zu', ['rec-done.wav'], 0.5]
+  ]],
+  ['EFFEKTE', [
+    ['whoosh', 'Zwischen-Slide · Reverse-Swoosh + Plopp', ['whoosh.mp3'], 0.8],
+    ['rise', 'Prozent zählt hoch · anschwellender Akkord', ['rise.mp3'], 0.6],
+    ['star-1', '1. Stern · Glockenspiel C', ['star-1.mp3'], 0.8],
+    ['star-2', '2. Stern · Glockenspiel E', ['star-2.mp3'], 0.8],
+    ['star-3', '3. Stern · Glockenspiel G', ['star-3.mp3'], 0.8],
+    ['right', 'Richtig geraten', ['right.mp3'], 0.85],
+    ['wrong', 'Falsch geraten · freundlicher Brummer', ['wrong.mp3'], 0.8]
+  ]],
+  ['ERGEBNIS', [
+    ['win', '2 Sterne / Rundensieg · Glockenspiel-Lauf', ['win.mp3'], 0.9],
+    ['win-big', '3 Sterne · wie win, größer', ['win-big.mp3'], 0.95],
+    ['meh', '0 Sterne · Luft entweicht', ['meh.mp3'], 0.85]
+  ]]
+];
+const PACKS = { old:'sfx/', warm:'sfx-warm/' };
+const ALL = {}; GROUPS.forEach(g => g[1].forEach(r => ALL[r[0]] = r));
+let ctx = null, master = null; const cache = {}, lastIdx = {};
+function ac(){
+  if (!ctx){
+    ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const comp = ctx.createDynamicsCompressor(); comp.threshold.value = -12; comp.ratio.value = 4;
+    master = ctx.createGain(); master.gain.value = 0.55 * document.getElementById('vol').value;
+    master.connect(comp); comp.connect(ctx.destination);
+  }
+  if (ctx.state !== 'running') ctx.resume();
+  return ctx;
+}
+document.getElementById('vol').oninput = e => { if (master) master.gain.value = 0.55 * e.target.value; };
+const decode = (c, ab) => new Promise((res, rej) => { const p = c.decodeAudioData(ab, res, rej); if (p && p.then) p.then(res, rej); });
+function get(pack, file){
+  const k = pack + file;
+  if (!cache[k]) cache[k] = fetch(PACKS[pack] + file + '?v=1').then(r => r.arrayBuffer()).then(ab => decode(ac(), ab)).catch(() => null);
+  return cache[k];
+}
+async function play(pack, name, at){
+  const c = ac(), r = ALL[name], files = r[2];
+  let i = Math.floor(Math.random() * files.length);
+  if (files.length > 1 && i === lastIdx[pack + name]) i = (i + 1) % files.length;
+  lastIdx[pack + name] = i;
+  const buf = await get(pack, files[i]); if (!buf) return;
+  const s = c.createBufferSource(), g = c.createGain();
+  s.buffer = buf; g.gain.value = r[3]; s.connect(g); g.connect(master);
+  s.start(c.currentTime + (at || 0));
+}
+// Abläufe wie in der App: Ergebnis-Show mit 3 Sternen, Raten richtig, Zwischen-Slide → Klick
+const SEQS = [
+  ['3 Sterne', [['rise',0],['star-1',0.98],['star-2',1.28],['star-3',1.58],['win-big',2.1]]],
+  ['2 Sterne', [['rise',0],['star-1',0.98],['star-2',1.28],['win',1.8]]],
+  ['0 Sterne', [['rise',0],['meh',1.1]]],
+  ['Klick-Serie', [['tap',0],['tap',0.25],['sticker',0.5],['sticker',0.7],['tab',1.0],['big',1.3],['soft',1.7]]]
+];
+const sq = document.getElementById('seqs');
+['old','warm'].forEach(pack => SEQS.forEach(([label, steps]) => {
+  const b = document.createElement('button'); b.className = pack;
+  b.textContent = (pack === 'old' ? 'Alt' : 'Warm') + ': ' + label;
+  b.onclick = async () => { ac(); await Promise.all(steps.map(([n]) => Promise.all(ALL[n][2].map(f => get(pack, f))))); steps.forEach(([n, t]) => play(pack, n, t)); };
+  sq.appendChild(b);
+}));
+// sortiert: erst alle Alt-Abläufe links, Warm rechts
+[...sq.children].sort((a, b) => SEQS.findIndex(s => a.textContent.endsWith(s[0])) - SEQS.findIndex(s => b.textContent.endsWith(s[0])) || (a.className === 'old' ? -1 : 1)).forEach(e => sq.appendChild(e));
+const list = document.getElementById('list');
+GROUPS.forEach(([title, rows]) => {
+  const h = document.createElement('h2'); h.textContent = title; list.appendChild(h);
+  rows.forEach(([name, desc]) => {
+    const row = document.createElement('div'); row.className = 'row';
+    row.innerHTML = '<div><b>' + name + '</b><span>' + desc + '</span></div>';
+    [['old','Alt'],['warm','Warm']].forEach(([p, l]) => { const b = document.createElement('button'); b.className = p; b.textContent = l; b.onclick = () => play(p, name); row.appendChild(b); });
+    list.appendChild(row);
+  });
+});
+</script>
+</body>
+</html>

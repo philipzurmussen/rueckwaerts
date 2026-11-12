@@ -1644,6 +1644,7 @@
       },
       meh(){ tone(N.E5*0.75, N.E5*0.75, 0.16, { type:'triangle', vol:0.15 }); tone(N.C5*0.7, N.C5*0.66, 0.34, { type:'triangle', vol:0.15, at:0.15 }); }
     };
+    const api0 = {};
     // Eigene Samples aus sfx/ (Philips Sound-Pack). Fehlt eine Datei, bleibt der synthetische Ton.
     // Pegel: alle Dateien sind auf dieselbe Spitze normalisiert → Klicks hier leiser als Effekte/Jingles.
     const FILES = {
@@ -1655,13 +1656,21 @@
     const GAIN = { tap:0.45, big:0.55, soft:0.45, tab:0.4, sticker:0.5, pop:0.5, toggle:0.5, recDone:0.5,
       whoosh:0.8, rise:0.6, star0:0.8, star1:0.8, star2:0.8, right:0.85, wrong:0.8, win:0.9, winBig:0.95, meh:0.85 };
     const bufs = {}, lastIdx = {};
+    // Test-Schalter für ein anderes Sound-Pack: ollah.app/?sfx=warm (nur dieses Gerät), zurück mit ?sfx=standard
+    let SFX_DIR = 'sfx/';
+    try {
+      const q = new URLSearchParams(location.search).get('sfx');
+      if (q === 'warm') localStorage.setItem('rw-sfx', 'warm'); else if (q) localStorage.removeItem('rw-sfx');
+      if (localStorage.getItem('rw-sfx') === 'warm') SFX_DIR = 'sfx-warm/';
+    } catch(e){}
+    api0.pack = () => SFX_DIR;
     let loading = null;
     const decode = (c, ab) => new Promise((res, rej) => { const pr = c.decodeAudioData(ab, res, rej); if (pr && pr.then) pr.then(res, rej); });
     function load(){
       if (loading) return loading;
       const c = ac();
       loading = Promise.all(Object.keys(FILES).map(k => Promise.all(FILES[k].map(f =>
-        fetch('sfx/' + f).then(r => r.ok ? r.arrayBuffer() : null).then(ab => ab ? decode(c, ab) : null).catch(() => null)
+        fetch(SFX_DIR + f).then(r => r.ok ? r.arrayBuffer() : null).then(ab => ab ? decode(c, ab) : null).catch(() => null)
       )).then(list => { const ok = list.filter(Boolean); if (ok.length) bufs[k] = ok; })));
       return loading;
     }
@@ -1676,7 +1685,7 @@
       return true;
     }
     const keyOf = (k, a) => k === 'star' ? 'star' + Math.min(+a[0] || 0, 2) : k === 'win' && a[0] ? 'winBig' : k;
-    const api = {};
+    const api = api0;
     Object.keys(S).forEach(k => { api[k] = (...a) => {
       last = performance.now(); if (busy()) return;
       try { if (!sample(keyOf(k, a))) S[k](...a); } catch(e){}
@@ -4536,7 +4545,7 @@
   applyHand();
 
   // ---------- Töne an/aus ----------
-  const applySnd = () => { $('sndBtn').textContent = SFX.isOn() ? '🔊 Töne an' : '🔇 Töne aus'; };
+  const applySnd = () => { $('sndBtn').textContent = (SFX.isOn() ? '🔊 Töne an' : '🔇 Töne aus') + (SFX.pack() === 'sfx-warm/' ? ' · Test: warm' : ''); };
   $('sndBtn').onclick = () => { SFX.set(!SFX.isOn()); applySnd(); if (SFX.isOn()) SFX.toggle(); toast(SFX.isOn() ? 'Töne an' : 'Töne aus'); };
   applySnd();
 
